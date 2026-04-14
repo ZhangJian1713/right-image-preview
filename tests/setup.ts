@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom';
 
 // Mock ResizeObserver which is not available in jsdom
-global.ResizeObserver = class ResizeObserver {
+window.ResizeObserver = class ResizeObserver {
   private callback: ResizeObserverCallback;
   constructor(callback: ResizeObserverCallback) {
     this.callback = callback;

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React, { createRef } from 'react';
+import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { ImagePreview } from '../src/components/ImagePreview/ImagePreview';
 import type { ImagePreviewRef } from '../src/components/ImagePreview/types';
@@ -30,6 +30,11 @@ const IMAGES = [
 ];
 
 describe('ImagePreview component', () => {
+  beforeEach(() => {
+    // Give jsdom images predictable natural dimensions for transform calculations.
+    mockImageLoad();
+  });
+
   describe('visibility', () => {
     it('renders nothing when visible=false', () => {
       const { container } = render(
