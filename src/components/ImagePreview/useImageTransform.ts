@@ -286,8 +286,15 @@ export function useImageTransform(options: UseImageTransformOptions): UseImageTr
       if (prevScale === 0 || prevScale === newScale) return;
       skipZoomTranslateRef.current = true; // tell the useLayoutEffect to skip
       const ratio = newScale / prevScale;
-      let newTx = anchorX * (1 - ratio) + translateRef.current.x * ratio;
-      let newTy = anchorY * (1 - ratio) + translateRef.current.y * ratio;
+      // In fit mode the visual translate is always (0, 0) — effectiveTx/Ty is
+      // forced to 0 in the render, regardless of what translateRef holds (it
+      // may retain a stale value from a previous native-mode pan session).
+      // Using the stale value would mis-place the anchor and send the image
+      // flying off-screen, so we always read the *effective* position here.
+      const curTx = mode === 'fit' ? 0 : translateRef.current.x;
+      const curTy = mode === 'fit' ? 0 : translateRef.current.y;
+      let newTx = anchorX * (1 - ratio) + curTx * ratio;
+      let newTy = anchorY * (1 - ratio) + curTy * ratio;
 
       // Safety clamp so the image never flies off-screen, even when the
       // cursor is far from the image (e.g. opposite corner of the viewport).
@@ -299,7 +306,7 @@ export function useImageTransform(options: UseImageTransformOptions): UseImageTr
 
       applyTranslate(newTx, newTy);
     },
-    [applyTranslate, imageDims, containerSize, rotation],
+    [applyTranslate, imageDims, containerSize, rotation, mode],
   );
 
   // ── Derive scale & transform ──────────────────────────────────────────────

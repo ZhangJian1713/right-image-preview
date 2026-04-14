@@ -369,6 +369,19 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       return () => cancelAnimationFrame(id);
     }, [ready]);
 
+    // ── Loading indicator ────────────────────────────────────────────────────
+    // Only show the spinner if loading takes longer than LOADER_DELAY_MS.
+    // This avoids a distracting flash for fast-loading images (e.g. local
+    // files in a VSCode webview) while still signalling progress for large
+    // images that take several hundred milliseconds or more.
+    const LOADER_DELAY_MS = 300;
+    const [showLoader, setShowLoader] = useState(false);
+    useEffect(() => {
+      if (imageShowReady) { setShowLoader(false); return; }
+      const id = setTimeout(() => setShowLoader(true), LOADER_DELAY_MS);
+      return () => clearTimeout(id);
+    }, [imageShowReady]);
+
     // Group-aware toolbar props
     const groupToolbarProps = currentGroup
       ? {
@@ -464,6 +477,33 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
               display:    'block',
             }}
           />
+
+          {/* ── Loading spinner ── */}
+          {/* Keyframes are defined inline once; harmless to repeat on re-mount. */}
+          <style>{`@keyframes _rip_spin{to{transform:rotate(360deg)}}`}</style>
+          <div
+            aria-label="图片加载中"
+            aria-live="polite"
+            style={{
+              position:      'absolute',
+              inset:         0,
+              display:       'flex',
+              alignItems:    'center',
+              justifyContent:'center',
+              pointerEvents: 'none',
+              opacity:       showLoader ? 1 : 0,
+              transition:    showLoader ? 'none' : 'opacity 0.2s ease',
+            }}
+          >
+            <div style={{
+              width:         28,
+              height:        28,
+              borderRadius:  '50%',
+              border:        '2.5px solid rgba(180, 200, 230, 0.12)',
+              borderTopColor:'rgba(180, 200, 230, 0.55)',
+              animation:     '_rip_spin 0.75s linear infinite',
+            }} />
+          </div>
         </div>
 
         {/* ── Side nav arrows ────────────────────────────────────────────────
