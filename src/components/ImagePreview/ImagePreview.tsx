@@ -254,11 +254,26 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
           // Navigate images / rotate (Ctrl/Cmd modifier)
           case 'ArrowLeft':
             e.preventDefault();
-            if (mod) rotateCCW(); else prev();
+            if (mod) {
+              rotateCCW();
+            } else {
+              // When at the first image of a group and a previous group exists,
+              // arrow key mirrors the side "prev-group" double-chevron button.
+              const atStart = currentGroup ? currentIndex === currentGroup.start : currentIndex === 0;
+              if (atStart && currentGroupIdx > 0) prevGroup(); else prev();
+            }
             break;
           case 'ArrowRight':
             e.preventDefault();
-            if (mod) rotateCW(); else next();
+            if (mod) {
+              rotateCW();
+            } else {
+              // When at the last image of a group and a next group exists,
+              // arrow key mirrors the side "next-group" double-chevron button.
+              const atEnd = currentGroup ? currentIndex === currentGroup.end : currentIndex === images.length - 1;
+              const hasNext = groups ? currentGroupIdx < groups.length - 1 : false;
+              if (atEnd && hasNext) nextGroup(); else next();
+            }
             break;
 
           // Group navigation
@@ -274,6 +289,8 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       rotateCW, rotateCCW,
       onClose, fitEquivalentNativePercent,
       resetHideTimer,
+      // boundary-jump deps
+      currentIndex, currentGroup, currentGroupIdx, groups, images.length,
     ]);
 
     // ── Double-click ────────────────────────────────────────────────────────
