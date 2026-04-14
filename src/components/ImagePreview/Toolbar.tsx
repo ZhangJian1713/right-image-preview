@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { NativePercent, ZoomMode } from './types';
 
 // ── Design tokens ──────────────────────────────────────────────────────────
@@ -175,6 +175,63 @@ function TBtn({ label, active, accent, children, ...rest }: TBtnProps) {
 const Divider = () => (
   <div style={{ width: 1, height: 18, background: C.divider, margin: '0 3px', flexShrink: 0 }} />
 );
+
+// ── MiddleEllipsisName ─────────────────────────────────────────────────────
+// Renders a filename with the ellipsis in the *middle*, so the file extension
+// and the last few characters of the stem are always visible.
+// e.g. "Joel Tonyan – The Orion Nebula and the Running Man.jpg"
+//   →  "Joel Tonyan – The Orion Neb…ng Man.jpg"
+
+interface MiddleEllipsisNameProps {
+  name: string;
+  style?: React.CSSProperties;
+}
+
+function MiddleEllipsisName({ name, style }: MiddleEllipsisNameProps) {
+  const dotIdx = name.lastIndexOf('.');
+  // No extension or hidden-file style (.bashrc): plain end-truncation
+  if (dotIdx <= 0) {
+    return (
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', ...style }}>
+        {name}
+      </span>
+    );
+  }
+
+  const stem = name.slice(0, dotIdx);
+  const ext  = name.slice(dotIdx);  // includes the dot
+
+  // Keep last TAIL chars of stem + extension always visible at the end.
+  const TAIL = 8;
+
+  if (stem.length <= TAIL + 3) {
+    // Stem is short — just show stem (possibly truncated) + ext side-by-side.
+    return (
+      <span style={{ display: 'flex', minWidth: 0, overflow: 'hidden', ...style }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1, minWidth: '2ch' }}>
+          {stem}
+        </span>
+        <span style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>{ext}</span>
+      </span>
+    );
+  }
+
+  // Long stem: split so ellipsis lands in the middle.
+  const startPart = stem.slice(0, stem.length - TAIL);
+  const tailPart  = stem.slice(-TAIL) + ext;
+
+  return (
+    <span style={{ display: 'flex', minWidth: 0, overflow: 'hidden', ...style }}>
+      <span style={{
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        flexShrink: 1, minWidth: '2ch',
+      }}>
+        {startPart}
+      </span>
+      <span style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>{tailPart}</span>
+    </span>
+  );
+}
 
 // ── ZoomInput ──────────────────────────────────────────────────────────────
 
@@ -376,6 +433,19 @@ export function Toolbar({
   const isGroupMode = groupTotal !== undefined && groupCurrentIndex !== undefined;
   const showNav = isGroupMode || totalImages > 1;
 
+  // Measure the toolbar action row so the info badge never exceeds its width.
+  const toolbarRowRef = useRef<HTMLDivElement>(null);
+  const [badgeMaxWidth, setBadgeMaxWidth] = useState<number>(560);
+  useLayoutEffect(() => {
+    const el = toolbarRowRef.current;
+    if (!el) return;
+    const update = () => setBadgeMaxWidth(el.offsetWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     // Outer wrapper: transparent column — badge sits above action row.
     // opacity transitions: fast restore (0.12 s) / slow fade (1.6 s).
@@ -397,7 +467,7 @@ export function Toolbar({
           : 'opacity 1.6s ease',
       }}
     >
-      {/* ── Info badge — text-fit width, floats above action row ── */}
+      {/* ── Info badge — adapts to content width, capped at toolbar width ── */}
       {imageName && (
         <div
           style={{
@@ -405,18 +475,21 @@ export function Toolbar({
             flexDirection: 'column',
             alignItems: 'flex-start',
             gap: 2,
-            // Slightly transparent so the image shows through without hurting legibility
             background: 'rgba(6,10,20,0.58)',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
             borderRadius: 7,
             padding: '5px 14px',
-            maxWidth: 380,
+            // Grow to show full name; never wider than the toolbar row below.
+            maxWidth: badgeMaxWidth,
+            // Allow the badge to shrink its content area.
+            minWidth: 0,
+            overflow: 'hidden',
             pointerEvents: 'none',
           }}
         >
-          {/* Filename row: [counter]  filename */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, maxWidth: 352, overflow: 'hidden' }}>
+          {/* Filename row: [counter]  filename (middle-ellipsis) */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, width: '100%', minWidth: 0 }}>
             {showNav && (
               <span style={{
                 fontSize: 11,
@@ -430,20 +503,17 @@ export function Toolbar({
                   : `${currentIndex + 1}/${totalImages}`}
               </span>
             )}
-            <span style={{
-              fontSize: 13, fontWeight: 500, color: C.text,
-              overflow: 'hidden', textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap', minWidth: 0,
-            }}>
-              {imageName}
-            </span>
+            <MiddleEllipsisName
+              name={imageName}
+              style={{ fontSize: 13, fontWeight: 500, color: C.text, flex: '1 1 0' }}
+            />
           </div>
           {/* Group/folder subtitle */}
           {groupName && (
             <span style={{
               fontSize: 11, color: C.textMuted,
               overflow: 'hidden', textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap', maxWidth: 352, display: 'block',
+              whiteSpace: 'nowrap', maxWidth: '100%', display: 'block',
             }}>
               {groupName}
             </span>
@@ -453,6 +523,7 @@ export function Toolbar({
 
       {/* ── Action row — own background ── */}
       <div
+        ref={toolbarRowRef}
         role="toolbar"
         aria-label="图片预览工具栏"
         style={{

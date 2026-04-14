@@ -21,7 +21,7 @@
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `stops` | `NativePercent[]` | `[10,25,50,100,200,400,800]` | Discrete zoom stop list (ascending, at least 1 item) |
+| `stops` | `NativePercent[]` | `[10,25,50,75,100,150,200,300,400,600,800]` | Discrete zoom stop list (ascending, at least 1 item) |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | Initial zoom mode |
 | `initialNativePercent` | `number` | first stop | Initial percentage when `initialMode='native'` |
 | `firstZoomInStrategy` | `'above-fit' \| 'first-stop' \| 'hundred'` | `'above-fit'` | Which stop to land on when zooming in from Fit for the first time |

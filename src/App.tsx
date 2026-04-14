@@ -4,11 +4,11 @@ import type { ImageGroup, ImageItem, ImagePreviewRef, ZoomState } from './compon
 
 // ── Demo 1：单组图片（风景摄影集） ──────────────────────────────────────────
 const SINGLE_GALLERY: ImageItem[] = [
-  { src: 'https://picsum.photos/seed/sg-mtn/1920/1280',   alt: '山间云雾',         name: 'mountain-mist.jpg'   },
-  { src: 'https://picsum.photos/seed/sg-fst/1280/1920',   alt: '竖幅树林',         name: 'forest-portrait.jpg' },
-  { src: 'https://picsum.photos/seed/sg-cst/2400/1600',   alt: '海岸线',           name: 'coastline.jpg'       },
-  { src: 'https://picsum.photos/seed/sg-town/1600/1200',  alt: '古镇街道',         name: 'old-town.jpg'        },
-  { src: 'https://picsum.photos/seed/sg-sun/3000/2000',   alt: '草原日落',         name: 'grassland-sunset.jpg'},
+  { src: 'https://picsum.photos/seed/sg-mtn/1920/1280', alt: '山间云雾', name: 'mountain-mist.jpg' },
+  { src: 'https://picsum.photos/seed/sg-fst/1280/1920', alt: '竖幅树林', name: 'forest-portrait-this-is-a-very-very-long-long-file-name-so-that-it-can-be-tested-with-a-very-long-file-name.jpg' },
+  { src: 'https://picsum.photos/seed/sg-cst/2400/1600', alt: '海岸线', name: 'coastline.jpg' },
+  { src: 'https://picsum.photos/seed/sg-town/1600/1200', alt: '古镇街道', name: 'old-town.jpg' },
+  { src: 'https://picsum.photos/seed/sg-sun/3000/2000', alt: '草原日落', name: 'grassland-sunset.jpg' },
 ];
 
 // ── Demo 2：多文件夹图片（旅行相册） ────────────────────────────────────────
@@ -21,26 +21,26 @@ const FOLDER_GROUPS: FolderGroup[] = [
   {
     name: '🏙 城市建筑',
     images: [
-      { src: 'https://picsum.photos/seed/city-bld/1600/1000', alt: '现代楼群',     name: 'buildings-01.jpg'    },
-      { src: 'https://picsum.photos/seed/city-sky/2000/1200', alt: '夜间天际线',   name: 'skyline-night.jpg'   },
-      { src: 'https://picsum.photos/seed/city-aly/800/1200',  alt: '街道小巷',     name: 'alley.jpg'           },
+      { src: 'https://picsum.photos/seed/city-bld/1600/1000', alt: '现代楼群', name: 'buildings-01.jpg' },
+      { src: 'https://picsum.photos/seed/city-sky/2000/1200', alt: '夜间天际线', name: 'skyline-night.jpg' },
+      { src: 'https://picsum.photos/seed/city-aly/800/1200', alt: '街道小巷', name: 'alley.jpg' },
     ],
   },
   {
     name: '🌿 自然风光',
     images: [
-      { src: 'https://picsum.photos/seed/nat-vly/2400/1600',  alt: '山谷晨雾',     name: 'valley-mist.jpg'     },
-      { src: 'https://picsum.photos/seed/nat-wfl/1800/1200',  alt: '瀑布',         name: 'waterfall.jpg'       },
-      { src: 'https://picsum.photos/seed/nat-fld/3200/2000',  alt: '花田',         name: 'flower-field.jpg'    },
+      { src: 'https://picsum.photos/seed/nat-vly/2400/1600', alt: '山谷晨雾', name: 'valley-mist.jpg' },
+      { src: 'https://picsum.photos/seed/nat-wfl/1800/1200', alt: '瀑布', name: 'waterfall.jpg' },
+      { src: 'https://picsum.photos/seed/nat-fld/3200/2000', alt: '花田', name: 'flower-field.jpg' },
     ],
   },
   {
     name: '🌊 海洋沙滩',
     images: [
-      { src: 'https://picsum.photos/seed/sea-wide/3000/1500', alt: '海天一色',     name: 'ocean-wide.jpg'      },
-      { src: 'https://picsum.photos/seed/sea-rock/1200/1600', alt: '礁石近景（竖）',name: 'rocks-close.jpg'    },
-      { src: 'https://picsum.photos/seed/sea-bch/2000/1400',  alt: '沙滩',         name: 'beach.jpg'           },
-      { src: 'https://picsum.photos/seed/sea-fs/1600/1000',   alt: '渔船日落',     name: 'fishing-sunset.jpg'  },
+      { src: 'https://picsum.photos/seed/sea-wide/3000/1500', alt: '海天一色', name: 'ocean-wide.jpg' },
+      { src: 'https://picsum.photos/seed/sea-rock/1200/1600', alt: '礁石近景（竖）', name: 'rocks-close.jpg' },
+      { src: 'https://picsum.photos/seed/sea-bch/2000/1400', alt: '沙滩', name: 'beach.jpg' },
+      { src: 'https://picsum.photos/seed/sea-fs/1600/1000', alt: '渔船日落', name: 'fishing-sunset.jpg' },
     ],
   },
 ];
@@ -57,9 +57,9 @@ function getFlatIndex(folderIdx: number, imgIdx: number): number {
 
 // 从 FOLDER_GROUPS 生成 groups prop
 const FOLDER_GROUP_DEFS: ImageGroup[] = FOLDER_GROUPS.map((group, gi) => ({
-  name:  group.name,
+  name: group.name,
   start: getFlatIndex(gi, 0),
-  end:   getFlatIndex(gi, group.images.length - 1),
+  end: getFlatIndex(gi, group.images.length - 1),
 }));
 
 // ── 通用样式常量 ────────────────────────────────────────────────────────────
@@ -183,15 +183,15 @@ function RefControls({ previewRef }: { previewRef: React.RefObject<ImagePreviewR
         通过 ref 程序化控制（预览打开后可用）
       </h3>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <RefBtn label="放大"      onClick={() => previewRef.current?.zoomIn()} />
-        <RefBtn label="缩小"      onClick={() => previewRef.current?.zoomOut()} />
-        <RefBtn label="适应"      onClick={() => previewRef.current?.fit()} />
-        <RefBtn label="100%"     onClick={() => previewRef.current?.setNative(100)} />
-        <RefBtn label="200%"     onClick={() => previewRef.current?.setNative(200)} />
-        <RefBtn label="上一张"    onClick={() => previewRef.current?.prev()} />
-        <RefBtn label="下一张"    onClick={() => previewRef.current?.next()} />
+        <RefBtn label="放大" onClick={() => previewRef.current?.zoomIn()} />
+        <RefBtn label="缩小" onClick={() => previewRef.current?.zoomOut()} />
+        <RefBtn label="适应" onClick={() => previewRef.current?.fit()} />
+        <RefBtn label="100%" onClick={() => previewRef.current?.setNative(100)} />
+        <RefBtn label="200%" onClick={() => previewRef.current?.setNative(200)} />
+        <RefBtn label="上一张" onClick={() => previewRef.current?.prev()} />
+        <RefBtn label="下一张" onClick={() => previewRef.current?.next()} />
         <RefBtn label="顺时针旋转" onClick={() => previewRef.current?.rotateCW()} />
-        <RefBtn label="水平翻转"   onClick={() => previewRef.current?.flipHorizontal()} />
+        <RefBtn label="水平翻转" onClick={() => previewRef.current?.flipHorizontal()} />
         <RefBtn
           label="读取状态"
           onClick={() => setZoomInfo(previewRef.current?.getState() ?? null)}

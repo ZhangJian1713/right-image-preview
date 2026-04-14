@@ -12,7 +12,7 @@ import type { ImageGroup, ImageItem, ImagePreviewProps, ImagePreviewRef, NativeP
 import { useImageTransform } from './useImageTransform';
 import { useZoomState } from './useZoomState';
 
-const DEFAULT_STOPS: NativePercent[] = [10, 25, 50, 100, 200, 400, 800];
+const DEFAULT_STOPS: NativePercent[] = [10, 25, 50, 75, 100, 150, 200, 300, 400, 600, 800];
 
 function normaliseImages(props: ImagePreviewProps): ImageItem[] {
   if (props.images && props.images.length > 0) return props.images;
@@ -88,7 +88,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       onZoomChange,
       onMaxStopReached,
     });
-    const { mode, nativePercent, zoomIn, zoomOut, fit, setNative, reset } = zoomState;
+    const { mode, nativePercent, zoomIn, zoomOut, fit, setNative, reset, peekZoomIn, peekZoomOut } = zoomState;
 
     // ── Image transform ─────────────────────────────────────────────────────
     const {
@@ -109,6 +109,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       resetOrientation,
       imageDims,
       containerSize,
+      zoomAnchorTranslate,
     } = useImageTransform({ mode, nativePercent, fitResetPan });
 
     // ── Current image ───────────────────────────────────────────────────────
@@ -196,10 +197,39 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       (e: WheelEvent) => {
         if (!wheelEnabled) return;
         e.preventDefault();
-        if (e.deltaY < 0) zoomIn(fitEquivalentNativePercent);
+
+        const isZoomIn = e.deltaY < 0;
+
+        // Peek the next zoom state so we can compute the new scale synchronously
+        // before applying the state update.  This lets us anchor the translate to
+        // the cursor position BEFORE the render that changes nativePercent, so
+        // both state updates land in the same React batch.
+        const peek = isZoomIn
+          ? peekZoomIn(fitEquivalentNativePercent)
+          : peekZoomOut();
+
+        if (peek !== null) {
+          const rect = overlayRef.current?.getBoundingClientRect();
+          const cx = rect ? e.clientX - rect.left - rect.width  / 2 : 0;
+          const cy = rect ? e.clientY - rect.top  - rect.height / 2 : 0;
+
+          const s1 = transform.scale;
+          const s2 =
+            peek.mode === 'fit'
+              ? (fitEquivalentNativePercent ?? peek.percent) / 100
+              : peek.percent / 100;
+
+          // Anchor translate: keeps the image pixel under the cursor stationary.
+          zoomAnchorTranslate(s1, s2, cx, cy);
+        }
+
+        if (isZoomIn) zoomIn(fitEquivalentNativePercent);
         else zoomOut(fitEquivalentNativePercent);
       },
-      [wheelEnabled, zoomIn, zoomOut, fitEquivalentNativePercent],
+      [
+        wheelEnabled, zoomIn, zoomOut, peekZoomIn, peekZoomOut,
+        fitEquivalentNativePercent, transform.scale, zoomAnchorTranslate,
+      ],
     );
 
     useEffect(() => {
