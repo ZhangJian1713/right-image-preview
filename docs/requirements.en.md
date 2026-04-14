@@ -218,6 +218,13 @@
 
 ---
 
+## Phase 13 — Image-Switch Animation Fix + Overlay Customization
+
+- [x] **Bug fix**: When switching images a "zoom-out shrink" animation was visible. Root cause: when `ready` flipped `false→true`, `transform` (fit-scale jump) and `opacity` (0→1) both triggered CSS transitions in the same render frame, making the image shrink while fading in. Fix: introduced `imageShowReady` state — first frame applies the correct transform while `opacity` is still 0 (no animation), next frame (RAF) transitions `opacity` to 1 when transform is already settled.
+- [x] **New prop**: `overlayClassName?: string` — extra CSS class on the overlay backdrop.
+- [x] **New prop**: `overlayStyle?: React.CSSProperties` — inline style overrides merged onto the overlay (higher priority than defaults).
+- [x] **Default overlay style**: updated to macOS frosted-glass look (`rgba(10,12,20,0.70)` + `backdrop-filter: blur(24px) saturate(160%)`), background outlines are faintly visible while keeping focus on the image.
+
 ## Phase 12 — Open-source Preparation
 
 - [x] `README.md` (English) + `README.zh-CN.md` (Chinese) with mutual language-switch links

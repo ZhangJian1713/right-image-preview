@@ -39,6 +39,8 @@
 | `switchImageResetTransform` | `boolean` | `false` | 切图时重置旋转和翻转 |
 | `fitResetPan` | `boolean` | `true` | 调用适应时重置平移 |
 | `closeOnMaskClick` | `boolean` | `false` | 点击图片/工具栏以外的暗色遮罩是否关闭预览 |
+| `overlayClassName` | `string` | — | 附加到遮罩元素的 CSS 类名 |
+| `overlayStyle` | `React.CSSProperties` | — | 合并到遮罩元素的内联样式（在默认样式之后合并，优先级更高） |
 
 ### UI 配置
 

@@ -165,9 +165,22 @@ export interface ImagePreviewProps {
   /**
    * Whether clicking the dark overlay backdrop (outside the image, toolbar, and info badge)
    * closes the preview, just like pressing Esc or the close button.
-   * Default: `true`.
+   * Default: `false`.
    */
   closeOnMaskClick?: boolean;
+
+  /**
+   * Extra CSS class applied to the overlay backdrop element.
+   * Use this to override the background, blur, or any other visual property.
+   */
+  overlayClassName?: string;
+
+  /**
+   * Inline style overrides merged onto the overlay backdrop element.
+   * Merged after the default styles, so any property you provide takes precedence.
+   * Example: `{ background: 'rgba(0,0,0,0.95)' }` to get a fully opaque black backdrop.
+   */
+  overlayStyle?: React.CSSProperties;
 
   // ── Callbacks ──────────────────────────────────────────────────────────────
   onClose?: () => void;

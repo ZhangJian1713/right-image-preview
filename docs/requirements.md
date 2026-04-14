@@ -218,6 +218,13 @@
 
 ---
 
+## 阶段 13 — 切图动画修复 + 遮罩定制
+
+- [x] **Bug 修复**：切换图片时出现"从大缩小到适应尺寸"的动画。根本原因：`ready` 从 `false` 变 `true` 时 `transform`（fit-scale 跳变）和 `opacity`（0→1）在同一帧触发了 CSS transition，导致图片淡入的同时也在缩小。修复方案：引入 `imageShowReady` 状态，先让 transform 在 `opacity:0` 状态下静默到位，下一帧（RAF）再让 opacity 过渡显现，此时 transform 已无变化，缩放动画消除。
+- [x] **新增 prop**：`overlayClassName?: string` — 附加到遮罩元素的 CSS 类名。
+- [x] **新增 prop**：`overlayStyle?: React.CSSProperties` — 合并到遮罩元素的内联样式（优先级高于默认值）。
+- [x] **默认遮罩样式**：改为 macOS 磨砂玻璃风格 (`rgba(10,12,20,0.70)` + `backdrop-filter: blur(24px) saturate(160%)`)，能隐约看出背景轮廓，减少突兀感，同时仍能专注于图片。
+
 ## 阶段 12 — 开源准备
 
 - [x] `README.md`（英文）+ `README.zh-CN.md`（中文），顶部互相切换链接

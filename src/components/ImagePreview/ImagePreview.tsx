@@ -58,6 +58,8 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       arrows = 'both',
       initialZoomLocked = false,
       closeOnMaskClick = false,
+      overlayClassName,
+      overlayStyle,
       onClose,
       onZoomChange,
       onIndexChange,
@@ -306,6 +308,20 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     const atMaxStop = mode === 'native' && nativePercent >= sortedStops[sortedStops.length - 1];
     const ready     = imageDims !== null && containerSize !== null;
 
+    // ── Prevent the "shrink on first load" animation bug ─────────────────────
+    // When ready flips from false→true, the CSS transform has just jumped to the
+    // correct fit-scale in the same render.  If we make the image visible in
+    // that same render, the `transform` transition fires and produces a visible
+    // "zoom-out" animation.  Instead we keep opacity:0 for one animation frame
+    // (so the browser paints the correct transform while the image is still
+    // invisible), then set imageShowReady→true so only the opacity transitions.
+    const [imageShowReady, setImageShowReady] = useState(false);
+    useEffect(() => {
+      if (!ready) { setImageShowReady(false); return; }
+      const id = requestAnimationFrame(() => setImageShowReady(true));
+      return () => cancelAnimationFrame(id);
+    }, [ready]);
+
     // Group-aware toolbar props
     const groupToolbarProps = currentGroup
       ? {
@@ -328,15 +344,20 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
         aria-modal="true"
         aria-label="图片预览"
         tabIndex={-1}
+        className={overlayClassName}
         style={{
           position: 'fixed',
           inset: 0,
           zIndex: 9999,
-          background: 'rgba(0,0,0,0.88)',
+          /* macOS-style frosted glass: semi-transparent + blur */
+          background: 'rgba(10, 12, 20, 0.70)',
+          backdropFilter: 'blur(24px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(160%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           outline: 'none',
+          ...overlayStyle,
         }}
         onClick={(e) => { if (closeOnMaskClick && e.target === e.currentTarget) onClose?.(); }}
         onMouseMove={resetHideTimer}
@@ -386,8 +407,10 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
               transformOrigin: 'center center',
               transition: isPanning
                 ? 'none'
-                : 'transform 0.3s ease, opacity 0.15s ease',
-              opacity:    ready ? 1 : 0,
+                : !imageShowReady
+                  ? 'opacity 0.15s ease'        // frame 1: transform settles, no anim
+                  : 'transform 0.3s ease, opacity 0.15s ease',
+              opacity: imageShowReady ? 1 : 0,
               cursor:     mode === 'native' ? 'grab' : 'zoom-in',
               userSelect: 'none',
               touchAction: 'none',
