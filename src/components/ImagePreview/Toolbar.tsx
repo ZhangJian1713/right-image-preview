@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { LocaleStrings } from './locale';
 import type { NativePercent, ZoomMode } from './types';
 
 // ── Design tokens ──────────────────────────────────────────────────────────
@@ -60,6 +61,8 @@ interface ToolbarProps {
   onPrev(): void;
   onNext(): void;
   onToggleLock(): void;
+  /** Resolved locale strings — pass the result of `resolveStrings(language)`. */
+  strings: LocaleStrings;
 }
 
 // ── SVG icon helpers ───────────────────────────────────────────────────────
@@ -242,22 +245,20 @@ interface ZoomInputProps {
   stops: NativePercent[];
   onFit(): void;
   onSetNative(percent: NativePercent): void;
+  strings: LocaleStrings;
 }
 
-function formatZoomLabel(mode: ZoomMode, nativePercent: NativePercent, fitEquiv?: number): string {
-  if (mode === 'fit') {
-    return fitEquiv !== undefined ? `适应 (约 ${Math.round(fitEquiv)}%)` : '适应';
-  }
-  return `${Math.round(nativePercent)}%`;
-}
-
-function ZoomInput({ mode, nativePercent, fitEquivalentNativePercent, stops, onFit, onSetNative }: ZoomInputProps) {
+function ZoomInput({ mode, nativePercent, fitEquivalentNativePercent, stops, onFit, onSetNative, strings }: ZoomInputProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const displayLabel = formatZoomLabel(mode, nativePercent, fitEquivalentNativePercent);
+  const displayLabel = mode === 'fit'
+    ? (fitEquivalentNativePercent !== undefined
+        ? strings.fitApprox(Math.round(fitEquivalentNativePercent))
+        : strings.fit)
+    : `${Math.round(nativePercent)}%`;
   const currentStopMatch = mode === 'native' ? Math.round(nativePercent) : null;
 
   const open = useCallback(() => {
@@ -356,7 +357,7 @@ function ZoomInput({ mode, nativePercent, fitEquivalentNativePercent, stops, onF
           ))}
           <div style={{ height: 1, background: C.divider, margin: '3px 0' }} />
           <DropdownRow
-            label="适应"
+            label={strings.fit}
             sublabel={fitEquivalentNativePercent !== undefined ? `≈ ${Math.round(fitEquivalentNativePercent)}%` : undefined}
             active={mode === 'fit'}
             onMouseDown={() => { onFit(); setIsOpen(false); }}
@@ -427,6 +428,7 @@ export function Toolbar({
   onZoomIn, onZoomOut, onFit, onOneToOne, onSetNative,
   onRotateCW, onRotateCCW, onFlipH, onFlipV,
   onPrev, onNext, onToggleLock,
+  strings,
 }: ToolbarProps) {
   const canZoomOut = mode === 'native' && !atMinStop;
   const canZoomIn  = !(mode === 'native' && atMaxStop);
@@ -525,7 +527,7 @@ export function Toolbar({
       <div
         ref={toolbarRowRef}
         role="toolbar"
-        aria-label="图片预览工具栏"
+        aria-label={strings.toolbar}
         style={{
           display: 'flex', alignItems: 'center', gap: 1, padding: '3px 8px',
           borderRadius: 10,
@@ -540,14 +542,14 @@ export function Toolbar({
         {showNav && (
           <>
             {isGroupMode && (
-              <TBtn label="上一组" onClick={onPrevGroup} disabled={!hasPrevGroup}>
+              <TBtn label={strings.prevGroup} onClick={onPrevGroup} disabled={!hasPrevGroup}>
                 <IconPrevGroup />
               </TBtn>
             )}
 
             {showToolbarArrows && (
               <TBtn
-                label="上一张"
+                label={strings.prev}
                 onClick={onPrev}
                 disabled={isGroupMode ? atGroupStart : currentIndex === 0}
               >
@@ -573,7 +575,7 @@ export function Toolbar({
 
             {showToolbarArrows && (
               <TBtn
-                label="下一张"
+                label={strings.next}
                 onClick={onNext}
                 disabled={isGroupMode ? atGroupEnd : currentIndex === totalImages - 1}
               >
@@ -582,7 +584,7 @@ export function Toolbar({
             )}
 
             {isGroupMode && (
-              <TBtn label="下一组" onClick={onNextGroup} disabled={!hasNextGroup}>
+              <TBtn label={strings.nextGroup} onClick={onNextGroup} disabled={!hasNextGroup}>
                 <IconNextGroup />
               </TBtn>
             )}
@@ -594,26 +596,26 @@ export function Toolbar({
         {/* ── Flip (optional) ── */}
         {showFlip && (
           <>
-            <TBtn label="水平翻转"   onClick={onFlipH}><IconFlipH /></TBtn>
-            <TBtn label="垂直翻转"   onClick={onFlipV}><IconFlipV /></TBtn>
+        <TBtn label={strings.flipH} onClick={onFlipH}><IconFlipH /></TBtn>
+        <TBtn label={strings.flipV} onClick={onFlipV}><IconFlipV /></TBtn>
             <Divider />
           </>
         )}
 
         {/* ── Rotate ── */}
-        <TBtn label="逆时针旋转 90°" onClick={onRotateCCW}><IconRotateCCW /></TBtn>
-        <TBtn label="顺时针旋转 90°" onClick={onRotateCW}><IconRotateCW /></TBtn>
+        <TBtn label={strings.rotateCCW} onClick={onRotateCCW}><IconRotateCCW /></TBtn>
+        <TBtn label={strings.rotateCW}  onClick={onRotateCW}><IconRotateCW /></TBtn>
 
         <Divider />
 
         {/* ── Jump-to-zoom presets ── */}
-        <TBtn label="适应视口"        onClick={onFit}      active={mode === 'fit'}><IconFit /></TBtn>
-        <TBtn label="原始比例 (100%)" onClick={onOneToOne} active={mode === 'native' && nativePercent === 100}><IconOneToOne /></TBtn>
+        <TBtn label={strings.fitToViewport} onClick={onFit}      active={mode === 'fit'}><IconFit /></TBtn>
+        <TBtn label={strings.actualSize}    onClick={onOneToOne} active={mode === 'native' && nativePercent === 100}><IconOneToOne /></TBtn>
 
         <Divider />
 
         {/* ── Precise zoom control: [-] [value] [+] [lock] ── */}
-        <TBtn label="缩小" onClick={onZoomOut} disabled={!canZoomOut}><IconZoomOut /></TBtn>
+        <TBtn label={strings.zoomOut} onClick={onZoomOut} disabled={!canZoomOut}><IconZoomOut /></TBtn>
 
         <ZoomInput
           mode={mode}
@@ -622,14 +624,15 @@ export function Toolbar({
           stops={stops}
           onFit={onFit}
           onSetNative={onSetNative}
+          strings={strings}
         />
 
-        <TBtn label="放大" onClick={onZoomIn} disabled={!canZoomIn}><IconZoomIn /></TBtn>
+        <TBtn label={strings.zoomIn} onClick={onZoomIn} disabled={!canZoomIn}><IconZoomIn /></TBtn>
 
         {/* Lock: sits at the end of the zoom cluster — toggles whether zoom is
             preserved when switching images */}
         <TBtn
-          label={zoomLocked ? '解锁缩放（切图时保持当前比例）' : '锁定缩放（切图时保持当前比例）'}
+          label={zoomLocked ? strings.unlockZoom : strings.lockZoom}
           active={zoomLocked}
           accent={zoomLocked ? C.lockActive : undefined}
           onClick={onToggleLock}

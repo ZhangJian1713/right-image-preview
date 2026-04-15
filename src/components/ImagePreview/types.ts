@@ -182,6 +182,20 @@ export interface ImagePreviewProps {
    */
   overlayStyle?: React.CSSProperties;
 
+  /**
+   * Preferred display language for all user-visible text (button labels,
+   * aria-labels, zoom display, etc.).
+   *
+   * Accepts any BCP 47 language tag such as `"en"`, `"en-US"`, `"zh"`, or
+   * `"zh-CN"`. Matching is performed on the primary subtag; unrecognised
+   * locales fall back to English.
+   *
+   * Currently built-in: `"en"` (default) and `"zh"` (Simplified Chinese).
+   *
+   * Default: `"en"`.
+   */
+  language?: string;
+
   // ── Callbacks ──────────────────────────────────────────────────────────────
   onClose?: () => void;
   onZoomChange?: (state: ZoomState) => void;

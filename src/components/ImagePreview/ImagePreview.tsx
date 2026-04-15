@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { Toolbar } from './Toolbar';
+import { resolveStrings } from './locale';
 import type { ImageGroup, ImageItem, ImagePreviewProps, ImagePreviewRef, NativePercent } from './types';
 import { useImageTransform } from './useImageTransform';
 import { useZoomState } from './useZoomState';
@@ -60,11 +61,16 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       closeOnMaskClick = false,
       overlayClassName,
       overlayStyle,
+      language,
       onClose,
       onZoomChange,
       onIndexChange,
       onMaxStopReached,
     } = props;
+
+    // Resolve locale strings once; re-resolves only when `language` changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const t = useMemo(() => resolveStrings(language), [language]);
 
     // Derived arrow visibility flags
     const showSideArrows    = arrows === 'both' || arrows === 'side';
@@ -193,6 +199,14 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     }, [resetHideTimer]);
 
     // ── Wheel ───────────────────────────────────────────────────────────────
+    // Track the live CSS scale between React renders.  When wheel events fire
+    // faster than React can render (e.g. trackpad smooth scroll), the closure
+    // value of `transform.scale` becomes stale after the first zoom.  Using a
+    // ref that we update synchronously after every zoom event ensures s1 is
+    // always the most-recently-applied scale, not the last-rendered one.
+    const pendingScaleRef = useRef(transform.scale);
+    pendingScaleRef.current = transform.scale; // keep in sync on every render
+
     const handleWheel = useCallback(
       (e: WheelEvent) => {
         if (!wheelEnabled) return;
@@ -213,14 +227,18 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
           const cx = rect ? e.clientX - rect.left - rect.width  / 2 : 0;
           const cy = rect ? e.clientY - rect.top  - rect.height / 2 : 0;
 
-          const s1 = transform.scale;
+          // Use the ref rather than the closure snapshot so that rapid events
+          // always compute the correct ratio even before the previous render.
+          const s1 = pendingScaleRef.current;
           const s2 =
             peek.mode === 'fit'
               ? (fitEquivalentNativePercent ?? peek.percent) / 100
               : peek.percent / 100;
 
-          // Anchor translate: keeps the image pixel under the cursor stationary.
           zoomAnchorTranslate(s1, s2, cx, cy);
+
+          // Update immediately so the next rapid event reads the right s1.
+          pendingScaleRef.current = s2;
         }
 
         if (isZoomIn) zoomIn(fitEquivalentNativePercent);
@@ -228,7 +246,8 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       },
       [
         wheelEnabled, zoomIn, zoomOut, peekZoomIn, peekZoomOut,
-        fitEquivalentNativePercent, transform.scale, zoomAnchorTranslate,
+        fitEquivalentNativePercent, zoomAnchorTranslate,
+        // transform.scale intentionally removed: pendingScaleRef replaces it.
       ],
     );
 
@@ -402,7 +421,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
         ref={overlayRef}
         role="dialog"
         aria-modal="true"
-        aria-label="图片预览"
+        aria-label={t.imagePreview}
         tabIndex={-1}
         className={overlayClassName}
         style={{
@@ -424,7 +443,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
         onMouseDown={resetHideTimer}
       >
         {/* ── Close button — top-right corner ── */}
-        <CloseButton onClick={() => onClose?.()} visible={controlsVisible} />
+        <CloseButton onClick={() => onClose?.()} visible={controlsVisible} label={t.close} />
 
         {/* ── Viewport ── */}
         {/* NOTE: This div is 100 % × 100 % and covers the whole overlay, so mask
@@ -482,7 +501,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
           {/* Keyframes are defined inline once; harmless to repeat on re-mount. */}
           <style>{`@keyframes _rip_spin{to{transform:rotate(360deg)}}`}</style>
           <div
-            aria-label="图片加载中"
+            aria-label={t.loadingImage}
             aria-live="polite"
             style={{
               position:      'absolute',
@@ -535,7 +554,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
                   direction="left"
                   isGroupJump={leftIsGroup}
                   onClick={leftIsGroup ? prevGroup : prev}
-                  label={leftIsGroup ? '上一组' : '上一张'}
+                  label={leftIsGroup ? t.prevGroup : t.prev}
                   visible={controlsVisible}
                 />
               )}
@@ -544,7 +563,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
                   direction="right"
                   isGroupJump={rightIsGroup}
                   onClick={rightIsGroup ? nextGroup : next}
-                  label={rightIsGroup ? '下一组' : '下一张'}
+                  label={rightIsGroup ? t.nextGroup : t.next}
                   visible={controlsVisible}
                 />
               )}
@@ -566,6 +585,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
           showFlip={showFlip}
           showToolbarArrows={showToolbarArrows}
           zoomLocked={zoomLocked}
+          strings={t}
           onToggleLock={() => setZoomLocked((v) => !v)}
           onZoomIn={() => zoomIn(fitEquivalentNativePercent)}
           onZoomOut={() => zoomOut(fitEquivalentNativePercent)}
@@ -587,13 +607,13 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
 
 // ── Close button ───────────────────────────────────────────────────────────
 
-function CloseButton({ onClick, visible }: { onClick(): void; visible: boolean }) {
+function CloseButton({ onClick, visible, label }: { onClick(): void; visible: boolean; label: string }) {
   const [hover, setHover] = useState(false);
   return (
     <button
       type="button"
-      aria-label="关闭 (Esc)"
-      title="关闭 (Esc)"
+      aria-label={label}
+      title={label}
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}

@@ -11,6 +11,13 @@ const SINGLE_GALLERY: ImageItem[] = [
   { src: 'https://picsum.photos/seed/sg-sun/3000/2000', alt: '草原日落', name: 'grassland-sunset.jpg' },
 ];
 
+// ── Demo 3：大图测试（zoom anchor bug，临时） ──────────────────────────────
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+const LARGE_GALLERY: ImageItem[] = [
+  { src: `${BASE}/test-images/seagull-nebula.jpg`, alt: 'Seagull Nebula', name: 'seagull-nebula.jpg' },
+  { src: `${BASE}/test-images/eagle-nebula.jpg`,   alt: 'Eagle Nebula',   name: 'eagle-nebula.jpg'   },
+];
+
 // ── Demo 2：多文件夹图片（旅行相册） ────────────────────────────────────────
 interface FolderGroup {
   name: string;
@@ -229,6 +236,9 @@ export default function App() {
   const [demo2Visible, setDemo2Visible] = useState(false);
   const [demo2Index, setDemo2Index] = useState(0);
 
+  // Demo 3 state (large image zoom-anchor test, temp)
+  const [demo3Visible, setDemo3Visible] = useState(false);
+
   const openDemo1 = (idx: number) => { setDemo1Index(idx); setDemo1Visible(true); };
   const openDemo2 = (idx: number) => { setDemo2Index(idx); setDemo2Visible(true); };
 
@@ -369,6 +379,25 @@ export default function App() {
         ))}
       </section>
 
+      <hr style={dividerStyle} />
+
+      {/* ════════ Demo 3：大图 zoom-anchor 测试（临时）════════ */}
+      <section>
+        <h2 style={sectionHeadStyle}>Demo 3 · 大图锚点测试（临时）</h2>
+        <p style={sectionDescStyle}>
+          用于复现「fit 模式左上角滚轮放大后图片漂移」的 bug。
+          打开 Chrome DevTools → Console，然后在 fit 模式下把鼠标放在图片左上角（仍在图片内）并向上滚动一格。
+        </p>
+        <div style={{ display: 'flex', gap: 12 }}>
+          {LARGE_GALLERY.map((img, i) => (
+            <button key={img.src} style={{ ...cardStyle, background: '#1a1d27', border: '1px solid #2a2d3a', padding: '10px 18px' }}
+              onClick={() => { setDemo3Visible(true); }}>
+              <span style={{ color: '#8ec7ff', fontSize: 13 }}>{img.name}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* ── ImagePreview 实例 ─────────────────────────────────────────────── */}
 
       {/* Demo 1：单组，两侧 + 工具栏箭头，点击遮罩关闭 */}
@@ -388,7 +417,7 @@ export default function App() {
         onClose={() => setDemo1Visible(false)}
       />
 
-      {/* Demo 2：多文件夹，仅侧边箭头 + 分组导航，显示翻转按钮 */}
+      {/* Demo 2：多文件夹，仅侧边箭头 + 分组导航，显示翻转按钮（中文界面） */}
       <ImagePreview
         images={MULTI_FOLDER_IMAGES}
         groups={FOLDER_GROUP_DEFS}
@@ -402,7 +431,22 @@ export default function App() {
         doubleClickEnabled
         switchImageResetTransform
         showFlip
+        language="zh-CN"
         onClose={() => setDemo2Visible(false)}
+      />
+
+      {/* Demo 3：大图 zoom-anchor 测试 */}
+      <ImagePreview
+        images={LARGE_GALLERY}
+        visible={demo3Visible}
+        initialMode="fit"
+        firstZoomInStrategy="above-fit"
+        zoomOutBelowMinBehaviour="noop"
+        arrows="both"
+        closeOnMaskClick
+        wheelEnabled
+        doubleClickEnabled
+        onClose={() => setDemo3Visible(false)}
       />
 
     </div>

@@ -1,4 +1,6 @@
 export { ImagePreview } from './ImagePreview';
+export { resolveStrings } from './locale';
+export type { LocaleStrings } from './locale';
 export type {
   ArrowsConfig,
   FirstZoomInStrategy,
