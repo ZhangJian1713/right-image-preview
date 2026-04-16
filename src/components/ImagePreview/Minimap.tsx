@@ -3,8 +3,10 @@ import type { ZoomMode } from './types';
 import {
   clampNatural,
   containerToNatural,
+  minimapInnerToNatural,
   naturalToMinimapInner,
   panDeltaFromMinimapPointerDelta,
+  pointInPolygon,
   rotatedRectExtents,
   type MinimapTransformParams,
 } from './minimapMath';
@@ -61,6 +63,11 @@ export interface MinimapProps {
   flipV: boolean;
   controlsVisible: boolean;
   onPanByDelta: (dx: number, dy: number) => void;
+  /**
+   * Click-drag on the minimap outside the viewport frame: centre `(nx,ny)` then continue as a drag session.
+   * Return clamped `{ tx, ty }` applied, or `undefined` if nothing changed.
+   */
+  onJumpToNatural?: (nx: number, ny: number) => { tx: number; ty: number } | undefined;
   onUserActivity?: () => void;
   /** Fires when the user starts / ends dragging the viewport frame (for disabling main-image transition). */
   onDragChange?: (dragging: boolean) => void;
@@ -91,6 +98,7 @@ export function Minimap({
   flipV,
   controlsVisible,
   onPanByDelta,
+  onJumpToNatural,
   onUserActivity,
   onDragChange,
   ariaLabel,
@@ -115,12 +123,18 @@ export function Minimap({
     return c;
   }, [mainP, cw, ch, nw, nh]);
 
-  const polyPts = useMemo(() => {
-    return cornersNat
-      .map((p) => naturalToMinimapInner(p.nx, p.ny, INNER, INNER, nw, nh, thumbS, rotationDeg, flipH, flipV))
-      .map((p) => `${p.mx.toFixed(2)},${p.my.toFixed(2)}`)
-      .join(' ');
+  const viewportMinimapPoly = useMemo((): [number, number][] => {
+    return cornersNat.map((p) => {
+      const { mx, my } = naturalToMinimapInner(
+        p.nx, p.ny, INNER, INNER, nw, nh, thumbS, rotationDeg, flipH, flipV,
+      );
+      return [mx, my];
+    });
   }, [cornersNat, nw, nh, thumbS, rotationDeg, flipH, flipV]);
+
+  const polyPts = useMemo(() => {
+    return viewportMinimapPoly.map(([mx, my]) => `${mx.toFixed(2)},${my.toFixed(2)}`).join(' ');
+  }, [viewportMinimapPoly]);
 
   /** Fresh `tx`/`ty` for each `pointermove` (updated in layout after `panByDelta`). */
   const dragTransformRef = useRef({ p: mainP, nw, nh, thumbS });
@@ -140,6 +154,8 @@ export function Minimap({
 
   const onPanByDeltaRef = useRef(onPanByDelta);
   onPanByDeltaRef.current = onPanByDelta;
+  const onJumpToNaturalRef = useRef(onJumpToNatural);
+  onJumpToNaturalRef.current = onJumpToNatural;
   const onUserActivityRef = useRef(onUserActivity);
   onUserActivityRef.current = onUserActivity;
   const onDragChangeRef = useRef(onDragChange);
@@ -180,14 +196,18 @@ export function Minimap({
     [],
   );
 
-  const onViewportHandleDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
+  /** Shared window-level drag: Jacobian maps minimap client deltas → container `panByDelta`. */
+  const attachMinimapDragSession = (
+    e: React.PointerEvent,
+    captureEl: Element | null,
+    pForJacobian: MinimapTransformParams,
+  ) => {
     if (docSessionRef.current) endMinimapDrag();
 
     e.preventDefault();
     e.stopPropagation();
 
-    dragTransformRef.current = { p: mainP, nw, nh, thumbS };
+    dragTransformRef.current = { p: pForJacobian, nw, nh, thumbS };
 
     const pointerId = e.pointerId;
     lastClientRef.current = { x: e.clientX, y: e.clientY };
@@ -212,7 +232,7 @@ export function Minimap({
 
     const onBlurWindow = () => endMinimapDrag();
 
-    pointerCaptureRef.current = tryBeginPointerCapture(e.currentTarget, pointerId);
+    pointerCaptureRef.current = captureEl ? tryBeginPointerCapture(captureEl, pointerId) : null;
 
     const onMove = (ev: PointerEvent) => {
       if (ev.pointerId !== pointerId) return;
@@ -230,6 +250,44 @@ export function Minimap({
     window.addEventListener('pointerup', onUp, { capture: true });
     window.addEventListener('pointercancel', onUp, { capture: true });
     window.addEventListener('blur', onBlurWindow);
+  };
+
+  const onViewportHandleDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    attachMinimapDragSession(e, e.currentTarget, mainP);
+  };
+
+  const onBackgroundPointerDown = (e: React.PointerEvent<SVGRectElement>) => {
+    if (e.button !== 0) return;
+    const jump = onJumpToNaturalRef.current;
+    if (typeof jump !== 'function') return;
+    if (docSessionRef.current) return;
+
+    const svg = e.currentTarget.ownerSVGElement;
+    if (!svg) return;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+    let loc: DOMPoint;
+    try {
+      loc = pt.matrixTransform(ctm.inverse());
+    } catch {
+      return;
+    }
+    const mx = loc.x;
+    const my = loc.y;
+    if (pointInPolygon(mx, my, viewportMinimapPoly)) return;
+
+    const { nx, ny } = minimapInnerToNatural(
+      mx, my, INNER, nw, nh, thumbS, rotationDeg, flipH, flipV,
+    );
+    const applied = jump(nx, ny);
+    if (!applied) return;
+
+    const pAfter: MinimapTransformParams = { ...mainP, tx: applied.tx, ty: applied.ty };
+    attachMinimapDragSession(e, e.currentTarget, pAfter);
   };
 
   const normDeg = ((rotationDeg % 360) + 360) % 360;
@@ -265,7 +323,7 @@ export function Minimap({
         transition: controlsVisible ? 'opacity 0.12s ease' : 'opacity 1.6s ease',
         userSelect: 'none',
         touchAction: 'none',
-        cursor: viewportDragging ? 'grabbing' : undefined,
+        cursor: viewportDragging ? 'grabbing' : onJumpToNatural ? 'default' : undefined,
       }}
     >
       <div
@@ -305,6 +363,16 @@ export function Minimap({
               <polygon points={polyPts} fill="black" />
             </mask>
           </defs>
+          {/* Hit target below dimmed overlay + viewport polygon: click outside the frame to recenter. */}
+          {onJumpToNatural && (
+            <rect
+              width={INNER}
+              height={INNER}
+              fill="rgba(0,0,0,0.001)"
+              style={{ cursor: 'pointer', touchAction: 'none' }}
+              onPointerDown={onBackgroundPointerDown}
+            />
+          )}
           <rect width={INNER} height={INNER} fill="rgba(0,0,0,0.52)" mask={`url(#${maskId})`} style={{ pointerEvents: 'none' }} />
           {/* Viewport frame: thin solid light stroke (Lightroom-style), single interactive layer */}
           <polygon

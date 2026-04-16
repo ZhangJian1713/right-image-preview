@@ -5,6 +5,7 @@ import {
   MINIMAP_PAN_MIN_VIEWPORT_COVERAGE,
   ZOOM_CLAMP_MIN_VIEWPORT_COVERAGE,
 } from './imagePreviewTuning';
+import { translateForViewportCentreOnNatural, type MinimapTransformParams } from './minimapMath';
 
 export interface ImageDimensions {
   naturalWidth: number;
@@ -71,6 +72,12 @@ export interface UseImageTransformResult {
    * Only applies in `native` mode. Clamps **stricter** than main-image drag (`imagePreviewTuning.ts`).
    */
   panByDelta(dx: number, dy: number): void;
+  /**
+   * In `native` mode, pan so the given natural-image point is centred in the viewport
+   * (used by minimap background click). Clamped like {@link panByDelta}.
+   */
+  /** Returns clamped `(tx, ty)` applied to the transform, or `undefined` if unchanged / not in native mode. */
+  panJumpToNatural(nx: number, ny: number): { tx: number; ty: number } | undefined;
 }
 
 function computeFitScale(dims: ImageDimensions, container: ContainerSize): number {
@@ -207,6 +214,38 @@ export function useImageTransform(options: UseImageTransformOptions): UseImageTr
       applyTranslate(c.x, c.y);
     },
     [mode, imageDims, containerSize, rotation, nativePercent, applyTranslate],
+  );
+
+  const panJumpToNatural = useCallback(
+    (nx: number, ny: number): { tx: number; ty: number } | undefined => {
+      if (mode !== 'native' || !imageDims || !containerSize) return undefined;
+      const s = nativePercent / 100;
+      const p: MinimapTransformParams = {
+        cw: containerSize.width,
+        ch: containerSize.height,
+        nw: imageDims.naturalWidth,
+        nh: imageDims.naturalHeight,
+        scale: s,
+        tx: translateRef.current.x,
+        ty: translateRef.current.y,
+        rotationDeg: rotation,
+        flipH,
+        flipV,
+      };
+      const { tx, ty } = translateForViewportCentreOnNatural(nx, ny, p);
+      const c = clampTranslateForVisibility(
+        tx,
+        ty,
+        s,
+        imageDims,
+        containerSize,
+        rotation,
+        MINIMAP_PAN_MIN_VIEWPORT_COVERAGE,
+      );
+      applyTranslate(c.x, c.y);
+      return { tx: c.x, ty: c.y };
+    },
+    [mode, imageDims, containerSize, rotation, nativePercent, flipH, flipV, applyTranslate],
   );
 
   // ── Rotation & flip ───────────────────────────────────────────────────────
@@ -408,5 +447,6 @@ export function useImageTransform(options: UseImageTransformOptions): UseImageTr
     containerSize,
     zoomAnchorTranslate,
     panByDelta,
+    panJumpToNatural,
   };
 }

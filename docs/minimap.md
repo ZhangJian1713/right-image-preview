@@ -6,6 +6,7 @@ This document explains why the navigation minimap behaves the way it does in emb
 
 - While dragging the viewport frame on the minimap, it should track the pointer **1:1** in minimap space.
 - After **pointer up** (including a click with no movement), the UI must leave **grabbing** state and stop listening for moves.
+- **Click outside the frame** (on the dimmed thumbnail): jump the main view so that minimap point is **centred** in the viewport (`minimapInnerToNatural` + `translateForViewportCentreOnNatural`, then the same pan clamp as drag). **Holding the button** after that continues the same window-level drag session as frame dragging (no need to release and grab the frame again).
 
 ## Problem 1: Stuck “grabbing” and phantom drags
 

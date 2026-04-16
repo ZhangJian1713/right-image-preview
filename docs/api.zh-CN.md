@@ -21,7 +21,7 @@
 
 | Prop | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `stops` | `NativePercent[]` | `[10,25,50,75,100,150,200,300,400,600,800]` | 离散档位列表（升序，至少 1 项） |
+| `stops` | `NativePercent[]` | `[10,25,50,75,100,150,200]` | 离散档位列表（升序，至少 1 项）；需要更高上限请传入自定义列表 |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | 初始缩放模式 |
 | `initialNativePercent` | `number` | 第一档 | `initialMode='native'` 时的初始百分比 |
 | `firstZoomInStrategy` | `'above-fit' \| 'first-stop' \| 'hundred'` | `'above-fit'` | 从 Fit 首次放大时的落档策略 |
@@ -114,7 +114,7 @@ interface ImagePreviewRef {
   zoomIn(): void;
   zoomOut(): void;
   fit(): void;
-  setNative(percent: number): void; // 接受任意正整数，不限于档位
+  setNative(percent: number): void; // 任意正数（不截断）；工具栏缩放输入框提交时会限制在最大档位
 
   // 旋转与翻转
   rotateCW(): void;       // 顺时针 90°

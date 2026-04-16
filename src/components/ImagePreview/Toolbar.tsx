@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { LocaleStrings } from './locale';
 import {
   TOOLBAR_NAV_COUNTER_MIN_WIDTH_PX,
@@ -296,12 +296,14 @@ function ZoomInput({
     });
   }, [mode, nativePercent, fitEquivalentNativePercent]);
 
+  const maxStop = useMemo(() => Math.max(...stops), [stops]);
+
   const commit = useCallback((raw: string) => {
     const trimmed = raw.trim().replace('%', '');
     const num = parseInt(trimmed, 10);
-    if (!isNaN(num) && num > 0) onSetNative(num);
+    if (!isNaN(num) && num > 0) onSetNative(Math.min(num, maxStop));
     setIsOpen(false);
-  }, [onSetNative]);
+  }, [maxStop, onSetNative]);
 
   useEffect(() => {
     if (!isOpen) return;

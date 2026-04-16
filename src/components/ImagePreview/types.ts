@@ -98,7 +98,7 @@ export interface ImagePreviewProps {
   /**
    * Discrete native-percent zoom stops.
    * Must be sorted ascending and contain at least one value.
-   * Default: [25, 50, 100, 200, 400].
+   * Default: [10, 25, 50, 75, 100, 150, 200] (max 200 % — higher ratios are usually too soft for preview).
    */
   stops?: NativePercent[];
   /** Initial zoom mode. Default: 'fit'. */

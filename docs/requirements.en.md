@@ -57,8 +57,9 @@
 - [x] **Wheel zoom switches to Fit at min stop**: changed `zoomOutBelowMinBehaviour` default to `'noop'`
 
 ### Stop Adjustments
-- [x] Added 5%, 10%, 800%, 1600% stops
-- [x] Removed 5% and 1600%; retained 10%–800%
+- [x] Added 5%, 10%, 800%, 1600% stops (historical)
+- [x] Removed 5% and 1600%; default set later spanned up to 800%
+- [x] **v0.0.8**: default max stop is **200%**; higher ratios via custom **`stops`**
 
 ### Flip & Rotate
 - [x] Horizontal flip, vertical flip
@@ -131,7 +132,8 @@
 - [x] Arrow keys and Space do not fire global shortcuts when the zoom input field is focused
 
 ### Zoom Input
-- [x] `setNative` accepts any positive integer; no longer snapped to stops
+- [x] `setNative` (ref) accepts any positive integer; not snapped to stops
+- [x] Toolbar zoom field **clamps** to the max configured stop on commit (matches the default 200% cap)
 
 ### Info Badge Wrap Fix
 - [x] Counter (e.g. `3/3`) given `whiteSpace: nowrap` to prevent line breaks
@@ -156,6 +158,7 @@
 - [x] `docs/api.md` / `docs/api.zh-CN.md` — Props & Ref API reference (bilingual)
 - [x] `docs/keyboard.md` / `docs/keyboard.zh-CN.md` — keyboard shortcuts (bilingual)
 - [x] `docs/requirements.md` / `docs/requirements.en.md` — this file (bilingual)
+- [x] GitHub Pages demo: **EN / 中文** toggle (top-right, `App.tsx`)
 
 ---
 

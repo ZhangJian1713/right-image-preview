@@ -21,7 +21,7 @@
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `stops` | `NativePercent[]` | `[10,25,50,75,100,150,200,300,400,600,800]` | Discrete zoom stop list (ascending, at least 1 item) |
+| `stops` | `NativePercent[]` | `[10,25,50,75,100,150,200]` | Discrete zoom stop list (ascending, at least 1 item); pass a custom list for a higher max |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | Initial zoom mode |
 | `initialNativePercent` | `number` | first stop | Initial percentage when `initialMode='native'` |
 | `firstZoomInStrategy` | `'above-fit' \| 'first-stop' \| 'hundred'` | `'above-fit'` | Which stop to land on when zooming in from Fit for the first time |
@@ -114,7 +114,7 @@ interface ImagePreviewRef {
   zoomIn(): void;
   zoomOut(): void;
   fit(): void;
-  setNative(percent: number): void; // accepts any positive integer, not limited to stops
+  setNative(percent: number): void; // any positive number (not clamped); toolbar zoom field clamps to max stop on commit
 
   // rotation & flip
   rotateCW(): void;        // rotate 90° clockwise

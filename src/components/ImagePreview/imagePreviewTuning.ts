@@ -21,6 +21,40 @@ export const MINIMAP_PAN_MIN_VIEWPORT_COVERAGE =
 /** Toolbar / wheel zoom translate correction: same as main-image drag. */
 export const ZOOM_CLAMP_MIN_VIEWPORT_COVERAGE = MAIN_DRAG_MIN_VIEWPORT_COVERAGE;
 
+// ── Wheel zoom (`ImagePreview` overlay) ──────────────────────────────────────
+
+/**
+ * Accumulated pixel-mode `deltaY` before advancing **one** zoom stop (smooth trackpads).
+ * Many mice report **small** `|deltaY|` per detent (e.g. 2–8); keep this low so 1–2 notches
+ * cross the threshold. Fast flicks use the notch band or large-delta accumulation instead.
+ */
+export const WHEEL_ACCUM_PIXELS_PER_STOP = 3;
+
+/**
+ * When `deltaMode === DOM_DELTA_PIXEL`, `|deltaY|` in this band ⇒ **one** zoom stop per event
+ * (typical “one big notch” reporting, ~40–120px).
+ */
+export const WHEEL_PIXEL_MOUSE_NOTCH_MIN = 16;
+export const WHEEL_PIXEL_MOUSE_NOTCH_MAX = 220;
+
+/**
+ * Mice that report **small** pixel deltas per detent: if `|deltaY|` is in
+ * `[COALESCE_MIN_DELTA, NOTCH_MIN)` and the previous wheel event was at least **GAP_MS** ago,
+ * treat this event as **one physical detent** → one stop (slow click‑by‑click scrolling).
+ * Ignores ultra‑tiny deltas so smooth trackpads don’t get one‑stop‑per‑pixel when events are sparse.
+ */
+export const WHEEL_PIXEL_COALESCE_GAP_MS = 90;
+export const WHEEL_PIXEL_COALESCE_MIN_DELTA = 2;
+
+/** Scale `deltaY` when `deltaMode === DOM_DELTA_PAGE` (rare). */
+export const WHEEL_PAGE_DELTA_SCALE = 600;
+
+/**
+ * Max discrete stops applied per drain pass (one sync handler + one rAF continuation).
+ * Avoids blocking the main thread on huge bursts.
+ */
+export const WHEEL_MAX_STEPS_PER_DRAIN = 10;
+
 // ── Toolbar zoom label (`Toolbar` / `ZoomInput`) ───────────────────────────────
 
 /** Fixed width (px) of the zoom % slot — fits `800%` + padding (tabular digits). */

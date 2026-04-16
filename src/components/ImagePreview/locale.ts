@@ -56,7 +56,7 @@ const EN: LocaleStrings = {
   toolbar:       'Image preview toolbar',
   close:         'Close (Esc)',
   loadingImage:  'Loading image',
-  minimapNav:    'Navigation minimap. Drag the highlighted frame to pan the image.',
+  minimapNav:    'Navigation minimap. Drag the frame to pan, or press outside it to centre that spot — keep holding to keep panning.',
 };
 
 const ZH: LocaleStrings = {
@@ -80,7 +80,7 @@ const ZH: LocaleStrings = {
   toolbar:       '图片预览工具栏',
   close:         '关闭 (Esc)',
   loadingImage:  '图片加载中',
-  minimapNav:    '导航缩略图。拖动高亮虚线框可平移大图。',
+  minimapNav:    '导航缩略图。拖动虚线框平移大图；在框外按下可将该点移到主视图中央，不松键即可继续拖动。',
 };
 
 /** Built-in locale map. Extend or override via the `language` prop. */

@@ -8,15 +8,26 @@ import {
   useRef,
   useState,
 } from 'react';
+import { flushSync } from 'react-dom';
 import { Minimap } from './Minimap';
 import { Toolbar } from './Toolbar';
-import { toolbarZoomDropdownWidthPx, toolbarZoomLabelSlotPx } from './imagePreviewTuning';
+import {
+  toolbarZoomDropdownWidthPx,
+  toolbarZoomLabelSlotPx,
+  WHEEL_ACCUM_PIXELS_PER_STOP,
+  WHEEL_MAX_STEPS_PER_DRAIN,
+  WHEEL_PAGE_DELTA_SCALE,
+  WHEEL_PIXEL_COALESCE_GAP_MS,
+  WHEEL_PIXEL_COALESCE_MIN_DELTA,
+  WHEEL_PIXEL_MOUSE_NOTCH_MAX,
+  WHEEL_PIXEL_MOUSE_NOTCH_MIN,
+} from './imagePreviewTuning';
 import { resolveStrings } from './locale';
 import type { ImageGroup, ImageItem, ImagePreviewProps, ImagePreviewRef, NativePercent } from './types';
 import { useImageTransform } from './useImageTransform';
 import { useZoomState } from './useZoomState';
 
-const DEFAULT_STOPS: NativePercent[] = [10, 25, 50, 75, 100, 150, 200, 300, 400, 600, 800];
+const DEFAULT_STOPS: NativePercent[] = [10, 25, 50, 75, 100, 150, 200];
 
 function normaliseImages(props: ImagePreviewProps): ImageItem[] {
   if (props.images && props.images.length > 0) return props.images;
@@ -124,6 +135,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       containerSize,
       zoomAnchorTranslate,
       panByDelta,
+      panJumpToNatural,
     } = useImageTransform({ mode, nativePercent, fitResetPan });
 
     // ── Current image ───────────────────────────────────────────────────────
@@ -217,69 +229,148 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       pendingScaleRef.current = transform.scale;
     }, [transform.scale]);
 
-    // Rate-limit wheel zoom: one stop change per WHEEL_COOLDOWN_MS.
+    // Wheel zoom:
+    // - LINE: each line ⇒ stops (±1 per slow detent).
+    // - PIXEL, |deltaY| in notch band ⇒ one stop / event.
+    // - PIXEL, small |deltaY| + long gap since last wheel ⇒ one stop (small‑increment mice).
+    // - Else accumulate pixel/page deltas until |accum| ≥ threshold (smooth trackpads).
     //
-    // Problem: a single physical scroll notch (or a brief trackpad swipe) fires
-    // many wheel events in quick succession.  Between each pair of events React
-    // may complete a full render cycle, advancing `stateRef.current` to the new
-    // native mode.  The next event then sees the updated state and advances
-    // AGAIN — causing a single notch to jump multiple stops (e.g. fit→100%).
-    //
-    // Fix: after each zoom step, ignore further zoom steps until the cooldown
-    // expires.  `e.preventDefault()` is still called every event so the page
-    // does not scroll.  The cooldown is short enough that deliberate rapid
-    // scrolling (e.g. zooming through several stops) still feels responsive.
-    const WHEEL_COOLDOWN_MS = 250;
-    const lastWheelZoomAtRef = useRef(0);
+    // Multi-stop bursts use `flushSync` so `useZoomState`’s `stateRef` updates between steps.
+    const wheelAccumRef = useRef(0);
+    const wheelDrainRafRef = useRef<number | null>(null);
+    const wheelDrainStepRef = useRef<() => boolean>(() => false);
+    const lastWheelClientRef = useRef({ x: 0, y: 0 });
+    /** For coalescing slow, small pixel deltas into one stop per physical detent. */
+    const lastWheelEventTimeRef = useRef(0);
+
+    useEffect(
+      () => () => {
+        if (wheelDrainRafRef.current !== null) {
+          cancelAnimationFrame(wheelDrainRafRef.current);
+          wheelDrainRafRef.current = null;
+        }
+      },
+      [],
+    );
+
+    const pixelOrPageDeltaY = (e: WheelEvent): number => {
+      if (e.deltaMode === WheelEvent.DOM_DELTA_PAGE) return e.deltaY * WHEEL_PAGE_DELTA_SCALE;
+      return e.deltaY;
+    };
 
     const handleWheel = useCallback(
       (e: WheelEvent) => {
         if (!wheelEnabled) return;
         e.preventDefault();
 
-        // Enforce one zoom step per cooldown window.
-        const now = Date.now();
-        if (now - lastWheelZoomAtRef.current < WHEEL_COOLDOWN_MS) return;
+        lastWheelClientRef.current = { x: e.clientX, y: e.clientY };
 
-        const isZoomIn = e.deltaY < 0;
+        const t = performance.now();
+        const dtSinceLastWheel = t - lastWheelEventTimeRef.current;
+        lastWheelEventTimeRef.current = t;
 
-        // Peek the next zoom state so we can compute the new scale synchronously
-        // before applying the state update.  This lets us anchor the translate to
-        // the cursor position BEFORE the render that changes nativePercent, so
-        // both state updates land in the same React batch.
-        const peek = isZoomIn
-          ? peekZoomIn(fitEquivalentNativePercent)
-          : peekZoomOut();
+        const S = WHEEL_ACCUM_PIXELS_PER_STOP;
+        const MAX = WHEEL_MAX_STEPS_PER_DRAIN;
+        const notchMin = WHEEL_PIXEL_MOUSE_NOTCH_MIN;
+        const notchMax = WHEEL_PIXEL_MOUSE_NOTCH_MAX;
 
-        if (peek !== null) {
+        const applyOneWheelStep = (directionIn: boolean): boolean => {
+          const peek = directionIn
+            ? peekZoomIn(fitEquivalentNativePercent)
+            : peekZoomOut();
+          if (peek === null) {
+            wheelAccumRef.current = 0;
+            return false;
+          }
+
           const rect = overlayRef.current?.getBoundingClientRect();
-          const cx = rect ? e.clientX - rect.left - rect.width  / 2 : 0;
-          const cy = rect ? e.clientY - rect.top  - rect.height / 2 : 0;
+          const { x: clientX, y: clientY } = lastWheelClientRef.current;
+          const cx = rect ? clientX - rect.left - rect.width / 2 : 0;
+          const cy = rect ? clientY - rect.top - rect.height / 2 : 0;
 
-          // Use the ref rather than the closure snapshot so that rapid events
-          // always compute the correct ratio even before the previous render.
           const s1 = pendingScaleRef.current;
           const s2 =
             peek.mode === 'fit'
               ? (fitEquivalentNativePercent ?? peek.percent) / 100
               : peek.percent / 100;
 
-          zoomAnchorTranslate(s1, s2, cx, cy);
+          flushSync(() => {
+            zoomAnchorTranslate(s1, s2, cx, cy);
+            pendingScaleRef.current = s2;
+            if (directionIn) zoomIn(fitEquivalentNativePercent);
+            else zoomOut(fitEquivalentNativePercent);
+          });
+          return true;
+        };
 
-          // Update immediately so the next rapid event reads the right s1.
-          pendingScaleRef.current = s2;
+        // ── Line-based wheels / browsers: slow scroll still sends ~±1 line per detent ──
+        if (e.deltaMode === WheelEvent.DOM_DELTA_LINE && e.deltaY !== 0) {
+          const nLines = Math.min(MAX, Math.max(1, Math.round(Math.abs(e.deltaY))));
+          const directionIn = e.deltaY < 0;
+          for (let i = 0; i < nLines; i++) {
+            if (!applyOneWheelStep(directionIn)) break;
+          }
+          return;
         }
 
-        // Record zoom time BEFORE the state update so the cooldown starts now.
-        lastWheelZoomAtRef.current = now;
+        // ── Pixel mode: “big notch” band, or slow small‑delta detents, else accumulate ──
+        if (e.deltaMode === WheelEvent.DOM_DELTA_PIXEL) {
+          const ady = Math.abs(e.deltaY);
+          if (ady >= notchMin && ady <= notchMax && e.deltaY !== 0) {
+            wheelAccumRef.current = 0;
+            applyOneWheelStep(e.deltaY < 0);
+            return;
+          }
+          if (
+            e.deltaY !== 0 &&
+            ady >= WHEEL_PIXEL_COALESCE_MIN_DELTA &&
+            ady < notchMin &&
+            dtSinceLastWheel >= WHEEL_PIXEL_COALESCE_GAP_MS
+          ) {
+            wheelAccumRef.current = 0;
+            applyOneWheelStep(e.deltaY < 0);
+            return;
+          }
+        }
 
-        if (isZoomIn) zoomIn(fitEquivalentNativePercent);
-        else zoomOut(fitEquivalentNativePercent);
+        wheelAccumRef.current += pixelOrPageDeltaY(e);
+
+        const drainOnce = (): boolean => {
+          const a = wheelAccumRef.current;
+          if (Math.abs(a) < S) return false;
+
+          const directionIn = a < 0;
+          if (directionIn && a > -S) return false;
+          if (!directionIn && a < S) return false;
+
+          if (!applyOneWheelStep(directionIn)) return false;
+
+          wheelAccumRef.current += directionIn ? S : -S;
+          return true;
+        };
+
+        wheelDrainStepRef.current = drainOnce;
+
+        const runDrain = () => {
+          let s = 0;
+          while (s < MAX && wheelDrainStepRef.current()) s++;
+        };
+        runDrain();
+
+        const scheduleMore = () => {
+          if (Math.abs(wheelAccumRef.current) < S) return;
+          if (wheelDrainRafRef.current !== null) return;
+          wheelDrainRafRef.current = requestAnimationFrame(() => {
+            wheelDrainRafRef.current = null;
+            runDrain();
+            scheduleMore();
+          });
+        };
+        scheduleMore();
       },
       [
         wheelEnabled, zoomIn, zoomOut, peekZoomIn, peekZoomOut,
         fitEquivalentNativePercent, zoomAnchorTranslate,
-        // transform.scale intentionally removed: pendingScaleRef replaces it.
       ],
     );
 
@@ -576,6 +667,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
             flipV={transform.flipV}
             controlsVisible={controlsVisible}
             onPanByDelta={panByDelta}
+            onJumpToNatural={panJumpToNatural}
             onUserActivity={resetHideTimer}
             onDragChange={setMinimapDragging}
             ariaLabel={t.minimapNav}

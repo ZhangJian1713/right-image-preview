@@ -4,11 +4,16 @@
 
 > A dependency-free React image preview component with Lightroom-style discrete zoom stops, multi-group navigation, flip/rotate, keyboard shortcuts, and auto-fading controls.
 
-### What’s new in **v0.0.7**
+### What’s new in **v0.0.8**
 
-- **Navigation minimap** when the image extends past the viewport: drag the dashed frame to pan (hide with `showMinimap={false}`).
-- **Zoom field** stays compact; in **Fit** mode it shows **percent only**; the preset menu still shows **Fit (n%)** for the Fit row.
-- **`language`** prop: built-in **English** or **Chinese** UI strings.
+- **Default zoom stops** now top out at **200%** (high stops looked soft in preview); pass a custom **`stops`** array if you need higher ratios.
+- **Toolbar zoom field** clamps typed values to the **maximum configured stop** (defaults to 200%); imperative **`ref.setNative(...)`** is not clamped.
+- **GitHub Pages demo**: **EN / 中文** language toggle (top-right).
+- **Wheel zoom** remains tuned for mice that report small pixel deltas per detent.
+
+### Earlier **v0.0.7**
+
+- Navigation **minimap**, compact zoom field in Fit mode, and **`language`** prop (EN/zh UI).
 
 ---
 
@@ -17,8 +22,8 @@
 | Feature | Description |
 |---------|-------------|
 | **Fit / Native zoom modes** | `fit` displays the image fully within the viewport (contain); `native` uses the image's original pixel dimensions as 100% baseline |
-| **Discrete zoom stops** | Zoom in/out only jumps between configured stops (default: 10 %–800 %), always predictable |
-| **Arbitrary zoom input** | The zoom input field accepts any positive integer, not just preset stops |
+| **Discrete zoom stops** | Zoom in/out only jumps between configured stops (default: 10 %–200 %); override with **`stops`** |
+| **Zoom field input** | Type a positive %; values are **clamped to the max configured stop** (toolbar only; ref API unchanged) |
 | **Multi-image / multi-group** | Supports a flat image list or images organized into folder-like groups |
 | **Flip & Rotate** | Horizontal/vertical flip and 90° CW/CCW rotation with CSS animation |
 | **Zoom lock** | Optionally preserve zoom state when switching images |
@@ -41,9 +46,10 @@ npm test          # run unit & integration tests
 npm run build     # production build
 ```
 
-Open `http://localhost:5173` to see two demo scenarios:
-- **Demo 1** — single image group, close-on-mask-click, no flip buttons
-- **Demo 2** — multiple folder groups, side arrows, flip buttons enabled
+Open `http://localhost:5173` for the demo page (**EN / 中文** toggle in the top-right):
+- **Demo 1** — single gallery, close-on-mask-click, no flip buttons
+- **Demo 2** — folder groups, side arrows, flip buttons
+- **Demo 3** — large local assets (wheel / pan stress test)
 
 ---
 
@@ -99,14 +105,14 @@ import { ImagePreview } from './components/ImagePreview';
 | `groups` | `ImageGroup[]` | — | Group definitions for folder-style navigation |
 | `visible` | `boolean` | `true` | Controls visibility |
 | `defaultIndex` | `number` | `0` | Initial image index |
-| `stops` | `number[]` | `[10,25,50,100,200,400,800]` | Discrete zoom stops in % (ascending) |
+| `stops` | `number[]` | `[10,25,50,75,100,150,200]` | Discrete zoom stops in % (ascending); raise the cap by passing a longer list |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | Initial zoom mode |
 | `initialNativePercent` | `number` | first stop | Initial native percent when `initialMode='native'` |
 | `firstZoomInStrategy` | `'above-fit' \| 'first-stop' \| 'hundred'` | `'above-fit'` | Which stop to land on when zooming in from Fit for the first time |
 | `zoomOutBelowMinBehaviour` | `'fit' \| 'noop'` | `'noop'` | Behaviour when zooming out below the minimum stop |
 | `zoomInAtMaxBehaviour` | `'noop' \| 'notify'` | `'noop'` | Behaviour when zooming in at the maximum stop |
-| `wheelEnabled` | `boolean` | `false` | Enable mouse-wheel zoom |
-| `doubleClickEnabled` | `boolean` | `false` | Double-click to toggle Fit ↔ 100 % |
+| `wheelEnabled` | `boolean` | `true` | Enable mouse-wheel zoom |
+| `doubleClickEnabled` | `boolean` | `true` | Double-click to toggle Fit ↔ 100 % |
 | `switchImageResetZoom` | `boolean` | `true` | Reset zoom when switching images (overridden by zoom lock) |
 | `switchImageResetTransform` | `boolean` | `false` | Reset flip/rotation when switching images |
 | `fitResetPan` | `boolean` | `true` | Reset pan offset when switching to Fit mode |
@@ -162,7 +168,7 @@ interface ImagePreviewRef {
   zoomIn(): void;
   zoomOut(): void;
   fit(): void;
-  setNative(percent: number): void; // accepts any positive integer
+  setNative(percent: number): void; // any positive number (not clamped; toolbar field clamps to max stop)
 
   // transform
   rotateCW(): void;

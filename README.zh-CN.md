@@ -4,11 +4,16 @@
 
 > 无 UI 库依赖的 React 图片预览组件，原生支持固定档位缩放（Lightroom 式）、多图/多组导航、翻转旋转、键盘快捷键与自动渐隐控件。
 
-### **v0.0.7** 更新摘要
+### **v0.0.8** 更新摘要
 
-- **导航小地图**：主图放大超出视口时右下角出现缩略图，可拖动虚线框平移（可用 `showMinimap={false}` 关闭）。
-- **缩放显示**：中间数字区更紧凑；**适应**模式下此处只显示**百分比**；档位菜单里 Fit 一行仍为 **「适应 (约 n%)」** 便于辨认。
-- **`language`**：内置 **中/英** 界面文案切换。
+- **默认缩放档位**最高 **200%**（过高比例预览发糊）；需要更大上限请传入自定义 **`stops`**。
+- **工具栏缩放输入框**提交的数值会**限制在当前 `stops` 的最大值**（默认可输入到 200%）；**`ref.setNative(...)`** 仍不自动截断。
+- **GitHub Pages 演示页**：右上角 **EN / 中文** 界面语言切换。
+- **滚轮缩放**继续针对「每格像素增量很小」的鼠标做了灵敏度优化。
+
+### **v0.0.7**（此前）
+
+- 导航**小地图**、适应模式下紧凑缩放显示、**`language`** 中英 UI。
 
 ---
 
@@ -17,8 +22,8 @@
 | 能力 | 说明 |
 |------|------|
 | **Fit / Native 双模式** | `fit` 以 contain 语义完整显示图片；`native` 以原始像素为 100% 基准 |
-| **固定档位缩放** | 放大/缩小只在离散档位间跳转（默认 10 %–800 %），行为可预期 |
-| **任意比例输入** | 缩放输入框支持直接输入任意正整数百分比，不限于预设档位 |
+| **固定档位缩放** | 放大/缩小只在离散档位间跳转（默认 10 %–200 %）；可用 **`stops`** 自定义 |
+| **缩放输入** | 可输入正整数 %；**工具栏提交值会限制在最大档位**（`ref` 调用不限制） |
 | **多图 / 多组导航** | 支持单组图片列表，也支持按文件夹/分组组织的多组图片 |
 | **翻转 & 旋转** | 水平/垂直翻转，90° 顺/逆时针旋转，带 CSS 动画 |
 | **缩放锁定** | 切换图片时可选择保留或重置缩放状态 |
@@ -41,9 +46,10 @@ npm test          # 运行单元 & 集成测试
 npm run build     # 生产构建
 ```
 
-浏览器访问 `http://localhost:5173` 即可看到两个演示场景：
-- **Demo 1**：单组图片，点击遮罩关闭，无翻转按钮
-- **Demo 2**：多文件夹分组，侧边导航箭头，含翻转按钮
+浏览器访问 `http://localhost:5173`，页面**右上角**可切换 **EN / 中文**：
+- **Demo 1**：单组相册，点击遮罩关闭，无翻转按钮
+- **Demo 2**：多文件夹分组，侧边箭头，含翻转按钮
+- **Demo 3**：本地高分辨率样张（滚轮/平移体验）
 
 ---
 
@@ -99,14 +105,14 @@ import { ImagePreview } from './components/ImagePreview';
 | `groups` | `ImageGroup[]` | — | 图片分组定义（文件夹/相册） |
 | `visible` | `boolean` | `true` | 控制预览显示/隐藏 |
 | `defaultIndex` | `number` | `0` | 初始图片索引 |
-| `stops` | `number[]` | `[10,25,50,100,200,400,800]` | Native zoom 档位（%，升序） |
+| `stops` | `number[]` | `[10,25,50,75,100,150,200]` | Native zoom 档位（%，升序）；需要更高上限请传入更长列表 |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | 初始缩放模式 |
 | `initialNativePercent` | `number` | 第一档 | `initialMode='native'` 时的初始比例 |
 | `firstZoomInStrategy` | `'above-fit' \| 'first-stop' \| 'hundred'` | `'above-fit'` | 从 Fit 首次放大时的入档策略 |
 | `zoomOutBelowMinBehaviour` | `'fit' \| 'noop'` | `'noop'` | 缩小到最小档以下的行为 |
 | `zoomInAtMaxBehaviour` | `'noop' \| 'notify'` | `'noop'` | 放大到最大档时的行为 |
-| `wheelEnabled` | `boolean` | `false` | 是否启用滚轮缩放 |
-| `doubleClickEnabled` | `boolean` | `false` | 双击切换 Fit ↔ 100% |
+| `wheelEnabled` | `boolean` | `true` | 是否启用滚轮缩放 |
+| `doubleClickEnabled` | `boolean` | `true` | 双击切换 Fit ↔ 100% |
 | `switchImageResetZoom` | `boolean` | `true` | 切图时是否重置缩放（锁定时被覆盖） |
 | `switchImageResetTransform` | `boolean` | `false` | 切图时是否重置翻转/旋转 |
 | `fitResetPan` | `boolean` | `true` | 切回 Fit 时是否归零平移 |
@@ -162,7 +168,7 @@ interface ImagePreviewRef {
   zoomIn(): void;
   zoomOut(): void;
   fit(): void;
-  setNative(percent: number): void; // 接受任意正整数，不限于档位
+  setNative(percent: number): void; // 任意正数（不截断；工具栏输入会限制在最大档位）
 
   // 变换
   rotateCW(): void;

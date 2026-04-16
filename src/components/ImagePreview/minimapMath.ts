@@ -69,6 +69,20 @@ export function naturalToContainer(
   };
 }
 
+/**
+ * Container translate `(tx, ty)` so that natural `(nx, ny)` lies at the viewport centre `(cw/2, ch/2)`.
+ * Uses the same layout as {@link naturalToContainer} with `tx = ty = 0` for the baseline position.
+ */
+export function translateForViewportCentreOnNatural(
+  nx: number,
+  ny: number,
+  p: MinimapTransformParams,
+): { tx: number; ty: number } {
+  const { cw, ch } = p;
+  const { cx: bx, cy: by } = naturalToContainer(nx, ny, { ...p, tx: 0, ty: 0 });
+  return { tx: cw / 2 - bx, ty: ch / 2 - by };
+}
+
 /** Natural → minimap inner pixel (same transform chain as main but scale = thumbS, tx = ty = 0). */
 export function naturalToMinimapInner(
   nx: number,
@@ -98,6 +112,31 @@ export function naturalToMinimapInner(
   };
 }
 
+/** Minimap inner pixel → natural image pixel (inverse of {@link naturalToMinimapInner}). */
+export function minimapInnerToNatural(
+  mx: number,
+  my: number,
+  inner: number,
+  nw: number,
+  nh: number,
+  thumbS: number,
+  rotationDeg: number,
+  flipH: boolean,
+  flipV: boolean,
+): { nx: number; ny: number } {
+  const { ix, iy } = layoutImageTopLeft(inner, inner, nw, nh);
+  const px = mx - ix - nw / 2;
+  const py = my - iy - nh / 2;
+  const irad = (-rotationDeg * Math.PI) / 180;
+  const iwx = px * Math.cos(irad) - py * Math.sin(irad);
+  const iwy = px * Math.sin(irad) + py * Math.cos(irad);
+  const wx = flipH ? -iwx : iwx;
+  const wy = flipV ? -iwy : iwy;
+  const vx = wx / thumbS;
+  const vy = wy / thumbS;
+  return clampNatural(vx + nw / 2, vy + nh / 2, nw, nh);
+}
+
 /** Bounding box (half-width, half-height) of rotated unscaled rectangle. */
 export function rotatedRectExtents(nw: number, nh: number, rotationDeg: number): { rw: number; rh: number } {
   const rad = (rotationDeg * Math.PI) / 180;
@@ -111,6 +150,30 @@ export function clampNatural(nx: number, ny: number, nw: number, nh: number): { 
     nx: Math.max(0, Math.min(nw, nx)),
     ny: Math.max(0, Math.min(nh, ny)),
   };
+}
+
+/** Winding-number test: whether `(x, y)` lies inside a simple closed polygon (vertex indices wrap). */
+export function pointInPolygon(
+  x: number,
+  y: number,
+  poly: ReadonlyArray<readonly [number, number]>,
+): boolean {
+  let wn = 0;
+  const n = poly.length;
+  for (let i = 0; i < n; i++) {
+    const [xa, ya] = poly[i]!;
+    const [xb, yb] = poly[(i + 1) % n]!;
+    if (ya <= y) {
+      if (yb > y) {
+        const v = (xb - xa) * (y - ya) - (x - xa) * (yb - ya);
+        if (v > 0) wn++;
+      }
+    } else if (yb <= y) {
+      const v = (xb - xa) * (y - ya) - (x - xa) * (yb - ya);
+      if (v < 0) wn--;
+    }
+  }
+  return wn !== 0;
 }
 
 /** Maps viewport centre (container space) to minimap inner pixels. Intentionally unclamped so ∂m/∂t stays smooth at edges. */

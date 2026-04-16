@@ -18,7 +18,7 @@ When the preview is open, focus is automatically trapped in the overlay and the 
 | `1` | Switch to native 100 % |
 | `Space` | Toggle Fit ↔ 100 % (same as double-click) |
 
-> The zoom input field accepts any positive integer (not limited to preset stops). Press **Enter** to confirm, **Esc** to cancel.
+> The zoom input field accepts a positive integer and **clamps to the maximum configured stop** (default max 200 %). Press **Enter** to confirm, **Esc** to cancel.
 
 ## Image Navigation
 
