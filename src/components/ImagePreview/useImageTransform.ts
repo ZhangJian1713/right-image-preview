@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ZoomMode } from './types';
+import {
+  MAIN_DRAG_MIN_VIEWPORT_COVERAGE,
+  MINIMAP_PAN_MIN_VIEWPORT_COVERAGE,
+  ZOOM_CLAMP_MIN_VIEWPORT_COVERAGE,
+} from './imagePreviewTuning';
 
 export interface ImageDimensions {
   naturalWidth: number;
@@ -61,6 +66,11 @@ export interface UseImageTransformResult {
    * effect skips its own correction.
    */
   zoomAnchorTranslate(prevScale: number, newScale: number, anchorX: number, anchorY: number): void;
+  /**
+   * Pan by a delta in **container / screen** pixels (same space as {@link translateX} / {@link translateY}).
+   * Only applies in `native` mode. Clamps **stricter** than main-image drag (`imagePreviewTuning.ts`).
+   */
+  panByDelta(dx: number, dy: number): void;
 }
 
 function computeFitScale(dims: ImageDimensions, container: ContainerSize): number {
@@ -69,14 +79,10 @@ function computeFitScale(dims: ImageDimensions, container: ContainerSize): numbe
 }
 
 /**
- * Clamp (tx, ty) so the image always has meaningful overlap with the viewport.
+ * Clamp (tx, ty) so overlap between viewport and image meets a minimum on each axis.
  *
- * Rule: overlap on each axis ≥ min(scaledDim/2, viewportDim/2).
- *   • Small image  → image centre stays inside the viewport.
- *   • Large image  → at least half the viewport is covered by image pixels.
- *
- * This prevents the image from flying completely off-screen after zooming
- * when the anchor point is outside the image (e.g. cursor in opposite corner).
+ * Rule: overlap on each axis ≥ min(scaledDim/2, minViewportCoverage × viewportDim).
+ * Coverage values come from `imagePreviewTuning.ts`.
  */
 function clampTranslateForVisibility(
   tx: number,
@@ -85,15 +91,15 @@ function clampTranslateForVisibility(
   dims: ImageDimensions,
   container: ContainerSize,
   rotation: Rotation,
+  minViewportCoverage: number,
 ): { x: number; y: number } {
   const normDeg = ((rotation % 360) + 360) % 360;
   const isSwapped = normDeg === 90 || normDeg === 270;
   const scaledW = (isSwapped ? dims.naturalHeight : dims.naturalWidth)  * scale;
   const scaledH = (isSwapped ? dims.naturalWidth  : dims.naturalHeight) * scale;
   const { width: vw, height: vh } = container;
-  // Required overlap on each axis
-  const ox = Math.min(scaledW / 2, vw / 2);
-  const oy = Math.min(scaledH / 2, vh / 2);
+  const ox = Math.min(scaledW / 2, minViewportCoverage * vw);
+  const oy = Math.min(scaledH / 2, minViewportCoverage * vh);
   return {
     x: Math.max(-vw / 2 + ox - scaledW / 2, Math.min(vw / 2 - ox + scaledW / 2, tx)),
     y: Math.max(-vh / 2 + oy - scaledH / 2, Math.min(vh / 2 - oy + scaledH / 2, ty)),
@@ -183,6 +189,26 @@ export function useImageTransform(options: UseImageTransformOptions): UseImageTr
 
   const resetPan = useCallback(() => applyTranslate(0, 0), [applyTranslate]);
 
+  const panByDelta = useCallback(
+    (dx: number, dy: number) => {
+      if (mode !== 'native' || !imageDims || !containerSize) return;
+      const s = nativePercent / 100;
+      const nx = translateRef.current.x + dx;
+      const ny = translateRef.current.y + dy;
+      const c = clampTranslateForVisibility(
+        nx,
+        ny,
+        s,
+        imageDims,
+        containerSize,
+        rotation,
+        MINIMAP_PAN_MIN_VIEWPORT_COVERAGE,
+      );
+      applyTranslate(c.x, c.y);
+    },
+    [mode, imageDims, containerSize, rotation, nativePercent, applyTranslate],
+  );
+
   // ── Rotation & flip ───────────────────────────────────────────────────────
 
   // Do NOT wrap with % 360. Keeping an ever-increasing (or decreasing) value
@@ -226,9 +252,25 @@ export function useImageTransform(options: UseImageTransformOptions): UseImageTr
     if (pointersRef.current.size === 1 && panStartRef.current) {
       const dx = e.clientX - panStartRef.current.x;
       const dy = e.clientY - panStartRef.current.y;
-      applyTranslate(panStartRef.current.tx + dx, panStartRef.current.ty + dy);
+      let nx = panStartRef.current.tx + dx;
+      let ny = panStartRef.current.ty + dy;
+      if (mode === 'native' && imageDims && containerSize) {
+        const s = nativePercent / 100;
+        const c = clampTranslateForVisibility(
+          nx,
+          ny,
+          s,
+          imageDims,
+          containerSize,
+          rotation,
+          MAIN_DRAG_MIN_VIEWPORT_COVERAGE,
+        );
+        nx = c.x;
+        ny = c.y;
+      }
+      applyTranslate(nx, ny);
     }
-  }, [applyTranslate]);
+  }, [applyTranslate, mode, imageDims, containerSize, rotation, nativePercent]);
 
   const onPanEnd = useCallback((e?: React.PointerEvent) => {
     if (e) pointersRef.current.delete(e.pointerId);
@@ -270,7 +312,15 @@ export function useImageTransform(options: UseImageTransformOptions): UseImageTr
 
     // Safety clamp: keep image meaningfully visible after any zoom.
     if (containerSize) {
-      const c = clampTranslateForVisibility(newTx, newTy, nativePercent / 100, imageDims, containerSize, rotation);
+      const c = clampTranslateForVisibility(
+        newTx,
+        newTy,
+        nativePercent / 100,
+        imageDims,
+        containerSize,
+        rotation,
+        ZOOM_CLAMP_MIN_VIEWPORT_COVERAGE,
+      );
       newTx = c.x;
       newTy = c.y;
     }
@@ -299,7 +349,15 @@ export function useImageTransform(options: UseImageTransformOptions): UseImageTr
       // Safety clamp so the image never flies off-screen, even when the
       // cursor is far from the image (e.g. opposite corner of the viewport).
       if (imageDims && containerSize) {
-        const c = clampTranslateForVisibility(newTx, newTy, newScale, imageDims, containerSize, rotation);
+        const c = clampTranslateForVisibility(
+          newTx,
+          newTy,
+          newScale,
+          imageDims,
+          containerSize,
+          rotation,
+          ZOOM_CLAMP_MIN_VIEWPORT_COVERAGE,
+        );
         newTx = c.x;
         newTy = c.y;
       }
@@ -349,5 +407,6 @@ export function useImageTransform(options: UseImageTransformOptions): UseImageTr
     imageDims,
     containerSize,
     zoomAnchorTranslate,
+    panByDelta,
   };
 }

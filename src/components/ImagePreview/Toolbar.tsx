@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { LocaleStrings } from './locale';
+import {
+  TOOLBAR_NAV_COUNTER_MIN_WIDTH_PX,
+  ZOOM_DROPDOWN_MAX_WIDTH_PX,
+} from './imagePreviewTuning';
 import type { NativePercent, ZoomMode } from './types';
 
 // ── Design tokens ──────────────────────────────────────────────────────────
@@ -35,7 +39,7 @@ interface ToolbarProps {
   atGroupEnd?: boolean;
   onPrevGroup?(): void;
   onNextGroup?(): void;
-  /** Whether to show the image-level prev/next arrow buttons in the toolbar. */
+  /** Toolbar prev/next; parent sets false only for flat lists with `arrows` `'side'` / `'none'`. Always true when `groups` is used. */
   showToolbarArrows?: boolean;
 
   // ── Image info ────────────────────────────────────────────────────────────
@@ -63,6 +67,10 @@ interface ToolbarProps {
   onToggleLock(): void;
   /** Resolved locale strings — pass the result of `resolveStrings(language)`. */
   strings: LocaleStrings;
+  /** Fixed width of the zoom % control between [−] and [+] — use `toolbarZoomLabelSlotPx(language)`. */
+  zoomLabelSlotPx: number;
+  /** Fixed width of the preset dropdown panel — use `toolbarZoomDropdownWidthPx(language)`. */
+  zoomDropdownWidthPx: number;
 }
 
 // ── SVG icon helpers ───────────────────────────────────────────────────────
@@ -246,9 +254,21 @@ interface ZoomInputProps {
   onFit(): void;
   onSetNative(percent: NativePercent): void;
   strings: LocaleStrings;
+  zoomLabelSlotPx: number;
+  zoomDropdownWidthPx: number;
 }
 
-function ZoomInput({ mode, nativePercent, fitEquivalentNativePercent, stops, onFit, onSetNative, strings }: ZoomInputProps) {
+function ZoomInput({
+  mode,
+  nativePercent,
+  fitEquivalentNativePercent,
+  stops,
+  onFit,
+  onSetNative,
+  strings,
+  zoomLabelSlotPx,
+  zoomDropdownWidthPx,
+}: ZoomInputProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -256,19 +276,25 @@ function ZoomInput({ mode, nativePercent, fitEquivalentNativePercent, stops, onF
 
   const displayLabel = mode === 'fit'
     ? (fitEquivalentNativePercent !== undefined
-        ? strings.fitApprox(Math.round(fitEquivalentNativePercent))
-        : strings.fit)
+        ? `${Math.round(fitEquivalentNativePercent)}%`
+        : '—')
     : `${Math.round(nativePercent)}%`;
   const currentStopMatch = mode === 'native' ? Math.round(nativePercent) : null;
 
   const open = useCallback(() => {
-    setInputValue(mode === 'fit' ? '' : String(Math.round(nativePercent)));
+    setInputValue(
+      mode === 'fit'
+        ? (fitEquivalentNativePercent !== undefined
+            ? String(Math.round(fitEquivalentNativePercent))
+            : '')
+        : String(Math.round(nativePercent)),
+    );
     setIsOpen(true);
     requestAnimationFrame(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
     });
-  }, [mode, nativePercent]);
+  }, [mode, nativePercent, fitEquivalentNativePercent]);
 
   const commit = useCallback((raw: string) => {
     const trimmed = raw.trim().replace('%', '');
@@ -289,7 +315,17 @@ function ZoomInput({ mode, nativePercent, fitEquivalentNativePercent, stops, onF
   const sortedDesc = [...stops].sort((a, b) => b - a);
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', flexShrink: 0 }}>
+    <div
+      ref={containerRef}
+      style={{
+        position: 'relative',
+        flexShrink: 0,
+        width: zoomLabelSlotPx,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    >
       {isOpen ? (
         <input
           ref={inputRef}
@@ -301,11 +337,12 @@ function ZoomInput({ mode, nativePercent, fitEquivalentNativePercent, stops, onF
             e.stopPropagation();
           }}
           style={{
-            width: 104, textAlign: 'center',
+            width: '100%',
+            textAlign: 'center',
             background: 'rgba(255,255,255,0.08)',
             border: '1px solid rgba(180,200,225,0.3)',
             borderRadius: 5, color: C.text, fontSize: 13,
-            padding: '3px 6px', outline: 'none', boxSizing: 'border-box',
+            padding: '3px 4px', outline: 'none', boxSizing: 'border-box',
           }}
         />
       ) : (
@@ -315,12 +352,18 @@ function ZoomInput({ mode, nativePercent, fitEquivalentNativePercent, stops, onF
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') open(); }}
           style={{
-            display: 'inline-block', minWidth: 104, textAlign: 'center',
+            display: 'block',
+            width: '100%',
+            boxSizing: 'border-box',
+            textAlign: 'center',
             fontSize: 13, color: C.text, cursor: 'pointer',
-            padding: '3px 6px', borderRadius: 5,
+            padding: '3px 5px', borderRadius: 5,
             border: '1px solid transparent',
             fontVariantNumeric: 'tabular-nums',
             transition: 'border-color 0.15s',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLSpanElement).style.borderColor = 'rgba(180,200,225,0.28)'; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLSpanElement).style.borderColor = 'transparent'; }}
@@ -336,7 +379,10 @@ function ZoomInput({ mode, nativePercent, fitEquivalentNativePercent, stops, onF
             bottom: 'calc(100% + 8px)',
             left: '50%',
             transform: 'translateX(-50%)',
-            minWidth: 126,
+            /* Wider than the narrow % trigger so “Fit (n%)” / preset rows fit; clamp on small viewports. */
+            width: zoomDropdownWidthPx,
+            minWidth: 0,
+            maxWidth: `min(92vw, ${ZOOM_DROPDOWN_MAX_WIDTH_PX}px)`,
             background: 'rgba(12,16,26,0.97)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
@@ -345,6 +391,7 @@ function ZoomInput({ mode, nativePercent, fitEquivalentNativePercent, stops, onF
             padding: '4px 0',
             boxShadow: '0 -6px 24px rgba(0,0,0,0.55)',
             zIndex: 200,
+            boxSizing: 'border-box',
           }}
         >
           {sortedDesc.map((stop) => (
@@ -357,8 +404,11 @@ function ZoomInput({ mode, nativePercent, fitEquivalentNativePercent, stops, onF
           ))}
           <div style={{ height: 1, background: C.divider, margin: '3px 0' }} />
           <DropdownRow
-            label={strings.fit}
-            sublabel={fitEquivalentNativePercent !== undefined ? `≈ ${Math.round(fitEquivalentNativePercent)}%` : undefined}
+            label={
+              fitEquivalentNativePercent !== undefined
+                ? strings.fitApprox(Math.round(fitEquivalentNativePercent))
+                : strings.fit
+            }
             active={mode === 'fit'}
             onMouseDown={() => { onFit(); setIsOpen(false); }}
           />
@@ -370,12 +420,11 @@ function ZoomInput({ mode, nativePercent, fitEquivalentNativePercent, stops, onF
 
 interface DropdownRowProps {
   label: string;
-  sublabel?: string;
   active: boolean;
   onMouseDown(): void;
 }
 
-function DropdownRow({ label, sublabel, active, onMouseDown }: DropdownRowProps) {
+function DropdownRow({ label, active, onMouseDown }: DropdownRowProps) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -383,28 +432,50 @@ function DropdownRow({ label, sublabel, active, onMouseDown }: DropdownRowProps)
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '5px 14px', cursor: 'pointer',
+        display: 'flex',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        columnGap: 8,
+        padding: '5px 8px',
+        cursor: 'pointer',
         background: active ? 'rgba(88,101,242,0.18)' : hovered ? 'rgba(255,255,255,0.06)' : 'transparent',
         transition: 'background 0.1s',
+        boxSizing: 'border-box',
+        width: '100%',
+        minWidth: 0,
       }}
     >
-      <span style={{
-        fontSize: 13,
-        color: active ? '#8fa8ff' : C.text,
-        fontWeight: active ? 600 : 400,
-      }}>
+      <span
+        style={{
+          flex: '1 1 auto',
+          minWidth: 0,
+          fontSize: 13,
+          color: active ? '#8fa8ff' : C.text,
+          fontWeight: active ? 600 : 400,
+          whiteSpace: 'nowrap',
+          fontVariantNumeric: 'tabular-nums',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
         {label}
       </span>
-      {sublabel && (
-        <span style={{ fontSize: 11, color: C.textMuted, marginLeft: 8 }}>{sublabel}</span>
-      )}
-      {active && (
-        <svg viewBox="0 0 16 16" fill="currentColor" width={12} height={12}
-          style={{ color: '#8fa8ff', marginLeft: 6, flexShrink: 0 }} aria-hidden="true">
-          <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/>
-        </svg>
-      )}
+      <span
+        style={{
+          width: 14,
+          flex: '0 0 14px',
+          display: 'flex',
+          justifyContent: 'center',
+        }}
+      >
+        {active && (
+          <svg viewBox="0 0 16 16" fill="currentColor" width={12} height={12}
+            style={{ color: '#8fa8ff' }} aria-hidden="true">
+            <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/>
+          </svg>
+        )}
+      </span>
     </div>
   );
 }
@@ -429,6 +500,8 @@ export function Toolbar({
   onRotateCW, onRotateCCW, onFlipH, onFlipV,
   onPrev, onNext, onToggleLock,
   strings,
+  zoomLabelSlotPx,
+  zoomDropdownWidthPx,
 }: ToolbarProps) {
   const canZoomOut = mode === 'native' && !atMinStop;
   const canZoomIn  = !(mode === 'native' && atMaxStop);
@@ -490,21 +563,8 @@ export function Toolbar({
             pointerEvents: 'none',
           }}
         >
-          {/* Filename row: [counter]  filename (middle-ellipsis) */}
+          {/* Filename only — index lives in the toolbar between prev/next */}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, width: '100%', minWidth: 0 }}>
-            {showNav && (
-              <span style={{
-                fontSize: 11,
-                color: C.textMuted,
-                fontVariantNumeric: 'tabular-nums',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}>
-                {isGroupMode
-                  ? `${groupCurrentIndex}/${groupTotal}`
-                  : `${currentIndex + 1}/${totalImages}`}
-              </span>
-            )}
             <MiddleEllipsisName
               name={imageName}
               style={{ fontSize: 13, fontWeight: 500, color: C.text, flex: '1 1 0' }}
@@ -529,7 +589,11 @@ export function Toolbar({
         role="toolbar"
         aria-label={strings.toolbar}
         style={{
-          display: 'flex', alignItems: 'center', gap: 1, padding: '3px 8px',
+          display: 'flex',
+          flexWrap: 'nowrap',
+          alignItems: 'center',
+          gap: 1,
+          padding: '3px 8px',
           borderRadius: 10,
           background: 'rgba(6,10,20,0.68)',
           backdropFilter: 'blur(14px)',
@@ -557,21 +621,22 @@ export function Toolbar({
               </TBtn>
             )}
 
-            {/* Counter: only shown when there is no info badge (no imageName).
-                When imageName is present, the counter already appears in the badge. */}
-            {!imageName && (
-              <span style={{
-                fontSize: 12, color: C.textMuted,
-                minWidth: 34, textAlign: 'center',
+            <span
+              style={{
+                fontSize: 12,
+                color: C.textMuted,
+                minWidth: TOOLBAR_NAV_COUNTER_MIN_WIDTH_PX,
+                textAlign: 'center',
                 fontVariantNumeric: 'tabular-nums',
                 whiteSpace: 'nowrap',
-                padding: '0 3px',
-              }}>
-                {isGroupMode
-                  ? `${groupCurrentIndex} / ${groupTotal}`
-                  : `${currentIndex + 1} / ${totalImages}`}
-              </span>
-            )}
+                padding: '0 4px',
+                flexShrink: 0,
+              }}
+            >
+              {isGroupMode
+                ? `${groupCurrentIndex} / ${groupTotal}`
+                : `${currentIndex + 1} / ${totalImages}`}
+            </span>
 
             {showToolbarArrows && (
               <TBtn
@@ -625,6 +690,8 @@ export function Toolbar({
           onFit={onFit}
           onSetNative={onSetNative}
           strings={strings}
+          zoomLabelSlotPx={zoomLabelSlotPx}
+          zoomDropdownWidthPx={zoomDropdownWidthPx}
         />
 
         <TBtn label={strings.zoomIn} onClick={onZoomIn} disabled={!canZoomIn}><IconZoomIn /></TBtn>

@@ -4,6 +4,12 @@
 
 > A dependency-free React image preview component with Lightroom-style discrete zoom stops, multi-group navigation, flip/rotate, keyboard shortcuts, and auto-fading controls.
 
+### What’s new in **v0.0.7**
+
+- **Navigation minimap** when the image extends past the viewport: drag the dashed frame to pan (hide with `showMinimap={false}`).
+- **Zoom field** stays compact; in **Fit** mode it shows **percent only**; the preset menu still shows **Fit (n%)** for the Fit row.
+- **`language`** prop: built-in **English** or **Chinese** UI strings.
+
 ---
 
 ## ✨ Features
@@ -18,6 +24,7 @@
 | **Zoom lock** | Optionally preserve zoom state when switching images |
 | **Smart side arrows** | Hidden when no navigation is possible; replaced by a group-jump button (double chevron) at group boundaries |
 | **Auto-fade controls** | All controls fade to ~10 % opacity after 3 s of inactivity; any activity instantly restores them |
+| **Navigation minimap** | Corner thumbnail + draggable viewport frame when the image overflows; optional via `showMinimap` |
 | **Rich keyboard shortcuts** | Esc · +/- · arrow keys · Space · PageUp/Down · Ctrl+arrow |
 | **Accessibility** | `role="dialog"` + `aria-modal`, all buttons have `aria-label`, focus is trapped |
 | **TypeScript first** | Full type exports, `forwardRef` imperative ref API |
@@ -104,7 +111,7 @@ import { ImagePreview } from './components/ImagePreview';
 | `switchImageResetTransform` | `boolean` | `false` | Reset flip/rotation when switching images |
 | `fitResetPan` | `boolean` | `true` | Reset pan offset when switching to Fit mode |
 | `showFlip` | `boolean` | `false` | Show horizontal/vertical flip buttons |
-| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | Where to show navigation arrows |
+| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | **Side** arrows only; with `groups`, toolbar prev/next always on |
 | `initialZoomLocked` | `boolean` | `false` | Start with zoom lock enabled |
 | `closeOnMaskClick` | `boolean` | `false` | Close when clicking outside the image/toolbar |
 | `onClose` | `() => void` | — | Called when the preview is closed |
@@ -116,10 +123,12 @@ import { ImagePreview } from './components/ImagePreview';
 
 | Value | Effect |
 |-------|--------|
-| `'both'` | Side arrows **and** toolbar prev/next buttons (default) |
-| `'side'` | Side arrows only; toolbar shows index + group buttons |
+| `'both'` | Side arrows **and** toolbar prev/next on flat lists (default) |
+| `'side'` | Side arrows only; flat lists still get toolbar prev/next, index between them |
 | `'toolbar'` | Toolbar prev/next only; no side arrows |
-| `'none'` | No arrows; keyboard ← → still works; toolbar shows index + group buttons |
+| `'none'` | No side arrows; keyboard ← → still works; flat lists still get toolbar prev/next + index |
+
+With **`groups`**, toolbar prev/next are always shown; only side arrows follow this table.
 
 ### Types
 

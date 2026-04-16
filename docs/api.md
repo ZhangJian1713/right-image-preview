@@ -46,17 +46,21 @@
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | Where navigation arrows appear (see table below) |
+| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | **Side** arrows only; see table (`groups` forces toolbar prev/next on) |
 | `showFlip` | `boolean` | `false` | Show horizontal/vertical flip buttons in the toolbar |
+| `showMinimap` | `boolean` | `true` | When the image overflows the viewport, show the bottom-right navigation minimap (drag the frame to pan) |
+| `language` | `string` | `'en'` | UI locale: built-in `en` and `zh` (primary subtag match, e.g. `zh-CN` → `zh`) |
 
 #### `arrows` values
 
 | Value | Effect |
 |-------|--------|
-| `'both'` | Side arrows **and** toolbar prev/next buttons (default) |
-| `'side'` | Side arrows only; toolbar shows index + group-switch buttons |
+| `'both'` | Side arrows **and** toolbar prev/next on flat lists (default) |
+| `'side'` | Side arrows only; flat lists still get toolbar prev/next with index between them |
 | `'toolbar'` | Toolbar prev/next only; no side arrows |
-| `'none'` | No arrows; keyboard ← → always works; toolbar shows index + group buttons |
+| `'none'` | No side arrows; keyboard ← → always works; flat lists still get toolbar prev/next + index |
+
+When **`groups`** is set, **toolbar prev/next are always shown**; only **side** arrows follow this table.
 
 #### Smart side-arrow behaviour
 
@@ -95,7 +99,7 @@ interface ZoomState {
   mode: 'fit' | 'native';
   /** Current native zoom percentage (meaningful when mode is 'native') */
   nativePercent: number;
-  /** Fit-equivalent native percentage, used for "Fit ≈ xx%" display */
+  /** Fit-equivalent native % (toolbar field shows `42%` in Fit mode; preset menu row shows `Fit (42%)` / `适应 (约 42%)`) */
   fitEquivalentNativePercent?: number;
 }
 ```
@@ -128,3 +132,9 @@ interface ImagePreviewRef {
   getState(): ZoomState;
 }
 ```
+
+---
+
+## See also
+
+- [Minimap viewport drag](./minimap.md) — WebView pointer quirks and Jacobian-based 1:1 panning.

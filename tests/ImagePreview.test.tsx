@@ -1,6 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createRef } from 'react';
+import { createRef, type ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { ImagePreview } from '../src/components/ImagePreview/ImagePreview';
 import type { ImagePreviewRef } from '../src/components/ImagePreview/types';
@@ -29,6 +29,9 @@ const IMAGES = [
   { src: 'https://example.com/c.jpg', alt: '图C' },
 ];
 
+/** Tests assert Chinese copy; `resolveStrings(undefined)` is English. */
+const ZH = { language: 'zh' as const } satisfies Pick<ComponentProps<typeof ImagePreview>, 'language'>;
+
 describe('ImagePreview component', () => {
   beforeEach(() => {
     // Give jsdom images predictable natural dimensions for transform calculations.
@@ -44,14 +47,14 @@ describe('ImagePreview component', () => {
     });
 
     it('renders dialog when visible=true', () => {
-      render(<ImagePreview src={SINGLE_SRC} visible />);
+      render(<ImagePreview src={SINGLE_SRC} visible {...ZH} />);
       expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
   });
 
   describe('toolbar', () => {
     it('renders toolbar buttons', () => {
-      render(<ImagePreview src={SINGLE_SRC} visible />);
+      render(<ImagePreview src={SINGLE_SRC} visible {...ZH} />);
       expect(screen.getByRole('toolbar')).toBeInTheDocument();
       expect(screen.getByLabelText('放大')).toBeInTheDocument();
       expect(screen.getByLabelText('缩小')).toBeInTheDocument();
@@ -64,14 +67,14 @@ describe('ImagePreview component', () => {
   describe('close behaviour', () => {
     it('calls onClose when close button is clicked', async () => {
       const onClose = vi.fn();
-      render(<ImagePreview src={SINGLE_SRC} visible onClose={onClose} />);
+      render(<ImagePreview src={SINGLE_SRC} visible onClose={onClose} {...ZH} />);
       await userEvent.click(screen.getByLabelText('关闭 (Esc)'));
       expect(onClose).toHaveBeenCalled();
     });
 
     it('calls onClose on Escape key', async () => {
       const onClose = vi.fn();
-      render(<ImagePreview src={SINGLE_SRC} visible onClose={onClose} />);
+      render(<ImagePreview src={SINGLE_SRC} visible onClose={onClose} {...ZH} />);
       await userEvent.keyboard('{Escape}');
       expect(onClose).toHaveBeenCalled();
     });
@@ -79,12 +82,12 @@ describe('ImagePreview component', () => {
 
   describe('multi-image', () => {
     it('does not render prev/next side arrows for single image', () => {
-      render(<ImagePreview src={SINGLE_SRC} visible />);
+      render(<ImagePreview src={SINGLE_SRC} visible {...ZH} />);
       expect(screen.queryByLabelText('上一张')).not.toBeInTheDocument();
     });
 
     it('renders prev/next side arrows for multiple images', () => {
-      render(<ImagePreview images={IMAGES} visible />);
+      render(<ImagePreview images={IMAGES} visible {...ZH} />);
       // Side nav arrows + toolbar arrows
       expect(screen.getAllByLabelText('上一张').length).toBeGreaterThan(0);
       expect(screen.getAllByLabelText('下一张').length).toBeGreaterThan(0);
@@ -92,7 +95,7 @@ describe('ImagePreview component', () => {
 
     it('calls onIndexChange when next is clicked', async () => {
       const onIndexChange = vi.fn();
-      render(<ImagePreview images={IMAGES} visible onIndexChange={onIndexChange} />);
+      render(<ImagePreview images={IMAGES} visible onIndexChange={onIndexChange} {...ZH} />);
       const nextBtns = screen.getAllByLabelText('下一张');
       await userEvent.click(nextBtns[0]);
       expect(onIndexChange).toHaveBeenCalledWith(1);
@@ -100,16 +103,20 @@ describe('ImagePreview component', () => {
 
     it('navigates via arrow keys', async () => {
       const onIndexChange = vi.fn();
-      render(<ImagePreview images={IMAGES} visible onIndexChange={onIndexChange} />);
+      render(<ImagePreview images={IMAGES} visible onIndexChange={onIndexChange} {...ZH} />);
       await userEvent.keyboard('{ArrowRight}');
       expect(onIndexChange).toHaveBeenCalledWith(1);
     });
   });
 
   describe('zoom via toolbar', () => {
-    it('shows "适应" label in fit mode initially', () => {
-      render(<ImagePreview src={SINGLE_SRC} visible initialMode="fit" />);
-      expect(screen.getByRole('toolbar').textContent).toContain('适应');
+    it('shows fit-equivalent percentage in zoom slot when in fit mode', async () => {
+      render(<ImagePreview src={SINGLE_SRC} visible initialMode="fit" {...ZH} />);
+      const img = screen.getByRole('dialog').querySelector('img')!;
+      fireEvent.load(img);
+      await waitFor(() => {
+        expect(screen.getByRole('toolbar').textContent).toMatch(/\d+%/);
+      });
     });
 
     it('calls onZoomChange with native mode after zoomIn click', async () => {
@@ -120,6 +127,7 @@ describe('ImagePreview component', () => {
           visible
           initialMode="fit"
           onZoomChange={onZoomChange}
+          {...ZH}
         />,
       );
       await userEvent.click(screen.getByLabelText('放大'));
@@ -137,6 +145,7 @@ describe('ImagePreview component', () => {
           initialMode="native"
           initialNativePercent={100}
           onZoomChange={onZoomChange}
+          {...ZH}
         />,
       );
       await userEvent.click(screen.getByLabelText('适应视口'));
@@ -155,6 +164,7 @@ describe('ImagePreview component', () => {
           visible
           initialMode="fit"
           onZoomChange={onZoomChange}
+          {...ZH}
         />,
       );
       await userEvent.keyboard('+');
@@ -170,6 +180,7 @@ describe('ImagePreview component', () => {
           src={SINGLE_SRC}
           visible
           onZoomChange={onZoomChange}
+          {...ZH}
         />,
       );
       await userEvent.keyboard('1');
@@ -187,6 +198,7 @@ describe('ImagePreview component', () => {
           initialMode="native"
           initialNativePercent={200}
           onZoomChange={onZoomChange}
+          {...ZH}
         />,
       );
       await userEvent.keyboard('0');
@@ -206,6 +218,7 @@ describe('ImagePreview component', () => {
           src={SINGLE_SRC}
           visible
           onZoomChange={onZoomChange}
+          {...ZH}
         />,
       );
 
@@ -226,7 +239,7 @@ describe('ImagePreview component', () => {
 
     it('getState returns current state', async () => {
       const ref = createRef<ImagePreviewRef>();
-      render(<ImagePreview ref={ref} src={SINGLE_SRC} visible />);
+      render(<ImagePreview ref={ref} src={SINGLE_SRC} visible {...ZH} />);
 
       const state = ref.current!.getState();
       expect(state).toHaveProperty('mode');
@@ -242,6 +255,7 @@ describe('ImagePreview component', () => {
           images={IMAGES}
           visible
           onIndexChange={onIndexChange}
+          {...ZH}
         />,
       );
 
@@ -265,6 +279,7 @@ describe('ImagePreview component', () => {
           visible
           wheelEnabled
           onZoomChange={onZoomChange}
+          {...ZH}
         />,
       );
       const dialog = screen.getByRole('dialog');
@@ -283,6 +298,7 @@ describe('ImagePreview component', () => {
           visible
           wheelEnabled={false}
           onZoomChange={onZoomChange}
+          {...ZH}
         />,
       );
       const dialog = screen.getByRole('dialog');
@@ -293,13 +309,13 @@ describe('ImagePreview component', () => {
 
   describe('accessibility', () => {
     it('has aria-modal on the dialog', () => {
-      render(<ImagePreview src={SINGLE_SRC} visible />);
+      render(<ImagePreview src={SINGLE_SRC} visible {...ZH} />);
       const dialog = screen.getByRole('dialog');
       expect(dialog).toHaveAttribute('aria-modal', 'true');
     });
 
     it('all toolbar buttons have aria-label', () => {
-      render(<ImagePreview src={SINGLE_SRC} visible />);
+      render(<ImagePreview src={SINGLE_SRC} visible {...ZH} />);
       const toolbar = screen.getByRole('toolbar');
       const buttons = toolbar.querySelectorAll('button');
       buttons.forEach((btn) => {

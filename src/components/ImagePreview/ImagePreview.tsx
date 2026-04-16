@@ -3,11 +3,14 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
+import { Minimap } from './Minimap';
 import { Toolbar } from './Toolbar';
+import { toolbarZoomDropdownWidthPx, toolbarZoomLabelSlotPx } from './imagePreviewTuning';
 import { resolveStrings } from './locale';
 import type { ImageGroup, ImageItem, ImagePreviewProps, ImagePreviewRef, NativePercent } from './types';
 import { useImageTransform } from './useImageTransform';
@@ -58,6 +61,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       showFlip = false,
       arrows = 'both',
       initialZoomLocked = false,
+      showMinimap = true,
       closeOnMaskClick = false,
       overlayClassName,
       overlayStyle,
@@ -69,18 +73,21 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     } = props;
 
     // Resolve locale strings once; re-resolves only when `language` changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     const t = useMemo(() => resolveStrings(language), [language]);
+    const zoomLabelSlotPx = useMemo(() => toolbarZoomLabelSlotPx(language), [language]);
+    const zoomDropdownWidthPx = useMemo(() => toolbarZoomDropdownWidthPx(language), [language]);
 
-    // Derived arrow visibility flags
+    const hasGroups = Array.isArray(groups) && groups.length > 0;
+    // `arrows` only gates the side-of-image buttons. Toolbar prev/next are always on when `groups` is used.
     const showSideArrows    = arrows === 'both' || arrows === 'side';
-    const showToolbarArrows = arrows === 'both' || arrows === 'toolbar';
+    const showToolbarArrows = hasGroups || arrows === 'both' || arrows === 'toolbar';
 
     const images = normaliseImages(props);
     const sortedStops = useMemo(() => [...stops].sort((a, b) => a - b), [stops]);
 
     const [currentIndex, setCurrentIndex] = useState(defaultIndex);
     const [zoomLocked, setZoomLocked] = useState(initialZoomLocked);
+    const [minimapDragging, setMinimapDragging] = useState(false);
     const overlayRef = useRef<HTMLDivElement>(null);
 
     // ── Zoom state machine ──────────────────────────────────────────────────
@@ -116,6 +123,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       imageDims,
       containerSize,
       zoomAnchorTranslate,
+      panByDelta,
     } = useImageTransform({ mode, nativePercent, fitResetPan });
 
     // ── Current image ───────────────────────────────────────────────────────
@@ -205,12 +213,33 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     // ref that we update synchronously after every zoom event ensures s1 is
     // always the most-recently-applied scale, not the last-rendered one.
     const pendingScaleRef = useRef(transform.scale);
-    pendingScaleRef.current = transform.scale; // keep in sync on every render
+    useLayoutEffect(() => {
+      pendingScaleRef.current = transform.scale;
+    }, [transform.scale]);
+
+    // Rate-limit wheel zoom: one stop change per WHEEL_COOLDOWN_MS.
+    //
+    // Problem: a single physical scroll notch (or a brief trackpad swipe) fires
+    // many wheel events in quick succession.  Between each pair of events React
+    // may complete a full render cycle, advancing `stateRef.current` to the new
+    // native mode.  The next event then sees the updated state and advances
+    // AGAIN — causing a single notch to jump multiple stops (e.g. fit→100%).
+    //
+    // Fix: after each zoom step, ignore further zoom steps until the cooldown
+    // expires.  `e.preventDefault()` is still called every event so the page
+    // does not scroll.  The cooldown is short enough that deliberate rapid
+    // scrolling (e.g. zooming through several stops) still feels responsive.
+    const WHEEL_COOLDOWN_MS = 250;
+    const lastWheelZoomAtRef = useRef(0);
 
     const handleWheel = useCallback(
       (e: WheelEvent) => {
         if (!wheelEnabled) return;
         e.preventDefault();
+
+        // Enforce one zoom step per cooldown window.
+        const now = Date.now();
+        if (now - lastWheelZoomAtRef.current < WHEEL_COOLDOWN_MS) return;
 
         const isZoomIn = e.deltaY < 0;
 
@@ -240,6 +269,9 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
           // Update immediately so the next rapid event reads the right s1.
           pendingScaleRef.current = s2;
         }
+
+        // Record zoom time BEFORE the state update so the cooldown starts now.
+        lastWheelZoomAtRef.current = now;
 
         if (isZoomIn) zoomIn(fitEquivalentNativePercent);
         else zoomOut(fitEquivalentNativePercent);
@@ -297,7 +329,8 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
           // Space: toggle fit ↔ 100% (same as double-click)
           case ' ':
             e.preventDefault();
-            mode === 'fit' ? setNative(100) : fit();
+            if (mode === 'fit') setNative(100);
+            else fit();
             break;
 
           // Navigate images / rotate (Ctrl/Cmd modifier)
@@ -345,7 +378,8 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     // ── Double-click ────────────────────────────────────────────────────────
     const handleDoubleClick = useCallback(() => {
       if (!doubleClickEnabled) return;
-      mode === 'fit' ? setNative(100) : fit();
+      if (mode === 'fit') setNative(100);
+      else fit();
     }, [doubleClickEnabled, mode, fit, setNative]);
 
     // ── Focus ───────────────────────────────────────────────────────────────
@@ -484,7 +518,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
               maxHeight: imageDims ? 'none' : '100%',
               transform: transform.cssTransform,
               transformOrigin: 'center center',
-              transition: isPanning
+              transition: isPanning || minimapDragging
                 ? 'none'
                 : !imageShowReady
                   ? 'opacity 0.15s ease'        // frame 1: transform settles, no anim
@@ -524,6 +558,29 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
             }} />
           </div>
         </div>
+
+        {showMinimap && imageDims && containerSize && (
+          <Minimap
+            imageSrc={currentImage.src}
+            imageAlt={currentImage.alt ?? ''}
+            nw={imageDims.naturalWidth}
+            nh={imageDims.naturalHeight}
+            cw={containerSize.width}
+            ch={containerSize.height}
+            scale={transform.scale}
+            mode={mode}
+            tx={transform.translateX}
+            ty={transform.translateY}
+            rotationDeg={transform.rotation}
+            flipH={transform.flipH}
+            flipV={transform.flipV}
+            controlsVisible={controlsVisible}
+            onPanByDelta={panByDelta}
+            onUserActivity={resetHideTimer}
+            onDragChange={setMinimapDragging}
+            ariaLabel={t.minimapNav}
+          />
+        )}
 
         {/* ── Side nav arrows ────────────────────────────────────────────────
              Rules:
@@ -586,6 +643,8 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
           showToolbarArrows={showToolbarArrows}
           zoomLocked={zoomLocked}
           strings={t}
+          zoomLabelSlotPx={zoomLabelSlotPx}
+          zoomDropdownWidthPx={zoomDropdownWidthPx}
           onToggleLock={() => setZoomLocked((v) => !v)}
           onZoomIn={() => zoomIn(fitEquivalentNativePercent)}
           onZoomOut={() => zoomOut(fitEquivalentNativePercent)}

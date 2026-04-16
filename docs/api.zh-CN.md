@@ -46,17 +46,21 @@
 
 | Prop | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | 导航箭头显示位置（见下方说明） |
+| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | 仅控制**图片两侧**箭头；见下表（有 `groups` 时工具栏上一张/下一张始终显示） |
 | `showFlip` | `boolean` | `false` | 是否显示水平/垂直翻转按钮 |
+| `showMinimap` | `boolean` | `true` | 主图超出视口时是否显示右下角导航小地图（拖动虚线框平移） |
+| `language` | `string` | `'en'` | 界面语言：内置 `en`、`zh`（按主语言子标签匹配，如 `zh-CN` → `zh`） |
 
 #### `arrows` 取值说明
 
 | 值 | 效果 |
 |----|------|
-| `'both'` | 图片两侧大箭头 **+** 工具栏内 prev/next 按钮（默认） |
-| `'side'` | 仅图片两侧箭头；工具栏显示序号（含分组切换按钮） |
-| `'toolbar'` | 仅工具栏 prev/next；不显示侧边箭头 |
-| `'none'` | 无箭头；键盘 ← → 始终可用；工具栏显示序号和分组按钮 |
+| `'both'` | 图片两侧箭头 **+** 扁平列表时工具栏上一张/下一张（默认） |
+| `'side'` | 仅两侧箭头；扁平列表时工具栏仍有上一张/下一张，**序号在二者之间** |
+| `'toolbar'` | 仅工具栏上一张/下一张；无两侧箭头 |
+| `'none'` | 无两侧箭头；键盘 ← → 仍可用；扁平列表时工具栏仍有上一张/下一张与序号 |
+
+当设置了 **`groups`** 时，**工具栏上一张/下一张始终显示**；`arrows` 只控制**两侧**箭头。
 
 #### 侧边箭头智能行为
 
@@ -95,7 +99,7 @@ interface ZoomState {
   mode: 'fit' | 'native';
   /** 当前 Native 百分比（mode=native 时有效） */
   nativePercent: number;
-  /** 当前 Fit 等效的 Native%（供 UI 显示"适应（约 xx%）"用） */
+  /** Fit 等效 Native%（适应模式下工具栏数字区显示 `xx%`；档位菜单中 Fit 行显示「适应 (约 xx%)」） */
   fitEquivalentNativePercent?: number;
 }
 ```
@@ -128,3 +132,9 @@ interface ImagePreviewRef {
   getState(): ZoomState;
 }
 ```
+
+---
+
+## 另见
+
+- [小地图视口拖动](./minimap.zh-CN.md) — WebView 指针行为与基于雅可比的 1:1 平移。

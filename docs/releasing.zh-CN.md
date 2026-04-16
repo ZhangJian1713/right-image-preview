@@ -59,13 +59,13 @@ npx tsc --noEmit    # 无 TypeScript 错误
 
 | 变更类型 | 示例 |
 |---|---|
-| Bug 修复 | `0.0.5` → `0.0.6` |
-| 向后兼容的新特性 | `0.0.6` → `0.1.0` |
+| Bug 修复 | 例如 `0.0.6` → `0.0.7` |
+| 向后兼容的新特性 | `0.0.7` → `0.1.0` |
 | 破坏性 API 变更 | `0.1.0` → `1.0.0` |
 
 ```json
 {
-  "version": "0.0.6"
+  "version": "0.0.7"
 }
 ```
 
@@ -110,7 +110,7 @@ npm publish
 
 成功后输出：
 ```
-+ right-image-preview@0.0.6
++ right-image-preview@0.0.7
 ```
 
 在 npm 上验证：[https://www.npmjs.com/package/right-image-preview](https://www.npmjs.com/package/right-image-preview)
@@ -119,8 +119,8 @@ npm publish
 
 ```bash
 git add -A
-git commit -m "chore: release v0.0.6"
-git tag v0.0.6
+git commit -m "chore: release v0.0.7"
+git tag v0.0.7
 git push origin feature-init --tags
 ```
 

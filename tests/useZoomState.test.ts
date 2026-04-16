@@ -169,10 +169,10 @@ describe('useZoomState', () => {
       expect(result.current.nativePercent).toBe(200);
     });
 
-    it('snaps to nearest stop when percent not in stops', () => {
+    it('keeps arbitrary percent from setNative (no stop snapping)', () => {
       const { result } = renderHook(() => useZoomState(DEFAULT_OPTS));
-      act(() => result.current.setNative(130)); // nearest to 100
-      expect(result.current.nativePercent).toBe(100);
+      act(() => result.current.setNative(130));
+      expect(result.current.nativePercent).toBe(130);
     });
   });
 

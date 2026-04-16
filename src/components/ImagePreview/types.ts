@@ -64,12 +64,15 @@ export type WheelStrategy =
   | 'snap';
 
 /**
- * Controls which navigation arrows are rendered.
+ * Controls **side-of-image** navigation arrows only (left/right of the picture).
  *
- * - `'both'`    — side arrows (left/right of image) **and** toolbar prev/next buttons (default).
- * - `'side'`    — side arrows only; toolbar shows counter (and group buttons) without prev/next.
+ * - `'both'`    — side arrows **and** toolbar prev/next (default).
+ * - `'side'`    — side arrows only; toolbar still has prev/next on flat lists (counter sits between them).
  * - `'toolbar'` — toolbar prev/next only; no side arrows.
- * - `'none'`    — no arrows; toolbar still shows counter and group buttons; keyboard ← → always works.
+ * - `'none'`    — no side arrows; keyboard ← → still works.
+ *
+ * When `groups` is non-empty (**folder / multi-group mode**), toolbar prev/next are **always** shown;
+ * this prop no longer hides them — only the side arrows obey the table above.
  */
 export type ArrowsConfig = 'both' | 'side' | 'toolbar' | 'none';
 
@@ -140,9 +143,8 @@ export interface ImagePreviewProps {
   showFlip?: boolean;
 
   /**
-   * Controls which arrow buttons are rendered.
-   * Default: `'both'` — side arrows and toolbar prev/next.
-   * See `ArrowsConfig` for all options.
+   * Which **side** arrow buttons to render. Toolbar prev/next in multi-group mode (`groups`) are always on.
+   * Default: `'both'`. See `ArrowsConfig`.
    */
   arrows?: ArrowsConfig;
 
@@ -153,6 +155,13 @@ export interface ImagePreviewProps {
    * Default: false.
    */
   initialZoomLocked?: boolean;
+
+  /**
+   * When true (default), show a bottom-right navigation minimap whenever the image
+   * overflows the viewport in Native zoom mode. The dashed frame tracks pan/zoom/rotate;
+   * dragging inside the frame pans the main image.
+   */
+  showMinimap?: boolean;
 
   /**
    * Custom counter renderer, similar to Ant Design's countRender.

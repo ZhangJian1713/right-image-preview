@@ -3,9 +3,9 @@
  * Add new entries here when new UI text is introduced.
  */
 export interface LocaleStrings {
-  // Zoom input / toolbar label shown when mode === 'fit'
+  /** Zoom dropdown fallback when fit-equivalent % is not yet known. */
   fit: string;
-  /** @param pct – rounded fit-equivalent percentage, e.g. 42 */
+  /** Zoom dropdown row for Fit mode — includes estimated native %. */
   fitApprox(pct: number): string;
 
   // Toolbar button tooltips / aria-labels
@@ -31,11 +31,13 @@ export interface LocaleStrings {
   toolbar: string;
   close: string;
   loadingImage: string;
+  /** Minimap landmark + drag hint */
+  minimapNav: string;
 }
 
 const EN: LocaleStrings = {
   fit:           'Fit',
-  fitApprox:     (pct) => `Fit (~${pct}%)`,
+  fitApprox:     (pct) => `Fit (${pct}%)`,
   fitToViewport: 'Fit to viewport',
   actualSize:    'Actual size (100%)',
   zoomIn:        'Zoom in',
@@ -54,6 +56,7 @@ const EN: LocaleStrings = {
   toolbar:       'Image preview toolbar',
   close:         'Close (Esc)',
   loadingImage:  'Loading image',
+  minimapNav:    'Navigation minimap. Drag the highlighted frame to pan the image.',
 };
 
 const ZH: LocaleStrings = {
@@ -77,6 +80,7 @@ const ZH: LocaleStrings = {
   toolbar:       '图片预览工具栏',
   close:         '关闭 (Esc)',
   loadingImage:  '图片加载中',
+  minimapNav:    '导航缩略图。拖动高亮虚线框可平移大图。',
 };
 
 /** Built-in locale map. Extend or override via the `language` prop. */

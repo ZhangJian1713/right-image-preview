@@ -4,6 +4,12 @@
 
 > 无 UI 库依赖的 React 图片预览组件，原生支持固定档位缩放（Lightroom 式）、多图/多组导航、翻转旋转、键盘快捷键与自动渐隐控件。
 
+### **v0.0.7** 更新摘要
+
+- **导航小地图**：主图放大超出视口时右下角出现缩略图，可拖动虚线框平移（可用 `showMinimap={false}` 关闭）。
+- **缩放显示**：中间数字区更紧凑；**适应**模式下此处只显示**百分比**；档位菜单里 Fit 一行仍为 **「适应 (约 n%)」** 便于辨认。
+- **`language`**：内置 **中/英** 界面文案切换。
+
 ---
 
 ## ✨ 特性
@@ -18,6 +24,7 @@
 | **缩放锁定** | 切换图片时可选择保留或重置缩放状态 |
 | **智能侧边箭头** | 不可导航时箭头完全隐藏；组边界自动变为跳组按钮（双箭头） |
 | **控件自动渐隐** | 3 秒无操作后控件渐隐至约 10% 透明度，任意活动立即恢复 |
+| **导航小地图** | 主图溢出视口时右下角缩略图 + 可拖视口框；可通过 `showMinimap` 关闭 |
 | **丰富的键盘快捷键** | Esc / ±方向键 / Space / PageUp-Down / Ctrl+方向键 |
 | **可访问性** | `role="dialog"` + `aria-modal`，所有按钮带 `aria-label`，焦点管理 |
 | **TypeScript 一等类型** | 完整类型导出，`forwardRef` 支持命令式 ref API |
@@ -104,7 +111,7 @@ import { ImagePreview } from './components/ImagePreview';
 | `switchImageResetTransform` | `boolean` | `false` | 切图时是否重置翻转/旋转 |
 | `fitResetPan` | `boolean` | `true` | 切回 Fit 时是否归零平移 |
 | `showFlip` | `boolean` | `false` | 是否显示翻转按钮 |
-| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | 控制导航箭头显示位置 |
+| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | 仅控制**两侧**箭头；有 `groups` 时工具栏上一张/下一张始终显示 |
 | `initialZoomLocked` | `boolean` | `false` | 初始是否锁定缩放 |
 | `closeOnMaskClick` | `boolean` | `false` | 点击遮罩区域是否关闭预览 |
 | `onClose` | `() => void` | — | 关闭回调 |
@@ -116,10 +123,12 @@ import { ImagePreview } from './components/ImagePreview';
 
 | 值 | 效果 |
 |----|------|
-| `'both'` | 图片两侧大箭头 **+** 工具栏内 prev/next 按钮（默认） |
-| `'side'` | 仅图片两侧箭头；工具栏显示序号（含分组切换按钮） |
-| `'toolbar'` | 仅工具栏 prev/next；不显示侧边箭头 |
-| `'none'` | 无箭头；键盘 ← → 始终可用；工具栏显示序号和分组按钮 |
+| `'both'` | 两侧箭头 **+** 扁平列表时工具栏上一张/下一张（默认） |
+| `'side'` | 仅两侧箭头；扁平列表时工具栏仍有上一张/下一张，序号在中间 |
+| `'toolbar'` | 仅工具栏上一张/下一张；无两侧箭头 |
+| `'none'` | 无两侧箭头；键盘 ← → 仍可用；扁平列表时工具栏仍有上一张/下一张与序号 |
+
+传入 **`groups`** 时，工具栏上一张/下一张**始终显示**；本表只约束**两侧**箭头。
 
 ### 类型定义
 
