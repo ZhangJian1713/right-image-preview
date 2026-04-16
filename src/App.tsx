@@ -389,7 +389,7 @@ export default function App() {
           打开 Chrome DevTools → Console，然后在 fit 模式下把鼠标放在图片左上角（仍在图片内）并向上滚动一格。
         </p>
         <div style={{ display: 'flex', gap: 12 }}>
-          {LARGE_GALLERY.map((img, i) => (
+          {LARGE_GALLERY.map((img) => (
             <button key={img.src} style={{ ...cardStyle, background: '#1a1d27', border: '1px solid #2a2d3a', padding: '10px 18px' }}
               onClick={() => { setDemo3Visible(true); }}>
               <span style={{ color: '#8ec7ff', fontSize: 13 }}>{img.name}</span>
