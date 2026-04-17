@@ -12,6 +12,8 @@
 |------|------|---------|-------------|
 | `src` | `string` | — | Single image URL (ignored when `images` is provided) |
 | `alt` | `string` | — | Alt text for single image |
+| `minimapSrc` | `string` | — | Single-image only: optional minimap image URL (defaults to `src`); ignored when `minimap` is set |
+| `minimap` | `React.ReactNode` | — | Single-image only: optional custom minimap content (overrides `minimapSrc`) |
 | `images` | `ImageItem[]` | — | Image array; when provided, `src`/`alt` are ignored |
 | `groups` | `ImageGroup[]` | — | Group definitions (folder mode); arrows navigate within a group, toolbar gains prev/next-group buttons |
 | `visible` | `boolean` | — | Controlled visibility |
@@ -85,6 +87,8 @@ interface ImageItem {
   src: string;
   alt?: string;
   name?: string; // filename shown in the info badge
+  minimapSrc?: string; // navigation minimap URL; defaults to src; ignored if minimap is set
+  minimap?: React.ReactNode; // custom minimap body; overrides minimapSrc
 }
 
 interface ImageGroup {

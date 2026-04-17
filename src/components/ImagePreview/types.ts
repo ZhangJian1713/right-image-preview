@@ -18,6 +18,16 @@ export interface ImageItem {
   alt?: string;
   /** Filename displayed in the info bar above the toolbar. */
   name?: string;
+  /**
+   * Optional URL for the navigation minimap (e.g. external pre-generated thumbnail).
+   * Defaults to {@link src}. Ignored when {@link minimap} is set.
+   */
+  minimapSrc?: string;
+  /**
+   * Optional custom minimap content (e.g. `<img />`). When set, replaces the default minimap image;
+   * layout still follows the main image’s natural aspect ratio, rotation, and flips. Overrides {@link minimapSrc}.
+   */
+  minimap?: React.ReactNode;
 }
 
 /**
@@ -81,6 +91,14 @@ export interface ImagePreviewProps {
   /** Single image shorthand. Ignored when `images` is provided. */
   src?: string;
   alt?: string;
+  /**
+   * Single-image minimap URL (only when using `src`, not `images`). Same as {@link ImageItem.minimapSrc}.
+   */
+  minimapSrc?: string;
+  /**
+   * Single-image custom minimap node (only when using `src`). Same as {@link ImageItem.minimap}.
+   */
+  minimap?: React.ReactNode;
   /** Multiple images. When provided, `src`/`alt` are ignored. */
   images?: ImageItem[];
   /**

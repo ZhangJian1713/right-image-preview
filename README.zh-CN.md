@@ -4,9 +4,13 @@
 
 > 无 UI 库依赖的 React 图片预览组件，原生支持固定档位缩放（Lightroom 式）、多图/多组导航、翻转旋转、键盘快捷键与自动渐隐控件。
 
-### **v0.0.12** 更新摘要
+### **v0.0.13** 更新摘要
 
-- **小地图缩略图 `<img>`：**缩小倍数写入 **`width` / `height`**（`natural × thumbS`），**`transform` 只做旋转/翻转**。旧写法（整幅自然分辨率 + **`scale(很小)`**）在 **VS Code webview** 里常合成成**纯黑**；关掉行内 style 能出图即属此类。见 **`docs/minimap.zh-CN.md`**（问题四）。
+- **小地图图源：**每条 **`ImageItem`** 可选 **`minimapSrc`**（URL）与 **`minimap`**（`React` 节点）；单图模式也可在 **`ImagePreview`** 上传同名 props。未传时仍用主图 **`src`**。
+
+### **v0.0.12**（此前）
+
+- 小地图 `<img>`：**宽高含 thumb 缩放**，**`transform` 仅旋转/翻转**（避免部分 webview 纯黑）。见 **`docs/minimap.zh-CN.md`**（问题四）。
 
 ### **v0.0.11**（此前）
 
@@ -118,7 +122,9 @@ import { ImagePreview } from './components/ImagePreview';
 | Prop | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `src` | `string` | — | 单张图片 URL（提供 `images` 时忽略） |
-| `images` | `ImageItem[]` | — | 多图列表（优先级高于 `src`） |
+| `minimapSrc` | `string` | — | 仅单图：小地图瓦片 URL（默认同主图 `src`）；设 `minimap` 时忽略 |
+| `minimap` | `React.ReactNode` | — | 仅单图：自定义小地图（覆盖 `minimapSrc`） |
+| `images` | `ImageItem[]` | — | 多图列表（优先级高于 `src`）；每项可带 `minimapSrc` / `minimap` |
 | `groups` | `ImageGroup[]` | — | 图片分组定义（文件夹/相册） |
 | `visible` | `boolean` | `true` | 控制预览显示/隐藏 |
 | `defaultIndex` | `number` | `0` | 初始图片索引 |
@@ -160,6 +166,8 @@ interface ImageItem {
   src: string;
   alt?: string;
   name?: string; // 工具栏信息栏显示的文件名
+  minimapSrc?: string;
+  minimap?: React.ReactNode;
 }
 
 interface ImageGroup {

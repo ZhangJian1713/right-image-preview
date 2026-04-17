@@ -4,9 +4,13 @@
 
 > A dependency-free React image preview component with Lightroom-style discrete zoom stops, multi-group navigation, flip/rotate, keyboard shortcuts, and auto-fading controls.
 
-### What’s new in **v0.0.12**
+### What’s new in **v0.0.13**
 
-- **Minimap thumbnail `<img>`:** scale is **baked into `width` / `height`** (`natural × thumbS`); **`transform` only rotates / flips**. The old pattern (full natural pixel box + **`transform: scale(tiny)`**) often rendered **solid black** in VS Code’s webview; clearing styles “fixed” it because the layer stopped being huge. See **`docs/minimap.md`** (“Problem 4”).
+- **Minimap source:** optional **`minimapSrc`** (URL) and **`minimap`** (`ReactNode`) on each **`ImageItem`**, or the same props when using single-**`src`** mode. Defaults to the main image **`src`** when omitted.
+
+### Earlier **v0.0.12**
+
+- **Minimap thumbnail `<img>`:** scale is **baked into `width` / `height`**; **`transform` only rotates / flips** (fixes solid black in some webviews). See **`docs/minimap.md`** (“Problem 4”).
 
 ### Earlier **v0.0.11**
 
@@ -118,7 +122,9 @@ import { ImagePreview } from './components/ImagePreview';
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `src` | `string` | — | Single image URL (ignored when `images` is provided) |
-| `images` | `ImageItem[]` | — | Image list (takes precedence over `src`) |
+| `minimapSrc` | `string` | — | Single-image only: minimap tile URL (defaults to main `src`); ignored if `minimap` is set |
+| `minimap` | `React.ReactNode` | — | Single-image only: custom minimap content (overrides `minimapSrc`) |
+| `images` | `ImageItem[]` | — | Image list (takes precedence over `src`); per-item `minimapSrc` / `minimap` supported |
 | `groups` | `ImageGroup[]` | — | Group definitions for folder-style navigation |
 | `visible` | `boolean` | `true` | Controls visibility |
 | `defaultIndex` | `number` | `0` | Initial image index |
@@ -160,6 +166,8 @@ interface ImageItem {
   src: string;
   alt?: string;
   name?: string; // filename shown in the info badge
+  minimapSrc?: string;
+  minimap?: React.ReactNode;
 }
 
 interface ImageGroup {

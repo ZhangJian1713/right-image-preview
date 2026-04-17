@@ -64,6 +64,7 @@
 - [x] **v0.0.10**: minimap dim uses `evenodd` path instead of SVG `mask` over `<img>` (fixes black tile in some WebViews)
 - [x] **v0.0.11**: axis-aligned minimap viewport uses **four `<rect>`** dim strips; rotated viewports keep `evenodd` path
 - [x] **v0.0.12**: minimap `<img>` uses **width/height × thumbS**, not **transform: scale** on full natural pixels (fixes black tile in some WebViews)
+- [x] **v0.0.13**: `ImageItem.minimapSrc` / `minimap` (+ same props for single-`src` mode): optional thumbnail URL or custom React node; default remains main `src`
 
 ### Flip & Rotate
 - [x] Horizontal flip, vertical flip

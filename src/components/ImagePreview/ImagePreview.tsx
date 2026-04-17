@@ -31,7 +31,16 @@ const DEFAULT_STOPS: NativePercent[] = [10, 25, 50, 75, 100, 150, 200];
 
 function normaliseImages(props: ImagePreviewProps): ImageItem[] {
   if (props.images && props.images.length > 0) return props.images;
-  if (props.src) return [{ src: props.src, alt: props.alt }];
+  if (props.src) {
+    return [
+      {
+        src: props.src,
+        alt: props.alt,
+        minimapSrc: props.minimapSrc,
+        minimap: props.minimap,
+      },
+    ];
+  }
   return [];
 }
 
@@ -652,7 +661,8 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
 
         {showMinimap && imageDims && containerSize && (
           <Minimap
-            imageSrc={currentImage.src}
+            imageSrc={currentImage.minimapSrc ?? currentImage.src}
+            thumbnail={currentImage.minimap}
             imageAlt={currentImage.alt ?? ''}
             nw={imageDims.naturalWidth}
             nh={imageDims.naturalHeight}

@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import type { ZoomMode } from './types';
 import {
   clampNatural,
@@ -69,7 +70,13 @@ function releasePointerCaptureIfActive(el: globalThis.Element, pointerId: number
 }
 
 export interface MinimapProps {
+  /**
+   * URL for the default minimap `<img>`. Parent should pass `minimapSrc ?? main src`.
+   * Unused when {@link thumbnail} is set.
+   */
   imageSrc: string;
+  /** Custom minimap content; replaces the default `<img>`. */
+  thumbnail?: ReactNode;
   imageAlt: string;
   nw: number;
   nh: number;
@@ -106,6 +113,7 @@ export interface MinimapProps {
  */
 export function Minimap({
   imageSrc,
+  thumbnail,
   imageAlt,
   nw,
   nh,
@@ -377,11 +385,7 @@ export function Minimap({
           background: 'rgba(0,0,0,0.35)',
         }}
       >
-        <img
-          src={imageSrc}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
+        <div
           style={{
             position: 'absolute',
             left: (INNER - thumbW) / 2,
@@ -391,8 +395,37 @@ export function Minimap({
             transform: thumbTransform,
             transformOrigin: 'center center',
             pointerEvents: 'none',
+            overflow: 'hidden',
           }}
-        />
+        >
+          {thumbnail != null ? (
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {thumbnail}
+            </div>
+          ) : (
+            <img
+              src={imageSrc}
+              alt=""
+              aria-hidden="true"
+              draggable={false}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'fill',
+                display: 'block',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+        </div>
         <svg
           width={INNER}
           height={INNER}

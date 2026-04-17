@@ -12,6 +12,8 @@
 |------|------|--------|------|
 | `src` | `string` | — | 单张图片 URL（`images` 优先） |
 | `alt` | `string` | — | 单张图片 alt |
+| `minimapSrc` | `string` | — | 仅单图：小地图图片 URL（默认同 `src`）；若设 `minimap` 则忽略 |
+| `minimap` | `React.ReactNode` | — | 仅单图：自定义小地图内容（覆盖 `minimapSrc`） |
 | `images` | `ImageItem[]` | — | 多图数组，提供后 `src`/`alt` 被忽略 |
 | `groups` | `ImageGroup[]` | — | 图片分组定义（文件夹模式）；提供后左右箭头在组内导航，工具栏出现上一组/下一组按钮 |
 | `visible` | `boolean` | — | 受控可见性 |
@@ -85,6 +87,8 @@ interface ImageItem {
   src: string;
   alt?: string;
   name?: string; // 工具栏信息栏显示的文件名
+  minimapSrc?: string; // 导航小地图 URL；默认 src；若设 minimap 则忽略
+  minimap?: React.ReactNode; // 自定义小地图；覆盖 minimapSrc
 }
 
 interface ImageGroup {
