@@ -60,6 +60,14 @@ Dragging the **main** picture uses **`MAIN_DRAG_MIN_VIEWPORT_COVERAGE`** (defaul
 
 **Fix (two tiers):** (1) For an **axis-aligned** viewport quad (typical at **0°** rotation), draw **four opaque `<rect>` strips** (top / bottom / left / right of the viewport) — no masks, no compound paths. (2) If the quad is **rotated**, fall back to a single **`<path fill-rule="evenodd">`** (outer rect minus inner quad), which is reliable in normal desktop Chromium.
 
+## Problem 4: Thumbnail `<img>` is solid black (WebView) — styles look “correct”
+
+**Symptom:** The minimap tile is black for every image; in DevTools, **disabling all inline styles** on the thumbnail `<img>` makes the picture appear (viewport frame may be wrong).
+
+**Typical broken styles:** `width` / `height` set to **full natural resolution** (e.g. 3000×4000), huge negative `left` / `top`, and **`transform: scale(~0.03)`** to shrink. That forces a **giant composited layer** scaled down; embedded Chromium (VS Code webview) often **fails to composite** it and shows **black**, while ordinary Chrome may look fine.
+
+**Fix:** **Bake** the minimap scale into **`width` / `height`** (`natural × thumbS`) and **center** with modest offsets. Use **`transform` only for `rotate` / flip**, not for the uniform thumbnail scale.
+
 ## Related files
 
 - `src/components/ImagePreview/Minimap.tsx` — UI, pointer session lifecycle.

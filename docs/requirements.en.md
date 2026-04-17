@@ -63,6 +63,7 @@
 - [x] **v0.0.9**: peer **React / React DOM ≥ 17**; `flushSync` compatibility shim
 - [x] **v0.0.10**: minimap dim uses `evenodd` path instead of SVG `mask` over `<img>` (fixes black tile in some WebViews)
 - [x] **v0.0.11**: axis-aligned minimap viewport uses **four `<rect>`** dim strips; rotated viewports keep `evenodd` path
+- [x] **v0.0.12**: minimap `<img>` uses **width/height × thumbS**, not **transform: scale** on full natural pixels (fixes black tile in some WebViews)
 
 ### Flip & Rotate
 - [x] Horizontal flip, vertical flip

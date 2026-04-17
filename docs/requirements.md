@@ -63,6 +63,7 @@
 - [x] **v0.0.9**：对等依赖 **React / React DOM ≥ 17**；`flushSync` 兼容层
 - [x] **v0.0.10**：小地图压暗改为 `evenodd` path，避免 WebView 下 `mask`+`<img>` 纯黑
 - [x] **v0.0.11**：轴对齐视口用小地图 **4 条 rect** 压暗；旋转时仍用 evenodd path
+- [x] **v0.0.12**：小地图 `<img>` 用 **width/height × thumbS**，不用 **transform scale** 压自然像素（避免 WebView 黑块）
 
 ### 翻转与旋转
 - [x] 水平翻转、垂直翻转

@@ -333,7 +333,14 @@ export function Minimap({
 
   if (!overflow || nw <= 0 || nh <= 0 || cw <= 0 || ch <= 0) return null;
 
-  const thumbTransform = `rotate(${rotationDeg}deg)${flipH ? ' scaleX(-1)' : ''}${flipV ? ' scaleY(-1)' : ''} scale(${thumbS})`;
+  /**
+   * Bake `thumbS` into width/height instead of `transform: scale(thumbS)` on full natural pixels.
+   * VS Code / embedded Chromium often composites a **multi‑megapixel layer** + tiny scale as solid black;
+   * removing inline styles “fixes” it because the box drops to intrinsic size.
+   */
+  const thumbW = nw * thumbS;
+  const thumbH = nh * thumbS;
+  const thumbTransform = `rotate(${rotationDeg}deg)${flipH ? ' scaleX(-1)' : ''}${flipV ? ' scaleY(-1)' : ''}`;
 
   return (
     <div
@@ -377,10 +384,10 @@ export function Minimap({
           draggable={false}
           style={{
             position: 'absolute',
-            left: (INNER - nw) / 2,
-            top: (INNER - nh) / 2,
-            width: nw,
-            height: nh,
+            left: (INNER - thumbW) / 2,
+            top: (INNER - thumbH) / 2,
+            width: thumbW,
+            height: thumbH,
             transform: thumbTransform,
             transformOrigin: 'center center',
             pointerEvents: 'none',
