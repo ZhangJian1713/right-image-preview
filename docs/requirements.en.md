@@ -62,6 +62,7 @@
 - [x] **v0.0.8**: default max stop is **200%**; higher ratios via custom **`stops`**
 - [x] **v0.0.9**: peer **React / React DOM ≥ 17**; `flushSync` compatibility shim
 - [x] **v0.0.10**: minimap dim uses `evenodd` path instead of SVG `mask` over `<img>` (fixes black tile in some WebViews)
+- [x] **v0.0.11**: axis-aligned minimap viewport uses **four `<rect>`** dim strips; rotated viewports keep `evenodd` path
 
 ### Flip & Rotate
 - [x] Horizontal flip, vertical flip

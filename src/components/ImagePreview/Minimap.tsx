@@ -17,6 +17,28 @@ const BORDER = 2;
 const MINIMAP_RIGHT = 10;
 const MINIMAP_BOTTOM = 22;
 
+const DIM_OVERLAY_FILL = 'rgba(0,0,0,0.52)';
+
+/** When the viewport quad is axis-aligned, dim with 4 `<rect>`s (no mask / evenodd). Some WebViews mis-composite those over `<img>`. */
+function axisAlignedViewportInset(
+  poly: [number, number][],
+  tol = 0.75,
+): { minX: number; maxX: number; minY: number; maxY: number } | null {
+  if (poly.length !== 4) return null;
+  const xs = poly.map((p) => p[0]);
+  const ys = poly.map((p) => p[1]);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const near = (a: number, b: number) => Math.abs(a - b) <= tol;
+  const onRectCorner = (x: number, y: number) =>
+    (near(x, minX) || near(x, maxX)) && (near(y, minY) || near(y, maxY));
+  if (!poly.every(([x, y]) => onRectCorner(x, y))) return null;
+  if (maxX - minX < 0.5 || maxY - minY < 0.5) return null;
+  return { minX, maxX, minY, maxY };
+}
+
 type PointerCapableElement = globalThis.Element & {
   setPointerCapture?: (pointerId: number) => void;
   hasPointerCapture?: (pointerId: number) => boolean;
@@ -134,11 +156,12 @@ export function Minimap({
     return viewportMinimapPoly.map(([mx, my]) => `${mx.toFixed(2)},${my.toFixed(2)}`).join(' ');
   }, [viewportMinimapPoly]);
 
-  /**
-   * Dim outside the viewport frame using fill-rule="evenodd" (outer rect − inner quad).
-   * Avoids SVG `<mask>` + `url(#id)`, which can composite incorrectly over `<img>` in some
-   * embedded Chromium hosts (e.g. VS Code webview) and appear as a solid black tile.
-   */
+  /** Axis-aligned inset → 4 rects; else evenodd path (rotated viewport on desktop). */
+  const dimAxisInset = useMemo(
+    () => axisAlignedViewportInset(viewportMinimapPoly),
+    [viewportMinimapPoly],
+  );
+
   const dimOverlayPathD = useMemo(() => {
     const outer = `M 0 0 L ${INNER} 0 L ${INNER} ${INNER} L 0 ${INNER} Z`;
     if (viewportMinimapPoly.length < 3) return outer;
@@ -379,12 +402,49 @@ export function Minimap({
               onPointerDown={onBackgroundPointerDown}
             />
           )}
-          <path
-            d={dimOverlayPathD}
-            fill="rgba(0,0,0,0.52)"
-            fillRule="evenodd"
-            style={{ pointerEvents: 'none' }}
-          />
+          {dimAxisInset ? (
+            <>
+              <rect
+                x={0}
+                y={0}
+                width={INNER}
+                height={dimAxisInset.minY}
+                fill={DIM_OVERLAY_FILL}
+                style={{ pointerEvents: 'none' }}
+              />
+              <rect
+                x={0}
+                y={dimAxisInset.maxY}
+                width={INNER}
+                height={INNER - dimAxisInset.maxY}
+                fill={DIM_OVERLAY_FILL}
+                style={{ pointerEvents: 'none' }}
+              />
+              <rect
+                x={0}
+                y={dimAxisInset.minY}
+                width={dimAxisInset.minX}
+                height={dimAxisInset.maxY - dimAxisInset.minY}
+                fill={DIM_OVERLAY_FILL}
+                style={{ pointerEvents: 'none' }}
+              />
+              <rect
+                x={dimAxisInset.maxX}
+                y={dimAxisInset.minY}
+                width={INNER - dimAxisInset.maxX}
+                height={dimAxisInset.maxY - dimAxisInset.minY}
+                fill={DIM_OVERLAY_FILL}
+                style={{ pointerEvents: 'none' }}
+              />
+            </>
+          ) : (
+            <path
+              d={dimOverlayPathD}
+              fill={DIM_OVERLAY_FILL}
+              fillRule="evenodd"
+              style={{ pointerEvents: 'none' }}
+            />
+          )}
           {/* Viewport frame: thin solid light stroke (Lightroom-style), single interactive layer */}
           <polygon
             points={polyPts}

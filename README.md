@@ -4,9 +4,13 @@
 
 > A dependency-free React image preview component with Lightroom-style discrete zoom stops, multi-group navigation, flip/rotate, keyboard shortcuts, and auto-fading controls.
 
-### What’s new in **v0.0.10**
+### What’s new in **v0.0.11**
 
-- **Minimap / VS Code webview:** the dimmed “outside viewport” overlay no longer uses SVG **`<mask>` + `url(#id)`** over the thumbnail `<img>`. Some embedded Chromium hosts showed a **solid black** tile; the overlay is now a single **`fill-rule="evenodd"` path** (outer rect minus viewport quad). See **`docs/minimap.md`** (“Problem 3”).
+- **Minimap / embedded WebView:** when the viewport frame is **axis-aligned** (usual at **0°** rotation), the dimming overlay uses **four `<rect>` strips** instead of **`fill-rule="evenodd"`** paths — some hosts still mis-composite compound paths over the thumbnail `<img>`. Rotated viewports keep the evenodd path. See **`docs/minimap.md`** (“Problem 3”).
+
+### Earlier **v0.0.10**
+
+- Minimap: dropped **`<mask>` + `url(#id)`**; introduced evenodd **`<path>`** for dimming (fixed some hosts; not all).
 
 ### Earlier **v0.0.9**
 

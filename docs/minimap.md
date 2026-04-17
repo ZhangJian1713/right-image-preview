@@ -58,7 +58,7 @@ Dragging the **main** picture uses **`MAIN_DRAG_MIN_VIEWPORT_COVERAGE`** (defaul
 
 **Cause:** The dimmed “outside the viewport” overlay used an SVG **`<mask>`** plus **`mask: url(#id)`** on a `<rect>` stacked over an HTML **`<img>`**. Some embedded Chromium surfaces (notably **VS Code’s webview**) composite that stack incorrectly, so the masked layer can occlude the thumbnail entirely.
 
-**Fix:** Draw the dimming as a single **`<path fill-rule="evenodd">`**: outer minimap rectangle minus the viewport quadrilateral. No `mask` / `url(#…)` reference is involved, so the `<img>` shows through the hole reliably.
+**Fix (two tiers):** (1) For an **axis-aligned** viewport quad (typical at **0°** rotation), draw **four opaque `<rect>` strips** (top / bottom / left / right of the viewport) — no masks, no compound paths. (2) If the quad is **rotated**, fall back to a single **`<path fill-rule="evenodd">`** (outer rect minus inner quad), which is reliable in normal desktop Chromium.
 
 ## Related files
 
