@@ -43,6 +43,14 @@
 
 **直接拖动大图**使用 **`MAIN_DRAG_MIN_VIEWPORT_COVERAGE`**（默认每轴 **50%**），更松。
 
+## 问题三：小地图缩略图整块发黑（嵌入式 WebView）
+
+**现象：** 主图正常，但右下角导航缩略图里只有黑底（有时白框还在）。
+
+**原因：** 曾在压暗「视口外」区域时使用 SVG **`<mask>`** + **`url(#id)`** 作用在叠在 HTML **`<img>`** 上的 `<rect>`。部分嵌入式 Chromium（尤其是 **VS Code webview**）对这种与 `<img>` 的合成处理有缺陷，遮罩层可能把整张缩略图挡死。
+
+**做法：** 改用 **`fill-rule="evenodd"`** 的单条 **`<path>`**：外矩形减去视口四边形，不再使用 `mask` / `url(#…)`，镂空处可稳定透出下层 `<img>`。
+
 ## 相关文件
 
 - `src/components/ImagePreview/Minimap.tsx` — 视图与指针会话生命周期。

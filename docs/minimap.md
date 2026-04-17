@@ -52,6 +52,14 @@ After each minimap-driven `panByDelta`, **`useImageTransform`** clamps translate
 
 Dragging the **main** picture uses **`MAIN_DRAG_MIN_VIEWPORT_COVERAGE`** (default **50%** per axis), looser than the minimap path.
 
+## Problem 3: Minimap thumbnail is solid black (embedded WebView)
+
+**Symptom:** The main image renders, but the small navigator tile shows only black (viewport frame may still be visible).
+
+**Cause:** The dimmed “outside the viewport” overlay used an SVG **`<mask>`** plus **`mask: url(#id)`** on a `<rect>` stacked over an HTML **`<img>`**. Some embedded Chromium surfaces (notably **VS Code’s webview**) composite that stack incorrectly, so the masked layer can occlude the thumbnail entirely.
+
+**Fix:** Draw the dimming as a single **`<path fill-rule="evenodd">`**: outer minimap rectangle minus the viewport quadrilateral. No `mask` / `url(#…)` reference is involved, so the `<img>` shows through the hole reliably.
+
 ## Related files
 
 - `src/components/ImagePreview/Minimap.tsx` — UI, pointer session lifecycle.

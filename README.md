@@ -4,9 +4,13 @@
 
 > A dependency-free React image preview component with Lightroom-style discrete zoom stops, multi-group navigation, flip/rotate, keyboard shortcuts, and auto-fading controls.
 
-### What’s new in **v0.0.9**
+### What’s new in **v0.0.10**
 
-- **React 17+** supported: peer **`react` / `react-dom` ≥ 17** (was ≥ 18). Minimap uses a **`useId` fallback** when `useId` is missing; wheel zoom uses **`flushSync` fallback** when `react-dom` has no `flushSync`.
+- **Minimap / VS Code webview:** the dimmed “outside viewport” overlay no longer uses SVG **`<mask>` + `url(#id)`** over the thumbnail `<img>`. Some embedded Chromium hosts showed a **solid black** tile; the overlay is now a single **`fill-rule="evenodd"` path** (outer rect minus viewport quad). See **`docs/minimap.md`** (“Problem 3”).
+
+### Earlier **v0.0.9**
+
+- **React 17+** supported: peer **`react` / `react-dom` ≥ 17** (was ≥ 18). Wheel zoom uses **`flushSync` fallback** when `react-dom` has no `flushSync`.
 - **React 18+** is still recommended for identical multi-step wheel-zoom batching.
 
 ### Earlier **v0.0.8**

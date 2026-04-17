@@ -1,5 +1,4 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useDomId } from './useDomId';
 import type { ZoomMode } from './types';
 import {
   clampNatural,
@@ -104,8 +103,6 @@ export function Minimap({
   onDragChange,
   ariaLabel,
 }: MinimapProps) {
-  const maskId = useDomId('minimap-mask');
-
   const mainP: MinimapTransformParams = useMemo(
     () => ({ cw, ch, nw, nh, scale, tx, ty, rotationDeg, flipH, flipV }),
     [cw, ch, nw, nh, scale, tx, ty, rotationDeg, flipH, flipV],
@@ -135,6 +132,20 @@ export function Minimap({
 
   const polyPts = useMemo(() => {
     return viewportMinimapPoly.map(([mx, my]) => `${mx.toFixed(2)},${my.toFixed(2)}`).join(' ');
+  }, [viewportMinimapPoly]);
+
+  /**
+   * Dim outside the viewport frame using fill-rule="evenodd" (outer rect − inner quad).
+   * Avoids SVG `<mask>` + `url(#id)`, which can composite incorrectly over `<img>` in some
+   * embedded Chromium hosts (e.g. VS Code webview) and appear as a solid black tile.
+   */
+  const dimOverlayPathD = useMemo(() => {
+    const outer = `M 0 0 L ${INNER} 0 L ${INNER} ${INNER} L 0 ${INNER} Z`;
+    if (viewportMinimapPoly.length < 3) return outer;
+    const hole = `${viewportMinimapPoly
+      .map(([mx, my]) => `${mx.toFixed(2)} ${my.toFixed(2)}`)
+      .reduce((cmd, pair, i) => (i === 0 ? `M ${pair}` : `${cmd} L ${pair}`), '')} Z`;
+    return `${outer} ${hole}`;
   }, [viewportMinimapPoly]);
 
   /** Fresh `tx`/`ty` for each `pointermove` (updated in layout after `panByDelta`). */
@@ -358,12 +369,6 @@ export function Minimap({
           style={{ position: 'absolute', left: 0, top: 0, display: 'block' }}
           aria-hidden="true"
         >
-          <defs>
-            <mask id={maskId}>
-              <rect width={INNER} height={INNER} fill="white" />
-              <polygon points={polyPts} fill="black" />
-            </mask>
-          </defs>
           {/* Hit target below dimmed overlay + viewport polygon: click outside the frame to recenter. */}
           {onJumpToNatural && (
             <rect
@@ -374,7 +379,12 @@ export function Minimap({
               onPointerDown={onBackgroundPointerDown}
             />
           )}
-          <rect width={INNER} height={INNER} fill="rgba(0,0,0,0.52)" mask={`url(#${maskId})`} style={{ pointerEvents: 'none' }} />
+          <path
+            d={dimOverlayPathD}
+            fill="rgba(0,0,0,0.52)"
+            fillRule="evenodd"
+            style={{ pointerEvents: 'none' }}
+          />
           {/* Viewport frame: thin solid light stroke (Lightroom-style), single interactive layer */}
           <polygon
             points={polyPts}
