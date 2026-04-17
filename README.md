@@ -4,12 +4,16 @@
 
 > A dependency-free React image preview component with Lightroom-style discrete zoom stops, multi-group navigation, flip/rotate, keyboard shortcuts, and auto-fading controls.
 
-### What’s new in **v0.0.8**
+### What’s new in **v0.0.9**
 
-- **Default zoom stops** now top out at **200%** (high stops looked soft in preview); pass a custom **`stops`** array if you need higher ratios.
-- **Toolbar zoom field** clamps typed values to the **maximum configured stop** (defaults to 200%); imperative **`ref.setNative(...)`** is not clamped.
-- **GitHub Pages demo**: **EN / 中文** language toggle (top-right).
-- **Wheel zoom** remains tuned for mice that report small pixel deltas per detent.
+- **React 17+** supported: peer **`react` / `react-dom` ≥ 17** (was ≥ 18). Minimap uses a **`useId` fallback** when `useId` is missing; wheel zoom uses **`flushSync` fallback** when `react-dom` has no `flushSync`.
+- **React 18+** is still recommended for identical multi-step wheel-zoom batching.
+
+### Earlier **v0.0.8**
+
+- **Default zoom stops** top out at **200%**; custom **`stops`** for higher ratios.
+- **Toolbar zoom field** clamps to max stop; **`ref.setNative`** not clamped.
+- **GitHub Pages demo**: **EN / 中文** toggle; **wheel** tuning for small-delta mice.
 
 ### Earlier **v0.0.7**
 
@@ -34,6 +38,7 @@
 | **Accessibility** | `role="dialog"` + `aria-modal`, all buttons have `aria-label`, focus is trapped |
 | **TypeScript first** | Full type exports, `forwardRef` imperative ref API |
 | **Zero production dependencies** | Only requires React |
+| **React 17+** | Peer `react` / `react-dom` ≥ 17; React 18+ still recommended (native `flushSync` for fastest multi-step wheel zoom) |
 
 ---
 

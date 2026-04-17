@@ -60,6 +60,7 @@
 - [x] Added 5%, 10%, 800%, 1600% stops (historical)
 - [x] Removed 5% and 1600%; default set later spanned up to 800%
 - [x] **v0.0.8**: default max stop is **200%**; higher ratios via custom **`stops`**
+- [x] **v0.0.9**: peer **React / React DOM ≥ 17**; `useId` / `flushSync` compatibility shims
 
 ### Flip & Rotate
 - [x] Horizontal flip, vertical flip

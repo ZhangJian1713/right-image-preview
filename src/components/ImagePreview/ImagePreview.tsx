@@ -8,9 +8,9 @@ import {
   useRef,
   useState,
 } from 'react';
-import { flushSync } from 'react-dom';
 import { Minimap } from './Minimap';
 import { Toolbar } from './Toolbar';
+import { runFlushSync } from './flushSyncCompat';
 import {
   toolbarZoomDropdownWidthPx,
   toolbarZoomLabelSlotPx,
@@ -294,7 +294,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
               ? (fitEquivalentNativePercent ?? peek.percent) / 100
               : peek.percent / 100;
 
-          flushSync(() => {
+          runFlushSync(() => {
             zoomAnchorTranslate(s1, s2, cx, cy);
             pendingScaleRef.current = s2;
             if (directionIn) zoomIn(fitEquivalentNativePercent);

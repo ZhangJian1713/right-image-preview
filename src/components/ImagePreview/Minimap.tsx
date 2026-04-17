@@ -1,4 +1,5 @@
-import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useDomId } from './useDomId';
 import type { ZoomMode } from './types';
 import {
   clampNatural,
@@ -103,7 +104,7 @@ export function Minimap({
   onDragChange,
   ariaLabel,
 }: MinimapProps) {
-  const maskId = useId().replace(/:/g, '_');
+  const maskId = useDomId('minimap-mask');
 
   const mainP: MinimapTransformParams = useMemo(
     () => ({ cw, ch, nw, nh, scale, tx, ty, rotationDeg, flipH, flipV }),
