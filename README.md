@@ -287,6 +287,17 @@ fitEquivalentNativePercent   = fitScale × 100  (used to display "Fit ≈ xx%")
 
 ---
 
+## Versioning (pre-1.0)
+
+While the package is **0.x**, releases follow this convention:
+
+- **Patch** — New or updated **built-in** copy (e.g. extra keys on **`LocaleStrings`**, tooltip text, `locales/*.ts` tweaks), internal-only prop changes on non-exported components, bug fixes, and other changes that do **not** alter the **documented public API** of **`ImagePreview`** (props, ref, and exported helpers/types used as documented).
+- **Minor** — New **documented** props, ref methods, exported APIs, or behavior changes that integrators are expected to react to.
+
+Custom implementations that satisfy **`LocaleStrings`** in TypeScript may need to add fields when new strings are introduced; that is treated as a **patch** bump, not a minor, because typical usage is **`language`** + built-in **`resolveStrings`**.
+
+---
+
 ## License
 
 MIT © [ZhangJian](https://github.com/ZhangJian1713)
