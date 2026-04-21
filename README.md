@@ -4,37 +4,6 @@
 
 > A dependency-free React image preview component with Lightroom-style discrete zoom stops, multi-group navigation, flip/rotate, keyboard shortcuts, and auto-fading controls.
 
-### What’s new in **v0.0.13**
-
-- **Minimap source:** optional **`minimapSrc`** (URL) and **`minimap`** (`ReactNode`) on each **`ImageItem`**, or the same props when using single-**`src`** mode. Defaults to the main image **`src`** when omitted.
-
-### Earlier **v0.0.12**
-
-- **Minimap thumbnail `<img>`:** scale is **baked into `width` / `height`**; **`transform` only rotates / flips** (fixes solid black in some webviews). See **`docs/minimap.md`** (“Problem 4”).
-
-### Earlier **v0.0.11**
-
-- Axis-aligned minimap dim uses **four `<rect>`** strips; rotated keeps evenodd path (**Problem 3**).
-
-### Earlier **v0.0.10**
-
-- Minimap: dropped **`<mask>` + `url(#id)`**; introduced evenodd **`<path>`** for dimming (fixed some hosts; not all).
-
-### Earlier **v0.0.9**
-
-- **React 17+** supported: peer **`react` / `react-dom` ≥ 17** (was ≥ 18). Wheel zoom uses **`flushSync` fallback** when `react-dom` has no `flushSync`.
-- **React 18+** is still recommended for identical multi-step wheel-zoom batching.
-
-### Earlier **v0.0.8**
-
-- **Default zoom stops** top out at **200%**; custom **`stops`** for higher ratios.
-- **Toolbar zoom field** clamps to max stop; **`ref.setNative`** not clamped.
-- **GitHub Pages demo**: **EN / 中文** toggle; **wheel** tuning for small-delta mice.
-
-### Earlier **v0.0.7**
-
-- Navigation **minimap**, compact zoom field in Fit mode, and **`language`** prop (EN/zh UI).
-
 ---
 
 ## ✨ Features
@@ -50,6 +19,8 @@
 | **Smart side arrows** | Hidden when no navigation is possible; replaced by a group-jump button (double chevron) at group boundaries |
 | **Auto-fade controls** | All controls fade to ~10 % opacity after 3 s of inactivity; any activity instantly restores them |
 | **Navigation minimap** | Corner thumbnail + draggable viewport frame when the image overflows; optional via `showMinimap` |
+| **Minimap source per item** | Each **`ImageItem`** (and single-**`src`** mode) can set **`minimapSrc`** / **`minimap`** so the map uses a lighter tile or custom node; defaults to the main **`src`** |
+| **Localized toolbar** | **`language`** prop with built-in **English** and **Simplified Chinese** (`en`, `zh`, `zh-CN`, …) |
 | **Rich keyboard shortcuts** | Esc · +/- · arrow keys · Space · PageUp/Down · Ctrl+arrow |
 | **Accessibility** | `role="dialog"` + `aria-modal`, all buttons have `aria-label`, focus is trapped |
 | **TypeScript first** | Full type exports, `forwardRef` imperative ref API |
@@ -60,11 +31,19 @@
 
 ## Quick Start
 
+**In your app**
+
+```bash
+npm install right-image-preview
+```
+
+**This repository** (demos, tests, contributing)
+
 ```bash
 npm install
-npm run dev       # dev server with live demos
-npm test          # run unit & integration tests
-npm run build     # production build
+npm run dev       # demo at http://localhost:5173
+npm test
+npm run build     # Vite production build of the demo
 ```
 
 Open `http://localhost:5173` for the demo page (**EN / 中文** toggle in the top-right):
@@ -77,7 +56,7 @@ Open `http://localhost:5173` for the demo page (**EN / 中文** toggle in the to
 ## Basic Usage
 
 ```tsx
-import { ImagePreview } from './components/ImagePreview';
+import { ImagePreview } from 'right-image-preview';
 
 // Single image
 <ImagePreview
@@ -268,7 +247,8 @@ src/
     Toolbar.tsx           # Bottom toolbar (zoom / rotate / flip / nav / filename)
     ImagePreview.tsx      # Main component (overlay / keyboard / wheel / double-click / auto-fade)
     index.ts              # Public exports
-  App.tsx                 # Demo page
+  App.tsx                 # Demo shell
+  demos/                  # Demo sections + demo-only copy (not published to npm)
 docs/
   api.md                  # Full API reference (English)
   api.zh-CN.md            # Full API reference (中文)

@@ -4,37 +4,6 @@
 
 > 无 UI 库依赖的 React 图片预览组件，原生支持固定档位缩放（Lightroom 式）、多图/多组导航、翻转旋转、键盘快捷键与自动渐隐控件。
 
-### **v0.0.13** 更新摘要
-
-- **小地图图源：**每条 **`ImageItem`** 可选 **`minimapSrc`**（URL）与 **`minimap`**（`React` 节点）；单图模式也可在 **`ImagePreview`** 上传同名 props。未传时仍用主图 **`src`**。
-
-### **v0.0.12**（此前）
-
-- 小地图 `<img>`：**宽高含 thumb 缩放**，**`transform` 仅旋转/翻转**（避免部分 webview 纯黑）。见 **`docs/minimap.zh-CN.md`**（问题四）。
-
-### **v0.0.11**（此前）
-
-- 轴对齐压暗用 **四条 `<rect>`**；旋转仍 evenodd path（**问题三**）。
-
-### **v0.0.10**（此前）
-
-- 去掉 **`<mask>` + `url(#id)`**，改用 evenodd **`<path>`**（未覆盖全部 WebView）。
-
-### **v0.0.9**（此前）
-
-- **支持 React 17+**：对等依赖 **`react` / `react-dom` ≥ 17**；滚轮多档在缺少 **`flushSync`** 时由兼容层同步执行。
-- **仍推荐 React 18+**。
-
-### **v0.0.8**（此前）
-
-- **默认缩放档位**最高 **200%**；**`stops`** 可自定义更高比例。
-- **工具栏缩放输入**限制在最大档位；**`ref.setNative`** 不截断。
-- **GitHub Pages 演示**：**EN / 中文**；小增量滚轮优化。
-
-### **v0.0.7**（此前）
-
-- 导航**小地图**、适应模式下紧凑缩放显示、**`language`** 中英 UI。
-
 ---
 
 ## ✨ 特性
@@ -50,6 +19,8 @@
 | **智能侧边箭头** | 不可导航时箭头完全隐藏；组边界自动变为跳组按钮（双箭头） |
 | **控件自动渐隐** | 3 秒无操作后控件渐隐至约 10% 透明度，任意活动立即恢复 |
 | **导航小地图** | 主图溢出视口时右下角缩略图 + 可拖视口框；可通过 `showMinimap` 关闭 |
+| **小地图独立图源** | 每条 **`ImageItem`**（及单图 **`src`** 模式）可设 **`minimapSrc`** / **`minimap`**，用小缩略图或自定义节点；默认仍用主图 **`src`** |
+| **界面语言** | **`language`** 内置 **英文**与**简体中文**（`en`、`zh`、`zh-CN` 等） |
 | **丰富的键盘快捷键** | Esc / ±方向键 / Space / PageUp-Down / Ctrl+方向键 |
 | **可访问性** | `role="dialog"` + `aria-modal`，所有按钮带 `aria-label`，焦点管理 |
 | **TypeScript 一等类型** | 完整类型导出，`forwardRef` 支持命令式 ref API |
@@ -60,11 +31,19 @@
 
 ## 快速开始
 
+**在业务项目中使用**
+
+```bash
+npm install right-image-preview
+```
+
+**克隆本仓库**（演示页、测试、参与开发）
+
 ```bash
 npm install
-npm run dev       # 开发服务器（含 Demo）
-npm test          # 运行单元 & 集成测试
-npm run build     # 生产构建
+npm run dev       # 浏览器打开 http://localhost:5173
+npm test
+npm run build     # 演示站的 Vite 生产构建
 ```
 
 浏览器访问 `http://localhost:5173`，页面**右上角**可切换 **EN / 中文**：
@@ -77,7 +56,7 @@ npm run build     # 生产构建
 ## 基本用法
 
 ```tsx
-import { ImagePreview } from './components/ImagePreview';
+import { ImagePreview } from 'right-image-preview';
 
 // 单张图片
 <ImagePreview
@@ -268,7 +247,8 @@ src/
     Toolbar.tsx           # 底部工具栏
     ImagePreview.tsx      # 主组件（遮罩/键盘/滚轮/双击/渐隐）
     index.ts              # 公开导出
-  App.tsx                 # Demo 演示页面
+  App.tsx                 # 演示页外壳
+  demos/                  # 各 Demo 与演示站文案（不打进 npm 包）
 docs/
   api.md / api.zh-CN.md          # Props & Ref API 参考
   keyboard.md / keyboard.zh-CN.md # 键盘快捷键说明
