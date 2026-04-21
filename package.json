@@ -1,6 +1,6 @@
 {
   "name": "right-image-preview",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "A dependency-free React image preview component with Lightroom-style discrete zoom stops, multi-group navigation, flip/rotate, auto-fade controls, and full keyboard support.",
   "keywords": [
@@ -44,7 +44,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:lib": "vite build --config vite.lib.config.ts",
+    "build:lib": "vite build --config vite.lib.config.ts && node scripts/fix-dts-import-extensions.mjs",
     "prepublishOnly": "npm run build:lib",
     "lint": "eslint .",
     "preview": "vite preview",
