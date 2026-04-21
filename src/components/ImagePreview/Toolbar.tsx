@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { DelayedTooltip } from './DelayedTooltip';
 import type { LocaleStrings } from './locale';
 import {
   TOOLBAR_NAV_COUNTER_MIN_WIDTH_PX,
@@ -144,11 +145,12 @@ const IconLockClosed = () => (
 
 interface TBtnProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   label: string;
+  tip: string;
   active?: boolean;
   accent?: string; // override active/text colour
 }
 
-function TBtn({ label, active, accent, children, ...rest }: TBtnProps) {
+function TBtn({ label, tip, active, accent, children, ...rest }: TBtnProps) {
   const textColor = rest.disabled
     ? C.textDisabled
     : accent
@@ -157,29 +159,30 @@ function TBtn({ label, active, accent, children, ...rest }: TBtnProps) {
   const bgColor = active ? C.activeBg : 'transparent';
 
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      style={{
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        width: 34, height: 34, borderRadius: 6, border: 'none',
-        cursor: rest.disabled ? 'not-allowed' : 'pointer',
-        background: bgColor,
-        color: textColor,
-        transition: 'background 0.15s, color 0.15s',
-        flexShrink: 0,
-      }}
-      onMouseEnter={(e) => {
-        if (!rest.disabled) (e.currentTarget as HTMLButtonElement).style.background = active ? C.activeBg : C.hoverBg;
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLButtonElement).style.background = bgColor;
-      }}
-      {...rest}
-    >
-      {children}
-    </button>
+    <DelayedTooltip content={tip}>
+      <button
+        type="button"
+        aria-label={label}
+        style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          width: 34, height: 34, borderRadius: 6, border: 'none',
+          cursor: rest.disabled ? 'not-allowed' : 'pointer',
+          background: bgColor,
+          color: textColor,
+          transition: 'background 0.15s, color 0.15s',
+          flexShrink: 0,
+        }}
+        onMouseEnter={(e) => {
+          if (!rest.disabled) (e.currentTarget as HTMLButtonElement).style.background = active ? C.activeBg : C.hoverBg;
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background = bgColor;
+        }}
+        {...rest}
+      >
+        {children}
+      </button>
+    </DelayedTooltip>
   );
 }
 
@@ -348,30 +351,32 @@ function ZoomInput({
           }}
         />
       ) : (
-        <span
-          onClick={open}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') open(); }}
-          style={{
-            display: 'block',
-            width: '100%',
-            boxSizing: 'border-box',
-            textAlign: 'center',
-            fontSize: 13, color: C.text, cursor: 'pointer',
-            padding: '3px 5px', borderRadius: 5,
-            border: '1px solid transparent',
-            fontVariantNumeric: 'tabular-nums',
-            transition: 'border-color 0.15s',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLSpanElement).style.borderColor = 'rgba(180,200,225,0.28)'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLSpanElement).style.borderColor = 'transparent'; }}
-        >
-          {displayLabel}
-        </span>
+        <DelayedTooltip content={strings.tipZoomLevel}>
+          <span
+            onClick={open}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') open(); }}
+            style={{
+              display: 'block',
+              width: '100%',
+              boxSizing: 'border-box',
+              textAlign: 'center',
+              fontSize: 13, color: C.text, cursor: 'pointer',
+              padding: '3px 5px', borderRadius: 5,
+              border: '1px solid transparent',
+              fontVariantNumeric: 'tabular-nums',
+              transition: 'border-color 0.15s',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLSpanElement).style.borderColor = 'rgba(180,200,225,0.28)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLSpanElement).style.borderColor = 'transparent'; }}
+          >
+            {displayLabel}
+          </span>
+        </DelayedTooltip>
       )}
 
       {isOpen && (
@@ -400,6 +405,7 @@ function ZoomInput({
             <DropdownRow
               key={stop}
               label={`${stop}%`}
+              tip={strings.tipZoomRowPercent(stop)}
               active={currentStopMatch === stop}
               onMouseDown={() => { onSetNative(stop); setIsOpen(false); }}
             />
@@ -410,6 +416,11 @@ function ZoomInput({
               fitEquivalentNativePercent !== undefined
                 ? strings.fitApprox(Math.round(fitEquivalentNativePercent))
                 : strings.fit
+            }
+            tip={
+              fitEquivalentNativePercent !== undefined
+                ? strings.tipZoomRowFitApprox(Math.round(fitEquivalentNativePercent))
+                : strings.tipZoomRowFit
             }
             active={mode === 'fit'}
             onMouseDown={() => { onFit(); setIsOpen(false); }}
@@ -422,32 +433,34 @@ function ZoomInput({
 
 interface DropdownRowProps {
   label: string;
+  tip: string;
   active: boolean;
   onMouseDown(): void;
 }
 
-function DropdownRow({ label, active, onMouseDown }: DropdownRowProps) {
+function DropdownRow({ label, tip, active, onMouseDown }: DropdownRowProps) {
   const [hovered, setHovered] = useState(false);
   return (
-    <div
-      onMouseDown={(e) => { e.preventDefault(); onMouseDown(); }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: 'flex',
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        columnGap: 8,
-        padding: '5px 8px',
-        cursor: 'pointer',
-        background: active ? 'rgba(88,101,242,0.18)' : hovered ? 'rgba(255,255,255,0.06)' : 'transparent',
-        transition: 'background 0.1s',
-        boxSizing: 'border-box',
-        width: '100%',
-        minWidth: 0,
-      }}
-    >
+    <DelayedTooltip content={tip}>
+      <div
+        onMouseDown={(e) => { e.preventDefault(); onMouseDown(); }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          columnGap: 8,
+          padding: '5px 8px',
+          cursor: 'pointer',
+          background: active ? 'rgba(88,101,242,0.18)' : hovered ? 'rgba(255,255,255,0.06)' : 'transparent',
+          transition: 'background 0.1s',
+          boxSizing: 'border-box',
+          width: '100%',
+          minWidth: 0,
+        }}
+      >
       <span
         style={{
           flex: '1 1 auto',
@@ -479,6 +492,7 @@ function DropdownRow({ label, active, onMouseDown }: DropdownRowProps) {
         )}
       </span>
     </div>
+    </DelayedTooltip>
   );
 }
 
@@ -608,7 +622,12 @@ export function Toolbar({
         {showNav && (
           <>
             {isGroupMode && (
-              <TBtn label={strings.prevGroup} onClick={onPrevGroup} disabled={!hasPrevGroup}>
+              <TBtn
+                label={strings.prevGroup}
+                tip={strings.tipPrevGroup}
+                onClick={onPrevGroup}
+                disabled={!hasPrevGroup}
+              >
                 <IconPrevGroup />
               </TBtn>
             )}
@@ -616,6 +635,7 @@ export function Toolbar({
             {showToolbarArrows && (
               <TBtn
                 label={strings.prev}
+                tip={strings.tipPrev}
                 onClick={onPrev}
                 disabled={isGroupMode ? atGroupStart : currentIndex === 0}
               >
@@ -643,6 +663,7 @@ export function Toolbar({
             {showToolbarArrows && (
               <TBtn
                 label={strings.next}
+                tip={strings.tipNext}
                 onClick={onNext}
                 disabled={isGroupMode ? atGroupEnd : currentIndex === totalImages - 1}
               >
@@ -651,7 +672,12 @@ export function Toolbar({
             )}
 
             {isGroupMode && (
-              <TBtn label={strings.nextGroup} onClick={onNextGroup} disabled={!hasNextGroup}>
+              <TBtn
+                label={strings.nextGroup}
+                tip={strings.tipNextGroup}
+                onClick={onNextGroup}
+                disabled={!hasNextGroup}
+              >
                 <IconNextGroup />
               </TBtn>
             )}
@@ -663,26 +689,26 @@ export function Toolbar({
         {/* ── Flip (optional) ── */}
         {showFlip && (
           <>
-        <TBtn label={strings.flipH} onClick={onFlipH}><IconFlipH /></TBtn>
-        <TBtn label={strings.flipV} onClick={onFlipV}><IconFlipV /></TBtn>
+        <TBtn label={strings.flipH} tip={strings.tipFlipH} onClick={onFlipH}><IconFlipH /></TBtn>
+        <TBtn label={strings.flipV} tip={strings.tipFlipV} onClick={onFlipV}><IconFlipV /></TBtn>
             <Divider />
           </>
         )}
 
         {/* ── Rotate ── */}
-        <TBtn label={strings.rotateCCW} onClick={onRotateCCW}><IconRotateCCW /></TBtn>
-        <TBtn label={strings.rotateCW}  onClick={onRotateCW}><IconRotateCW /></TBtn>
+        <TBtn label={strings.rotateCCW} tip={strings.tipRotateCCW} onClick={onRotateCCW}><IconRotateCCW /></TBtn>
+        <TBtn label={strings.rotateCW} tip={strings.tipRotateCW} onClick={onRotateCW}><IconRotateCW /></TBtn>
 
         <Divider />
 
         {/* ── Jump-to-zoom presets ── */}
-        <TBtn label={strings.fitToViewport} onClick={onFit}      active={mode === 'fit'}><IconFit /></TBtn>
-        <TBtn label={strings.actualSize}    onClick={onOneToOne} active={mode === 'native' && nativePercent === 100}><IconOneToOne /></TBtn>
+        <TBtn label={strings.fitToViewport} tip={strings.tipFitToViewport} onClick={onFit}      active={mode === 'fit'}><IconFit /></TBtn>
+        <TBtn label={strings.actualSize} tip={strings.tipActualSize} onClick={onOneToOne} active={mode === 'native' && nativePercent === 100}><IconOneToOne /></TBtn>
 
         <Divider />
 
         {/* ── Precise zoom control: [-] [value] [+] [lock] ── */}
-        <TBtn label={strings.zoomOut} onClick={onZoomOut} disabled={!canZoomOut}><IconZoomOut /></TBtn>
+        <TBtn label={strings.zoomOut} tip={strings.tipZoomOut} onClick={onZoomOut} disabled={!canZoomOut}><IconZoomOut /></TBtn>
 
         <ZoomInput
           mode={mode}
@@ -696,12 +722,13 @@ export function Toolbar({
           zoomDropdownWidthPx={zoomDropdownWidthPx}
         />
 
-        <TBtn label={strings.zoomIn} onClick={onZoomIn} disabled={!canZoomIn}><IconZoomIn /></TBtn>
+        <TBtn label={strings.zoomIn} tip={strings.tipZoomIn} onClick={onZoomIn} disabled={!canZoomIn}><IconZoomIn /></TBtn>
 
         {/* Lock: sits at the end of the zoom cluster — toggles whether zoom is
             preserved when switching images */}
         <TBtn
           label={zoomLocked ? strings.unlockZoom : strings.lockZoom}
+          tip={zoomLocked ? strings.tipUnlockZoom : strings.tipLockZoom}
           active={zoomLocked}
           accent={zoomLocked ? C.lockActive : undefined}
           onClick={onToggleLock}

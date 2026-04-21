@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { DelayedTooltip } from './DelayedTooltip';
 import type { ZoomMode } from './types';
 import {
   clampNatural,
@@ -101,6 +102,8 @@ export interface MinimapProps {
   /** Fires when the user starts / ends dragging the viewport frame (for disabling main-image transition). */
   onDragChange?: (dragging: boolean) => void;
   ariaLabel: string;
+  /** Hover help for the minimap control (delayed tooltip). */
+  minimapTooltip: string;
 }
 
 /**
@@ -132,6 +135,7 @@ export function Minimap({
   onUserActivity,
   onDragChange,
   ariaLabel,
+  minimapTooltip,
 }: MinimapProps) {
   const mainP: MinimapTransformParams = useMemo(
     () => ({ cw, ch, nw, nh, scale, tx, ty, rotationDeg, flipH, flipV }),
@@ -352,10 +356,10 @@ export function Minimap({
   const thumbTransform = `rotate(${rotationDeg}deg)${flipH ? ' scaleX(-1)' : ''}${flipV ? ' scaleY(-1)' : ''}`;
 
   return (
+    <DelayedTooltip content={minimapTooltip}>
     <div
       role="navigation"
       aria-label={ariaLabel}
-      title={imageAlt}
       onWheel={(e) => {
         e.stopPropagation();
         onUserActivity?.();
@@ -414,8 +418,7 @@ export function Minimap({
           ) : (
             <img
               src={imageSrc}
-              alt=""
-              aria-hidden="true"
+              alt={imageAlt}
               draggable={false}
               style={{
                 width: '100%',
@@ -500,5 +503,6 @@ export function Minimap({
         </svg>
       </div>
     </div>
+    </DelayedTooltip>
   );
 }

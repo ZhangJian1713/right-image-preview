@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { DelayedTooltip } from './DelayedTooltip';
 import { Minimap } from './Minimap';
 import { Toolbar } from './Toolbar';
 import { runFlushSync } from './flushSyncCompat';
@@ -685,7 +686,12 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
         onMouseDown={resetHideTimer}
       >
         {/* ── Close button — top-right corner ── */}
-        <CloseButton onClick={() => onClose?.()} visible={controlsVisible} label={t.close} />
+        <CloseButton
+          onClick={() => onClose?.()}
+          visible={controlsVisible}
+          label={t.close}
+          tip={t.tipClose}
+        />
 
         {/* ── Viewport ── */}
         {/* NOTE: This div is 100 % × 100 % and covers the whole overlay, so mask
@@ -838,6 +844,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
             onUserActivity={resetHideTimer}
             onDragChange={setMinimapDragging}
             ariaLabel={t.minimapNav}
+            minimapTooltip={t.tipMinimap}
           />
         )}
 
@@ -871,6 +878,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
                   isGroupJump={leftIsGroup}
                   onClick={leftIsGroup ? prevGroup : prev}
                   label={leftIsGroup ? t.prevGroup : t.prev}
+                  tip={leftIsGroup ? t.tipPrevGroup : t.tipPrev}
                   visible={controlsVisible}
                 />
               )}
@@ -880,6 +888,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
                   isGroupJump={rightIsGroup}
                   onClick={rightIsGroup ? nextGroup : next}
                   label={rightIsGroup ? t.nextGroup : t.next}
+                  tip={rightIsGroup ? t.tipNextGroup : t.tipNext}
                   visible={controlsVisible}
                 />
               )}
@@ -925,47 +934,58 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
 
 // ── Close button ───────────────────────────────────────────────────────────
 
-function CloseButton({ onClick, visible, label }: { onClick(): void; visible: boolean; label: string }) {
+function CloseButton({
+  onClick,
+  visible,
+  label,
+  tip,
+}: {
+  onClick(): void;
+  visible: boolean;
+  label: string;
+  tip: string;
+}) {
   const [hover, setHover] = useState(false);
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        position: 'absolute',
-        top: 14,
-        right: 16,
-        zIndex: 20,
-        width: 46,
-        height: 46,
-        borderRadius: '50%',
-        border: '1px solid rgba(255,255,255,0.22)',
-        background: hover ? 'rgba(8,14,26,0.78)' : 'rgba(8,14,26,0.50)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.45)',
-        color: 'rgba(235,242,255,0.92)',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: visible ? 1 : 0.10,
-        transition: visible
-          ? 'opacity 0.12s ease, background 0.15s'
-          : 'opacity 1.6s ease, background 0.15s',
-        flexShrink: 0,
-      }}
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
-        width={18} height={18} aria-hidden="true">
-        <line x1="18" y1="6" x2="6"  y2="18"/>
-        <line x1="6"  y1="6" x2="18" y2="18"/>
-      </svg>
-    </button>
+    <DelayedTooltip content={tip}>
+      <button
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{
+          position: 'absolute',
+          top: 14,
+          right: 16,
+          zIndex: 20,
+          width: 46,
+          height: 46,
+          borderRadius: '50%',
+          border: '1px solid rgba(255,255,255,0.22)',
+          background: hover ? 'rgba(8,14,26,0.78)' : 'rgba(8,14,26,0.50)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.45)',
+          color: 'rgba(235,242,255,0.92)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: visible ? 1 : 0.10,
+          transition: visible
+            ? 'opacity 0.12s ease, background 0.15s'
+            : 'opacity 1.6s ease, background 0.15s',
+          flexShrink: 0,
+        }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
+          width={18} height={18} aria-hidden="true">
+          <line x1="18" y1="6" x2="6"  y2="18"/>
+          <line x1="6"  y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </DelayedTooltip>
   );
 }
 
@@ -977,44 +997,46 @@ interface NavArrowProps {
   isGroupJump?: boolean;
   onClick(): void;
   label: string;
+  tip: string;
   visible: boolean;
 }
 
-function NavArrow({ direction, isGroupJump = false, onClick, label, visible }: NavArrowProps) {
+function NavArrow({ direction, isGroupJump = false, onClick, label, tip, visible }: NavArrowProps) {
   const [hover, setHover] = useState(false);
 
   return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        position: 'absolute',
-        top: '50%',
-        [direction]: 16,
-        transform: 'translateY(-50%)',
-        width: 44,
-        height: 44,
-        borderRadius: '50%',
-        border: '1px solid rgba(255,255,255,0.28)',
-        background: hover ? 'rgba(8,14,26,0.80)' : 'rgba(8,14,26,0.52)',
-        backdropFilter: 'blur(6px)',
-        WebkitBackdropFilter: 'blur(6px)',
-        boxShadow: '0 2px 16px rgba(0,0,0,0.55)',
-        color: 'rgba(235,242,255,0.92)',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 10,
-        opacity: visible ? 1 : 0.10,
-        transition: visible
-          ? 'opacity 0.12s ease, background 0.15s, box-shadow 0.15s'
-          : 'opacity 1.6s ease, background 0.15s, box-shadow 0.15s',
-      }}
-    >
+    <DelayedTooltip content={tip}>
+      <button
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{
+          position: 'absolute',
+          top: '50%',
+          [direction]: 16,
+          transform: 'translateY(-50%)',
+          width: 44,
+          height: 44,
+          borderRadius: '50%',
+          border: '1px solid rgba(255,255,255,0.28)',
+          background: hover ? 'rgba(8,14,26,0.80)' : 'rgba(8,14,26,0.52)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          boxShadow: '0 2px 16px rgba(0,0,0,0.55)',
+          color: 'rgba(235,242,255,0.92)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10,
+          opacity: visible ? 1 : 0.10,
+          transition: visible
+            ? 'opacity 0.12s ease, background 0.15s, box-shadow 0.15s'
+            : 'opacity 1.6s ease, background 0.15s, box-shadow 0.15s',
+        }}
+      >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
         strokeWidth={2.5} width={22} height={22} aria-hidden="true">
         {direction === 'left'
@@ -1027,5 +1049,6 @@ function NavArrow({ direction, isGroupJump = false, onClick, label, visible }: N
         }
       </svg>
     </button>
+    </DelayedTooltip>
   );
 }
