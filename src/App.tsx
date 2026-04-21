@@ -65,7 +65,7 @@ const STRINGS: Record<DemoLocale, DemoStrings> = {
       'Album-style set of five images with mixed aspect ratios (including portrait). The toolbar shows global index only (e.g. 2/5), no folder row.',
     demo2Title: 'Demo 2 · Folder groups',
     demo2Desc:
-      'Travel-style album: three folders, ten images. With the `groups` prop, the toolbar shows folder name, in-folder index (X/Y), and global index (M/N).',
+      'Travel-style album: three folders, ten images. With `groupedImages`, the toolbar shows folder name, in-folder index (X/Y), and global index (M/N).',
     demo3Title: 'Demo 3 · High resolution',
     demo3Desc:
       'Local deep-sky samples (~tens of MB each) for first paint, fit-to-viewport, wheel zoom, and pan. The label shows uncompressed file size.',
@@ -101,7 +101,7 @@ const STRINGS: Record<DemoLocale, DemoStrings> = {
       '适合相册、作品集等场景。5 张图片，比例各不相同（含竖图）。工具栏仅显示全局序号（2/5 这样），无文件夹信息。',
     demo2Title: 'Demo 2 · 多文件夹图片',
     demo2Desc:
-      '旅行相册场景，共 3 个文件夹 · 10 张图片。预览工具栏通过 `groups` 同时显示：文件夹名称、在文件夹内的序号（X/Y）以及全局序号（M/N）。',
+      '旅行相册场景，共 3 个文件夹 · 10 张图片。预览工具栏通过 `groupedImages` 同时显示：文件夹名称、在文件夹内的序号（X/Y）以及全局序号（M/N）。',
     demo3Title: 'Demo 3 · 超高分辨率图片',
     demo3Desc:
       '使用本地深空摄影样张（单文件十余 MB 级）测试首次加载、适应视口与滚轮缩放/平移。文件名括号内为压缩前文件体积。',
@@ -166,26 +166,18 @@ const FOLDER_GROUP_NAMES: Record<DemoLocale, [string, string, string]> = {
   en: ['🏙 City', '🌿 Nature', '🌊 Ocean & beach'],
 };
 
-function buildFolderData(locale: DemoLocale): {
-  folderGroups: FolderGroup[];
-  multiFolderImages: ImageItem[];
-  folderGroupDefs: ImageGroup[];
-} {
+function buildFolderData(locale: DemoLocale): { folderGroups: FolderGroup[]; groupedImages: ImageGroup[] } {
   const names = FOLDER_GROUP_NAMES[locale];
   const folderGroups: FolderGroup[] = [
     { name: names[0], images: CITY_IMAGES },
     { name: names[1], images: NATURE_IMAGES },
     { name: names[2], images: OCEAN_IMAGES },
   ];
-  const multiFolderImages = folderGroups.flatMap((g) => g.images);
-  let offset = 0;
-  const folderGroupDefs: ImageGroup[] = folderGroups.map((g) => {
-    const start = offset;
-    const end = offset + g.images.length - 1;
-    offset = end + 1;
-    return { name: g.name, start, end };
-  });
-  return { folderGroups, multiFolderImages, folderGroupDefs };
+  const groupedImages: ImageGroup[] = folderGroups.map((g) => ({
+    name: g.name,
+    images: g.images,
+  }));
+  return { folderGroups, groupedImages };
 }
 
 function getFlatIndex(folderGroups: FolderGroup[], folderIdx: number, imgIdx: number): number {
@@ -417,10 +409,7 @@ export default function App() {
   const t = STRINGS[locale];
   const previewLanguage = locale === 'zh' ? 'zh-CN' : 'en';
 
-  const { folderGroups, multiFolderImages, folderGroupDefs } = useMemo(
-    () => buildFolderData(locale),
-    [locale],
-  );
+  const { folderGroups, groupedImages } = useMemo(() => buildFolderData(locale), [locale]);
 
   const largeGalleryItems = useMemo(() => largeGallery(locale), [locale]);
 
@@ -623,8 +612,7 @@ export default function App() {
       />
 
       <ImagePreview
-        images={multiFolderImages}
-        groups={folderGroupDefs}
+        groupedImages={groupedImages}
         visible={demo2Visible}
         defaultIndex={demo2Index}
         initialMode="fit"

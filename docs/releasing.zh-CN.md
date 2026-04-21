@@ -21,18 +21,20 @@
 
 ### npm
 
-授权 Token 存储在 `~/.npmrc`，使 `npm publish` 无需每次手动输入：
+授权 Token 存储在 `~/.npmrc`，使 `npm publish` 无需每次手动输入。建议使用环境变量，避免在文件里写死明文：
 
 ```
-//registry.npmjs.org/:_authToken=<YOUR_TOKEN>
+//registry.npmjs.org/:_authToken=${NPM_TOKEN}
 ```
+
+随后在 Shell（或 CI 密钥）中设置 `NPM_TOKEN` 为 Token 字符串。若文件仅在本机使用且绝不入库，也可以把 `=` 后的 `${NPM_TOKEN}` 换成 Token 原文。
 
 创建或轮换 Token 的步骤：
 
 1. 进入 [https://www.npmjs.com/settings/tokens](https://www.npmjs.com/settings/tokens)
 2. 点击 **Generate New Token → Classic Token**
 3. 类型选择 **Automation**（可在 CI 环境中绕过 2FA 验证）
-4. 复制 Token，粘贴到 `~/.npmrc` 替换旧值
+4. 复制 Token，按上文写入环境变量或 `~/.npmrc`
 
 > **安全提示**：永远不要将 Token 提交到版本库。`~/.npmrc` 只存在于本地机器，本项目不跟踪该文件。
 

@@ -72,7 +72,7 @@
 
 ### Filename Display
 - [x] `ImageItem.name` field displayed in the toolbar info badge
-- [x] `countRender(current, total)` — custom count content (deprecated; use `groups` instead)
+- [x] `countRender(current, total)` — custom count content (deprecated; use `groupedImages` group navigation / toolbar counter instead)
 
 ---
 
@@ -94,8 +94,8 @@
 
 ## Phase 4 — Multi-folder Support
 
-### `groups` Group Navigation
-- [x] Added `ImageGroup` interface (`name / start / end`)
+### `groupedImages` Group Navigation
+- [x] `ImageGroup`: optional `id`, `name`, and `images: ImageItem[]` (no `start` / `end` ranges)
 - [x] Side arrows navigate within group; disabled at boundaries
 - [x] Toolbar gains "prev group" (⏮) / "next group" (⏭) buttons
 - [x] Toolbar counter shows within-group index (e.g. `2/3`), not global index
@@ -103,7 +103,7 @@
 
 ### Demo Improvements
 - [x] Demo 1: 5 images, single group, no folder info
-- [x] Demo 2: 10 images in 3 folders, using `groups`
+- [x] Demo 2: 10 images in 3 folders, using `groupedImages`
 
 ---
 

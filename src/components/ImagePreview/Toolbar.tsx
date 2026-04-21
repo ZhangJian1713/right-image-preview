@@ -39,7 +39,7 @@ interface ToolbarProps {
   atGroupEnd?: boolean;
   onPrevGroup?(): void;
   onNextGroup?(): void;
-  /** Toolbar prev/next; parent sets false only for flat lists with `arrows` `'side'` / `'none'`. Always true when `groups` is used. */
+  /** Toolbar prev/next; parent sets false only for flat lists with `arrows` `'side'` / `'none'`. Always true when `groupedImages` is used. */
   showToolbarArrows?: boolean;
 
   // ── Image info ────────────────────────────────────────────────────────────

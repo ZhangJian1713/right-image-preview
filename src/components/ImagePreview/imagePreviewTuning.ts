@@ -3,6 +3,30 @@
  * Prefer editing this file over scattering magic numbers across components.
  */
 
+// ── Progressive main image (`minimapSrc` placeholder → full `src`) ───────────
+
+/** Default crossfade (ms) when revealing the full image; `0` = instant (no flash). */
+export const PROGRESSIVE_MAIN_DEFAULT_FADE_MS = 0;
+
+/**
+ * `HTMLImageElement.decode()` can hang on very large bitmaps; after this timeout we still reveal
+ * the main layer (image is already `complete` from `onLoad`).
+ */
+export const IMAGE_DECODE_TIMEOUT_MS = 60_000;
+
+/**
+ * `new Image()` preload for dimensions — if neither `load` nor `error` fires (e.g. extreme
+ * payloads), fall back so the visible &lt;img&gt; can still drive layout.
+ */
+export const PROGRESSIVE_PRELOAD_TIMEOUT_MS = 180_000;
+
+/**
+ * Minimum time the minimap thumbnail stays visible before swapping to the full image (progressive
+ * pipeline). Avoids skipping the thumbnail when the full image is served from cache and decodes in
+ * the same frame as the first open.
+ */
+export const MIN_PROGRESSIVE_THUMB_VISIBLE_MS = 160;
+
 // ── Viewport pan clamp (`useImageTransform`, axis-aligned overlap model) ─────
 
 /** Main image drag: min fraction of viewport **width** and **height** that must show image. */

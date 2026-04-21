@@ -12,6 +12,8 @@ import { Minimap } from './Minimap';
 import { Toolbar } from './Toolbar';
 import { runFlushSync } from './flushSyncCompat';
 import {
+  IMAGE_DECODE_TIMEOUT_MS,
+  PROGRESSIVE_MAIN_DEFAULT_FADE_MS,
   toolbarZoomDropdownWidthPx,
   toolbarZoomLabelSlotPx,
   WHEEL_ACCUM_PIXELS_PER_STOP,
@@ -23,33 +25,57 @@ import {
   WHEEL_PIXEL_MOUSE_NOTCH_MIN,
 } from './imagePreviewTuning';
 import { resolveStrings } from './locale';
-import type { ImageGroup, ImageItem, ImagePreviewProps, ImagePreviewRef, NativePercent } from './types';
+import { resolvePreviewImages, type FlattenedGroupSlice } from './flattenGroupedImages';
+import type { ImageItem, ImagePreviewProps, ImagePreviewRef, NativePercent } from './types';
 import { useImageTransform } from './useImageTransform';
+import { useProgressiveMainImage } from './useProgressiveMainImage';
 import { useZoomState } from './useZoomState';
 
 const DEFAULT_STOPS: NativePercent[] = [10, 25, 50, 75, 100, 150, 200];
 
-function normaliseImages(props: ImagePreviewProps): ImageItem[] {
-  if (props.images && props.images.length > 0) return props.images;
-  if (props.src) {
-    return [
-      {
-        src: props.src,
-        alt: props.alt,
-        minimapSrc: props.minimapSrc,
-        minimap: props.minimap,
-      },
-    ];
+/** Avoid duplicate `decode()` / timeout pairs when both `ref` and `onLoad` run for cached images. */
+const revealDecodeScheduled = new WeakSet<HTMLImageElement>();
+
+function scheduleRevealAfterDecode(img: HTMLImageElement, onReveal: () => void, timeoutMs: number): void {
+  if (revealDecodeScheduled.has(img)) return;
+  revealDecodeScheduled.add(img);
+  let settled = false;
+  const once = () => {
+    if (settled) return;
+    settled = true;
+    onReveal();
+  };
+  const tid = window.setTimeout(once, timeoutMs);
+  if (typeof img.decode === 'function') {
+    img
+      .decode()
+      .then(() => {
+        window.clearTimeout(tid);
+        once();
+      })
+      .catch(() => {
+        window.clearTimeout(tid);
+        once();
+      });
+  } else {
+    window.clearTimeout(tid);
+    queueMicrotask(once);
   }
-  return [];
 }
 
-/** Find which group the given flat index falls into. Returns null if no groups. */
-function findGroup(groups: ImageGroup[] | undefined, idx: number): { group: ImageGroup; groupIdx: number } | null {
-  if (!groups) return null;
-  const groupIdx = groups.findIndex((g) => idx >= g.start && idx <= g.end);
+function normaliseImages(props: ImagePreviewProps): ImageItem[] {
+  return resolvePreviewImages(props).images;
+}
+
+/** Find which slice the flat index falls into. Returns null if not grouped. */
+function findGroup(
+  slices: FlattenedGroupSlice[] | undefined,
+  idx: number,
+): { group: FlattenedGroupSlice; groupIdx: number } | null {
+  if (!slices) return null;
+  const groupIdx = slices.findIndex((g) => idx >= g.start && idx <= g.end);
   if (groupIdx === -1) return null;
-  return { group: groups[groupIdx], groupIdx };
+  return { group: slices[groupIdx], groupIdx };
 }
 
 // ── Outer shell: only mounts the dialog when visible ───────────────────────
@@ -77,11 +103,13 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       switchImageResetTransform = true,
       fitResetPan = true,
       defaultIndex = 0,
-      groups,
       showFlip = false,
       arrows = 'both',
       initialZoomLocked = false,
       showMinimap = true,
+      progressiveMain = true,
+      progressiveFadeMs = PROGRESSIVE_MAIN_DEFAULT_FADE_MS,
+      onMainImageLoadStageChange,
       closeOnMaskClick = false,
       overlayClassName,
       overlayStyle,
@@ -97,12 +125,17 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     const zoomLabelSlotPx = useMemo(() => toolbarZoomLabelSlotPx(language), [language]);
     const zoomDropdownWidthPx = useMemo(() => toolbarZoomDropdownWidthPx(language), [language]);
 
-    const hasGroups = Array.isArray(groups) && groups.length > 0;
-    // `arrows` only gates the side-of-image buttons. Toolbar prev/next are always on when `groups` is used.
+    const { images, groupSlices } = useMemo(
+      () => resolvePreviewImages(props),
+      // Intentionally omit other props — only data fields affect the resolved list.
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- groupedImages, images, src, alt, minimap*
+      [props.groupedImages, props.images, props.src, props.alt, props.minimapSrc, props.minimap],
+    );
+
+    const hasGroups = Array.isArray(groupSlices) && groupSlices.length > 0;
+    // `arrows` only gates the side-of-image buttons. Toolbar prev/next are always on when `groupedImages` is used.
     const showSideArrows    = arrows === 'both' || arrows === 'side';
     const showToolbarArrows = hasGroups || arrows === 'both' || arrows === 'toolbar';
-
-    const images = normaliseImages(props);
     const sortedStops = useMemo(() => [...stops].sort((a, b) => a - b), [stops]);
 
     const [currentIndex, setCurrentIndex] = useState(defaultIndex);
@@ -158,17 +191,29 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       }
     }, [currentImage.src, resetImageDims]);
 
+    const progressive = useProgressiveMainImage({
+      mainSrc: currentImage.src,
+      minimapSrc: currentImage.minimapSrc,
+      minimapCustom: !!currentImage.minimap,
+      enabled: progressiveMain,
+      onImageLayout: onImageLoad,
+      onStageChange: onMainImageLoadStageChange,
+    });
+
+    const { onMainImgDecoded } = progressive;
+
     const imgRefCallback = useCallback(
       (el: HTMLImageElement | null) => {
         if (el && el.complete && el.naturalWidth > 0) {
           onImageLoad({ naturalWidth: el.naturalWidth, naturalHeight: el.naturalHeight });
+          scheduleRevealAfterDecode(el, onMainImgDecoded, IMAGE_DECODE_TIMEOUT_MS);
         }
       },
-      [onImageLoad],
+      [onImageLoad, onMainImgDecoded],
     );
 
     // ── Group info ──────────────────────────────────────────────────────────
-    const groupInfo = useMemo(() => findGroup(groups, currentIndex), [groups, currentIndex]);
+    const groupInfo = useMemo(() => findGroup(groupSlices, currentIndex), [groupSlices, currentIndex]);
     const currentGroup   = groupInfo?.group ?? null;
     const currentGroupIdx = groupInfo?.groupIdx ?? -1;
 
@@ -185,7 +230,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       [onIndexChange, reset, resetPan, resetOrientation, switchImageResetZoom, switchImageResetTransform, zoomLocked],
     );
 
-    // Within-group (or global when no groups) prev / next
+    // Within-group (or global when flat) prev / next
     const prev = useCallback(() => {
       const boundary = currentGroup?.start ?? 0;
       if (currentIndex > boundary) goTo(currentIndex - 1);
@@ -198,12 +243,12 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
 
     // Jump to first image of previous / next group
     const prevGroup = useCallback(() => {
-      if (groups && currentGroupIdx > 0) goTo(groups[currentGroupIdx - 1].start);
-    }, [groups, currentGroupIdx, goTo]);
+      if (groupSlices && currentGroupIdx > 0) goTo(groupSlices[currentGroupIdx - 1].start);
+    }, [groupSlices, currentGroupIdx, goTo]);
 
     const nextGroup = useCallback(() => {
-      if (groups && currentGroupIdx < groups.length - 1) goTo(groups[currentGroupIdx + 1].start);
-    }, [groups, currentGroupIdx, goTo]);
+      if (groupSlices && currentGroupIdx < groupSlices.length - 1) goTo(groupSlices[currentGroupIdx + 1].start);
+    }, [groupSlices, currentGroupIdx, goTo]);
 
     // ── Auto-fade overlay controls (inactivity-based) ───────────────────────
     // After 3 s of no mouse movement, clicks, or key presses, all controls
@@ -283,7 +328,16 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
         const notchMin = WHEEL_PIXEL_MOUSE_NOTCH_MIN;
         const notchMax = WHEEL_PIXEL_MOUSE_NOTCH_MAX;
 
+        /** One physical `wheel` event must not advance multiple zoom-in stops from Fit (pixel drain / multi-line would chain 10%→…→100%). */
+        const startedInFit = mode === 'fit';
+        let zoomInStepsThisEvent = 0;
+
         const applyOneWheelStep = (directionIn: boolean): boolean => {
+          if (startedInFit && directionIn && zoomInStepsThisEvent >= 1) {
+            wheelAccumRef.current = 0;
+            return false;
+          }
+
           const peek = directionIn
             ? peekZoomIn(fitEquivalentNativePercent)
             : peekZoomOut();
@@ -309,6 +363,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
             if (directionIn) zoomIn(fitEquivalentNativePercent);
             else zoomOut(fitEquivalentNativePercent);
           });
+          if (startedInFit && directionIn) zoomInStepsThisEvent++;
           return true;
         };
 
@@ -378,7 +433,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
         scheduleMore();
       },
       [
-        wheelEnabled, zoomIn, zoomOut, peekZoomIn, peekZoomOut,
+        wheelEnabled, mode, zoomIn, zoomOut, peekZoomIn, peekZoomOut,
         fitEquivalentNativePercent, zoomAnchorTranslate,
       ],
     );
@@ -453,7 +508,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
               // When at the last image of a group and a next group exists,
               // arrow key mirrors the side "next-group" double-chevron button.
               const atEnd = currentGroup ? currentIndex === currentGroup.end : currentIndex === images.length - 1;
-              const hasNext = groups ? currentGroupIdx < groups.length - 1 : false;
+              const hasNext = groupSlices ? currentGroupIdx < groupSlices.length - 1 : false;
               if (atEnd && hasNext) nextGroup(); else next();
             }
             break;
@@ -472,7 +527,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       onClose, fitEquivalentNativePercent,
       resetHideTimer,
       // boundary-jump deps
-      currentIndex, currentGroup, currentGroupIdx, groups, images.length,
+      currentIndex, currentGroup, currentGroupIdx, groupSlices, images.length,
     ]);
 
     // ── Double-click ────────────────────────────────────────────────────────
@@ -535,6 +590,50 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       return () => clearTimeout(id);
     }, [imageShowReady]);
 
+    const [delayedPreloadSpinner, setDelayedPreloadSpinner] = useState(false);
+    useEffect(() => {
+      if (!progressive.pipelineActive || progressive.preloadStage !== 'preloading') {
+        setDelayedPreloadSpinner(false);
+        return;
+      }
+      const id = setTimeout(() => setDelayedPreloadSpinner(true), LOADER_DELAY_MS);
+      return () => clearTimeout(id);
+    }, [progressive.pipelineActive, progressive.preloadStage]);
+
+    /** Minimap bitmap is on screen while main is still decoding — no empty black viewport. */
+    const thumbHoldingMainArea =
+      progressive.pipelineActive &&
+      progressive.showMinimapUnderlay &&
+      !progressive.fullDecoded;
+
+    /** Same window as thumb-on-main: no `transform` easing (avoids “huge image shrinking into fit”). */
+    const suppressTransformTransition = thumbHoldingMainArea;
+
+    /** Progressive: spinner stays on top of the thumbnail until the real main bitmap replaces it. */
+    const progressiveWaitingFullOverThumb =
+      progressive.pipelineActive && progressive.showMinimapUnderlay && !progressive.fullDecoded;
+
+    const progressivePreloadSpinnerNoThumbYet =
+      progressive.pipelineActive &&
+      !progressive.showMinimapUnderlay &&
+      progressive.preloadStage === 'preloading' &&
+      delayedPreloadSpinner;
+
+    const showCenterLoader =
+      progressiveWaitingFullOverThumb ||
+      progressivePreloadSpinnerNoThumbYet ||
+      (!progressive.pipelineActive && showLoader) ||
+      (progressive.pipelineActive && progressive.preloadStage === 'error' && showLoader);
+
+    const hideMainUntilDecoded =
+      progressive.pipelineActive &&
+      !progressive.fullDecoded &&
+      progressive.preloadStage !== 'thumb-only';
+    const opacityTransition =
+      progressive.pipelineActive && progressiveFadeMs > 0
+        ? `opacity ${progressiveFadeMs}ms ease`
+        : 'none';
+
     // Group-aware toolbar props
     const groupToolbarProps = currentGroup
       ? {
@@ -543,7 +642,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
           atGroupStart:      currentIndex === currentGroup.start,
           atGroupEnd:        currentIndex === currentGroup.end,
           hasPrevGroup:      currentGroupIdx > 0,
-          hasNextGroup:      groups ? currentGroupIdx < groups.length - 1 : false,
+          hasNextGroup:      groupSlices ? currentGroupIdx < groupSlices.length - 1 : false,
           groupName:         currentGroup.name,
           onPrevGroup:       prevGroup,
           onNextGroup:       nextGroup,
@@ -595,23 +694,9 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
             justifyContent: 'center',
           }}
         >
-          <img
-            key={currentImage.src}
-            src={currentImage.src}
-            alt={currentImage.alt ?? ''}
-            draggable={false}
-            ref={imgRefCallback}
-            onLoad={(e) => {
-              const img = e.currentTarget;
-              onImageLoad({ naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
-            }}
-            onPointerDown={onPanStart}
-            onPointerMove={onPanMove}
-            onPointerUp={(e) => onPanEnd(e)}
-            onPointerCancel={(e) => onPanEnd(e)}
-            onLostPointerCapture={(e) => onPanEnd(e)}
-            onDoubleClick={handleDoubleClick}
+          <div
             style={{
+              position: 'relative',
               width:     imageDims ? imageDims.naturalWidth  : 'auto',
               height:    imageDims ? imageDims.naturalHeight : 'auto',
               maxWidth:  imageDims ? 'none' : '100%',
@@ -621,15 +706,77 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
               transition: isPanning || minimapDragging
                 ? 'none'
                 : !imageShowReady
-                  ? 'opacity 0.15s ease'        // frame 1: transform settles, no anim
-                  : 'transform 0.3s ease, opacity 0.15s ease',
+                  ? 'opacity 0.15s ease'
+                  : suppressTransformTransition
+                    ? 'opacity 0.15s ease'
+                    : 'transform 0.3s ease, opacity 0.15s ease',
               opacity: imageShowReady ? 1 : 0,
               cursor:     mode === 'native' ? 'grab' : 'zoom-in',
               userSelect: 'none',
               touchAction: 'none',
-              display:    'block',
             }}
-          />
+            onPointerDown={onPanStart}
+            onPointerMove={onPanMove}
+            onPointerUp={(e) => onPanEnd(e)}
+            onPointerCancel={(e) => onPanEnd(e)}
+            onLostPointerCapture={(e) => onPanEnd(e)}
+            onDoubleClick={handleDoubleClick}
+          >
+            {progressive.showMinimapUnderlay &&
+              currentImage.minimapSrc && (
+                <img
+                  key={`${currentImage.minimapSrc}-${currentIndex}`}
+                  src={currentImage.minimapSrc}
+                  alt=""
+                  aria-hidden
+                  draggable={false}
+                  style={{
+                    position:      'absolute',
+                    inset:         0,
+                    width:         '100%',
+                    height:        '100%',
+                    objectFit:     'fill',
+                    pointerEvents: 'none',
+                    display:       'block',
+                    opacity:
+                      progressive.preloadStage === 'thumb-only'
+                        ? 1
+                        : progressive.fullDecoded
+                          ? 0
+                          : 1,
+                    transition:    opacityTransition,
+                  }}
+                />
+              )}
+            {progressive.preloadStage !== 'thumb-only' && (
+              <img
+                key={currentImage.src}
+                src={currentImage.src}
+                alt={currentImage.alt ?? ''}
+                draggable={false}
+                ref={imgRefCallback}
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  onImageLoad({ naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
+                  scheduleRevealAfterDecode(img, onMainImgDecoded, IMAGE_DECODE_TIMEOUT_MS);
+                }}
+                onError={() => {
+                  onMainImgDecoded();
+                }}
+                style={{
+                  position:      'relative',
+                  display:       'block',
+                  width:         imageDims ? imageDims.naturalWidth : 'auto',
+                  height:        imageDims ? imageDims.naturalHeight : 'auto',
+                  maxWidth:      imageDims ? 'none' : '100%',
+                  maxHeight:     imageDims ? 'none' : '100%',
+                  pointerEvents: 'none',
+                  opacity:       hideMainUntilDecoded ? 0 : 1,
+                  transition:    opacityTransition,
+                }}
+              />
+            )}
+          </div>
 
           {/* ── Loading spinner ── */}
           {/* Keyframes are defined inline once; harmless to repeat on re-mount. */}
@@ -640,12 +787,13 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
             style={{
               position:      'absolute',
               inset:         0,
+              zIndex:        1,
               display:       'flex',
               alignItems:    'center',
               justifyContent:'center',
               pointerEvents: 'none',
-              opacity:       showLoader ? 1 : 0,
-              transition:    showLoader ? 'none' : 'opacity 0.2s ease',
+              opacity:       showCenterLoader ? 1 : 0,
+              transition:    showCenterLoader ? 'none' : 'opacity 0.2s ease',
             }}
           >
             <div style={{
@@ -699,7 +847,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
             ? currentIndex === currentGroup.end
             : currentIndex === images.length - 1;
           const hasPrevGroupNav = !!(currentGroup && currentGroupIdx > 0);
-          const hasNextGroupNav = !!(currentGroup && groups && currentGroupIdx < groups.length - 1);
+          const hasNextGroupNav = !!(currentGroup && groupSlices && currentGroupIdx < groupSlices.length - 1);
 
           const showLeft  = !isAtStart || hasPrevGroupNav;
           const showRight = !isAtEnd   || hasNextGroupNav;

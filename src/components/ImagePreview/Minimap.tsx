@@ -196,13 +196,15 @@ export function Minimap({
   const pointerCaptureRef = useRef<{ el: globalThis.Element; id: number } | null>(null);
 
   const onPanByDeltaRef = useRef(onPanByDelta);
-  onPanByDeltaRef.current = onPanByDelta;
   const onJumpToNaturalRef = useRef(onJumpToNatural);
-  onJumpToNaturalRef.current = onJumpToNatural;
   const onUserActivityRef = useRef(onUserActivity);
-  onUserActivityRef.current = onUserActivity;
   const onDragChangeRef = useRef(onDragChange);
-  onDragChangeRef.current = onDragChange;
+  useLayoutEffect(() => {
+    onPanByDeltaRef.current = onPanByDelta;
+    onJumpToNaturalRef.current = onJumpToNatural;
+    onUserActivityRef.current = onUserActivity;
+    onDragChangeRef.current = onDragChange;
+  }, [onPanByDelta, onJumpToNatural, onUserActivity, onDragChange]);
 
   const teardownMinimapDrag = () => {
     const s = docSessionRef.current;
@@ -235,7 +237,6 @@ export function Minimap({
         onDragChangeRef.current?.(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount-only: no setState
     [],
   );
 

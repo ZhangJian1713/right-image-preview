@@ -10,12 +10,12 @@
 
 | Prop | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `src` | `string` | — | 单张图片 URL（`images` 优先） |
+| `src` | `string` | — | 单张图片 URL（`images` 或非空 `groupedImages` 优先） |
 | `alt` | `string` | — | 单张图片 alt |
 | `minimapSrc` | `string` | — | 仅单图：小地图图片 URL（默认同 `src`）；若设 `minimap` 则忽略 |
 | `minimap` | `React.ReactNode` | — | 仅单图：自定义小地图内容（覆盖 `minimapSrc`） |
-| `images` | `ImageItem[]` | — | 多图数组，提供后 `src`/`alt` 被忽略 |
-| `groups` | `ImageGroup[]` | — | 图片分组定义（文件夹模式）；提供后左右箭头在组内导航，工具栏出现上一组/下一组按钮 |
+| `images` | `ImageItem[]` | — | 扁平多图；无非空 `groupedImages` 时 `src`/`alt` 被忽略；若与非空 `groupedImages` 同时传入则忽略 `images`（开发环境 `console.warn`） |
+| `groupedImages` | `ImageGroup[]` | — | 文件夹式分组；各组 `images` 按顺序拼接；优先于 `images`/`src`；多组时左右箭头组内导航，工具栏出现上一组/下一组 |
 | `visible` | `boolean` | — | 受控可见性 |
 | `defaultIndex` | `number` | `0` | 初始显示的图片下标 |
 
@@ -48,7 +48,7 @@
 
 | Prop | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | 仅控制**图片两侧**箭头；见下表（有 `groups` 时工具栏上一张/下一张始终显示） |
+| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | 仅控制**图片两侧**箭头；见下表（非空 `groupedImages` 时工具栏上一张/下一张始终显示） |
 | `showFlip` | `boolean` | `false` | 是否显示水平/垂直翻转按钮 |
 | `showMinimap` | `boolean` | `true` | 主图超出视口时是否显示右下角导航小地图（拖动虚线框平移） |
 | `language` | `string` | `'en'` | 界面语言：内置 `en`、`zh`（按主语言子标签匹配，如 `zh-CN` → `zh`） |
@@ -62,7 +62,7 @@
 | `'toolbar'` | 仅工具栏上一张/下一张；无两侧箭头 |
 | `'none'` | 无两侧箭头；键盘 ← → 仍可用；扁平列表时工具栏仍有上一张/下一张与序号 |
 
-当设置了 **`groups`** 时，**工具栏上一张/下一张始终显示**；`arrows` 只控制**两侧**箭头。
+当提供了非空 **`groupedImages`** 时，**工具栏上一张/下一张始终显示**；`arrows` 只控制**两侧**箭头。
 
 #### 侧边箭头智能行为
 
@@ -84,6 +84,7 @@
 
 ```typescript
 interface ImageItem {
+  id?: string; // 稳定主键（如路径）；身份请优先于 name
   src: string;
   alt?: string;
   name?: string; // 工具栏信息栏显示的文件名
@@ -92,9 +93,9 @@ interface ImageItem {
 }
 
 interface ImageGroup {
-  name: string;  // 文件夹名，显示在文件名下方
-  start: number; // 在 images 数组中的起始下标（含）
-  end: number;   // 在 images 数组中的结束下标（含）
+  id?: string; // 可选稳定主键（目录/相册）
+  name: string; // 文件夹名，显示在文件名下方
+  images: ImageItem[];
 }
 
 type ArrowsConfig = 'both' | 'side' | 'toolbar' | 'none';
@@ -127,7 +128,7 @@ interface ImagePreviewRef {
   flipVertical(): void;
 
   // 图片导航
-  next(): void;            // 组内下一张（无分组则全局）
+  next(): void;            // 组内下一张（无 groupedImages 则全局）
   prev(): void;            // 组内上一张
   nextGroup(): void;       // 跳到下一组第一张
   prevGroup(): void;       // 跳到上一组第一张

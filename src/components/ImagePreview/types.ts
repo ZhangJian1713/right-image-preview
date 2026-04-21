@@ -14,6 +14,11 @@ export interface ZoomState {
 }
 
 export interface ImageItem {
+  /**
+   * Stable unique key for the item (e.g. file path). Prefer this over {@link name} for identity:
+   * names can repeat or change when renamed.
+   */
+  id?: string;
   src: string;
   alt?: string;
   /** Filename displayed in the info bar above the toolbar. */
@@ -31,17 +36,15 @@ export interface ImageItem {
 }
 
 /**
- * Defines a named group (folder) within the flat `images` array.
- * When `groups` is passed to `ImagePreview`, the left/right arrows navigate
- * within the current group, and prev/next-group buttons appear in the toolbar.
+ * A named album/folder segment: its {@link images} are concatenated in order to form the flat list.
+ * Prefer this over maintaining manual index ranges.
  */
 export interface ImageGroup {
-  /** Display name, e.g. folder name shown below the image filename. */
+  /** Optional stable id (e.g. directory path). */
+  id?: string;
+  /** Display name shown in the toolbar (folder / album label). */
   name: string;
-  /** Inclusive start index in the `images` array. */
-  start: number;
-  /** Inclusive end index in the `images` array. */
-  end: number;
+  images: ImageItem[];
 }
 
 /**
@@ -81,14 +84,27 @@ export type WheelStrategy =
  * - `'toolbar'` — toolbar prev/next only; no side arrows.
  * - `'none'`    — no side arrows; keyboard ← → still works.
  *
- * When `groups` is non-empty (**folder / multi-group mode**), toolbar prev/next are **always** shown;
+ * When {@link ImagePreviewProps.groupedImages} is non-empty (**folder / multi-group mode**), toolbar prev/next are **always** shown;
  * this prop no longer hides them — only the side arrows obey the table above.
  */
 export type ArrowsConfig = 'both' | 'side' | 'toolbar' | 'none';
 
+/**
+ * Stages for the optional progressive main-image pipeline (`minimapSrc` thumbnail
+ * underlay until the full `src` has loaded in the DOM). Used by {@link ImagePreviewProps.onMainImageLoadStageChange}.
+ */
+export type MainImageLoadStage =
+  | 'inactive'
+  | 'preloading'
+  | 'thumbnail-placeholder'
+  /** Full `src` failed to load/decode, but `minimapSrc` succeeded — main area shows thumbnail only. */
+  | 'thumb-only'
+  | 'full-ready'
+  | 'error';
+
 export interface ImagePreviewProps {
   // ── Data ──────────────────────────────────────────────────────────────────
-  /** Single image shorthand. Ignored when `images` is provided. */
+  /** Single image shorthand. Ignored when `images` or non-empty `groupedImages` is provided. */
   src?: string;
   alt?: string;
   /**
@@ -99,14 +115,17 @@ export interface ImagePreviewProps {
    * Single-image custom minimap node (only when using `src`). Same as {@link ImageItem.minimap}.
    */
   minimap?: React.ReactNode;
-  /** Multiple images. When provided, `src`/`alt` are ignored. */
+  /**
+   * Flat list of images. Ignored when `src` is not used if {@link groupedImages} is non-empty.
+   * Ignored when `groupedImages` is provided (see priority there).
+   */
   images?: ImageItem[];
   /**
-   * Optional group (folder) definitions over the flat `images` array.
-   * When provided, left/right arrows navigate within the current group only,
-   * and prev/next-group buttons appear flanking the arrows.
+   * Folder-style input: each entry’s `images` are concatenated in order. Left/right arrows stay within
+   * the current group; toolbar shows prev/next-group when there are multiple groups.
+   * When set (non-empty), it takes precedence over {@link images}.
    */
-  groups?: ImageGroup[];
+  groupedImages?: ImageGroup[];
   /** Controlled visibility. */
   visible?: boolean;
   /** Initial visible index (multi-image). Default 0. */
@@ -161,7 +180,7 @@ export interface ImagePreviewProps {
   showFlip?: boolean;
 
   /**
-   * Which **side** arrow buttons to render. Toolbar prev/next in multi-group mode (`groups`) are always on.
+   * Which **side** arrow buttons to render. Toolbar prev/next in multi-group mode (`groupedImages`) are always on.
    * Default: `'both'`. See `ArrowsConfig`.
    */
   arrows?: ArrowsConfig;
@@ -182,10 +201,26 @@ export interface ImagePreviewProps {
   showMinimap?: boolean;
 
   /**
+   * When true (default) and the current item has {@link ImageItem.minimapSrc} and no custom
+   * {@link ImageItem.minimap}, the main view uses that URL as a stretched placeholder after the
+   * full image dimensions are known (background preload), keeps the centre loading spinner until
+   * the full `src` has loaded and decoded in the DOM, then reveals the sharp image without
+   * changing the corner minimap.
+   */
+  progressiveMain?: boolean;
+  /**
+   * Opacity crossfade duration (ms) when revealing the full main image over the thumbnail
+   * placeholder. `0` (default) switches instantly to avoid any double-exposure flash.
+   */
+  progressiveFadeMs?: number;
+  /** Optional hook for tests, analytics, or debugging the progressive pipeline. */
+  onMainImageLoadStageChange?: (stage: MainImageLoadStage) => void;
+
+  /**
    * Custom counter renderer, similar to Ant Design's countRender.
    * Receives (currentIndex + 1, total). Return any React node to replace
    * the default "n / total" counter in the toolbar.
-   * @deprecated Prefer using `groups` for multi-folder scenarios.
+   * @deprecated Prefer using {@link groupedImages} for multi-folder scenarios.
    */
   countRender?: (current: number, total: number) => React.ReactNode;
 
@@ -246,13 +281,13 @@ export interface ImagePreviewRef {
   flipHorizontal(): void;
   /** Flip image vertically (top ↔ bottom). */
   flipVertical(): void;
-  /** Navigate to the next image within the current group (or globally if no groups). */
+  /** Navigate to the next image within the current group (or globally if not grouped). */
   next(): void;
-  /** Navigate to the previous image within the current group (or globally if no groups). */
+  /** Navigate to the previous image within the current group (or globally if not grouped). */
   prev(): void;
-  /** Navigate to the first image of the next group (requires `groups` prop). */
+  /** Navigate to the first image of the next group (requires `groupedImages`). */
   nextGroup(): void;
-  /** Navigate to the first image of the previous group (requires `groups` prop). */
+  /** Navigate to the first image of the previous group (requires `groupedImages`). */
   prevGroup(): void;
   getState(): ZoomState;
 }

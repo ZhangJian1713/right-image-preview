@@ -101,10 +101,23 @@ import { ImagePreview } from './components/ImagePreview';
 
 // Multiple groups (folders)
 <ImagePreview
-  images={allImages}
-  groups={[
-    { name: 'Travel/', start: 0, end: 2 },
-    { name: 'Events/', start: 3, end: 5 },
+  groupedImages={[
+    {
+      name: 'Travel/',
+      images: [
+        { id: 'travel/a', src: '/a.jpg', name: 'a.jpg' },
+        { src: '/b.jpg', name: 'b.jpg' },
+        { src: '/c.jpg', name: 'c.jpg' },
+      ],
+    },
+    {
+      name: 'Events/',
+      images: [
+        { src: '/d.jpg', name: 'd.jpg' },
+        { src: '/e.jpg', name: 'e.jpg' },
+        { src: '/f.jpg', name: 'f.jpg' },
+      ],
+    },
   ]}
   visible={open}
   onClose={() => setOpen(false)}
@@ -121,11 +134,11 @@ import { ImagePreview } from './components/ImagePreview';
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `src` | `string` | — | Single image URL (ignored when `images` is provided) |
+| `src` | `string` | — | Single image URL (ignored when `images` or non-empty `groupedImages` is provided) |
 | `minimapSrc` | `string` | — | Single-image only: minimap tile URL (defaults to main `src`); ignored if `minimap` is set |
 | `minimap` | `React.ReactNode` | — | Single-image only: custom minimap content (overrides `minimapSrc`) |
-| `images` | `ImageItem[]` | — | Image list (takes precedence over `src`); per-item `minimapSrc` / `minimap` supported |
-| `groups` | `ImageGroup[]` | — | Group definitions for folder-style navigation |
+| `images` | `ImageItem[]` | — | Flat image list (over `src`); ignored when non-empty `groupedImages` is set (dev may warn if both are passed); per-item `minimapSrc` / `minimap` supported |
+| `groupedImages` | `ImageGroup[]` | — | Folder-style groups; concatenates each group’s `images` in order; takes precedence over `images` and `src` |
 | `visible` | `boolean` | `true` | Controls visibility |
 | `defaultIndex` | `number` | `0` | Initial image index |
 | `stops` | `number[]` | `[10,25,50,75,100,150,200]` | Discrete zoom stops in % (ascending); raise the cap by passing a longer list |
@@ -140,7 +153,7 @@ import { ImagePreview } from './components/ImagePreview';
 | `switchImageResetTransform` | `boolean` | `false` | Reset flip/rotation when switching images |
 | `fitResetPan` | `boolean` | `true` | Reset pan offset when switching to Fit mode |
 | `showFlip` | `boolean` | `false` | Show horizontal/vertical flip buttons |
-| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | **Side** arrows only; with `groups`, toolbar prev/next always on |
+| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | **Side** arrows only; with non-empty `groupedImages`, toolbar prev/next always on |
 | `initialZoomLocked` | `boolean` | `false` | Start with zoom lock enabled |
 | `closeOnMaskClick` | `boolean` | `false` | Close when clicking outside the image/toolbar |
 | `onClose` | `() => void` | — | Called when the preview is closed |
@@ -157,12 +170,13 @@ import { ImagePreview } from './components/ImagePreview';
 | `'toolbar'` | Toolbar prev/next only; no side arrows |
 | `'none'` | No side arrows; keyboard ← → still works; flat lists still get toolbar prev/next + index |
 
-With **`groups`**, toolbar prev/next are always shown; only side arrows follow this table.
+With non-empty **`groupedImages`**, toolbar prev/next are always shown; only side arrows follow this table.
 
 ### Types
 
 ```ts
 interface ImageItem {
+  id?: string;   // stable key (e.g. path); prefer over `name` for identity
   src: string;
   alt?: string;
   name?: string; // filename shown in the info badge
@@ -171,9 +185,9 @@ interface ImageItem {
 }
 
 interface ImageGroup {
+  id?: string;   // optional stable key for the folder / album
   name: string;  // group label shown below the filename
-  start: number; // inclusive start index in the images array
-  end: number;   // inclusive end index in the images array
+  images: ImageItem[];
 }
 
 interface ZoomState {
@@ -182,6 +196,8 @@ interface ZoomState {
   fitEquivalentNativePercent?: number; // for displaying "Fit ≈ xx%"
 }
 ```
+
+The package also exports **`resolvePreviewImages`**, **`flattenGroupedImages`**, and **`FlattenedGroupSlice`** if you need the same flattened list and per-group index ranges outside the component.
 
 ### Ref API
 
@@ -227,8 +243,8 @@ interface ImagePreviewRef {
 | `←` / `→` | Previous / next image |
 | `Ctrl/⌘ + ←` | Rotate 90° counter-clockwise |
 | `Ctrl/⌘ + →` | Rotate 90° clockwise |
-| `PageUp` | Jump to previous group |
-| `PageDown` | Jump to next group |
+| `PageUp` | Jump to first image of the previous group (non-empty `groupedImages`) |
+| `PageDown` | Jump to first image of the next group (non-empty `groupedImages`) |
 
 > Any key press resets the auto-fade inactivity timer.
 
@@ -240,6 +256,7 @@ interface ImagePreviewRef {
 src/
   components/ImagePreview/
     types.ts              # TypeScript type definitions
+    flattenGroupedImages.ts  # resolvePreviewImages / flattenGroupedImages helpers
     useZoomState.ts       # Zoom state machine hook (pure logic, no DOM)
     useImageTransform.ts  # Size measurement + CSS transform + drag-to-pan
     Toolbar.tsx           # Bottom toolbar (zoom / rotate / flip / nav / filename)
@@ -286,4 +303,4 @@ fitEquivalentNativePercent   = fitScale × 100  (used to display "Fit ≈ xx%")
 
 ## License
 
-MIT © [YOUR_NAME](https://github.com/YOUR_GITHUB_USERNAME)
+MIT © [ZhangJian](https://github.com/ZhangJian1713)

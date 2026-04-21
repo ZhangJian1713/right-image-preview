@@ -72,7 +72,7 @@
 
 ### 文件名显示
 - [x] `ImageItem.name` 字段，显示在工具栏信息栏
-- [x] `countRender(current, total)` — 自定义计数内容（已废弃，建议改用 `groups`）
+- [x] `countRender(current, total)` — 自定义计数内容（已废弃，建议改用 `groupedImages` 分组导航与工具栏计数）
 
 ---
 
@@ -94,8 +94,8 @@
 
 ## 阶段 4 — 多文件夹支持
 
-### `groups` 分组导航
-- [x] 新增 `ImageGroup` 接口（`name / start / end`）
+### `groupedImages` 分组导航
+- [x] `ImageGroup`：`id?`、`name`、`images: ImageItem[]`（不再使用 `start` / `end` 区间）
 - [x] 左右箭头在组内导航，到达边界时禁用
 - [x] 工具栏新增"上一组"（⏮）/ "下一组"（⏭）按钮
 - [x] 工具栏序号显示组内序号（如 `2/3`），不显示全局序号
@@ -103,7 +103,7 @@
 
 ### Demo 改进
 - [x] Demo 1：5 张单组图片，无文件夹信息
-- [x] Demo 2：3 个文件夹共 10 张图片，使用 `groups` 分组导航
+- [x] Demo 2：3 个文件夹共 10 张图片，使用 `groupedImages` 分组导航
 
 ---
 
