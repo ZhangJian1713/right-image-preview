@@ -140,7 +140,8 @@ import { ImagePreview } from './components/ImagePreview';
 | `images` | `ImageItem[]` | — | Flat image list (over `src`); ignored when non-empty `groupedImages` is set (dev may warn if both are passed); per-item `minimapSrc` / `minimap` supported |
 | `groupedImages` | `ImageGroup[]` | — | Folder-style groups; concatenates each group’s `images` in order; takes precedence over `images` and `src` |
 | `visible` | `boolean` | `true` | Controls visibility |
-| `defaultIndex` | `number` | `0` | Initial image index |
+| `defaultGroupedSelection` | `{ defaultGroupIndex, defaultIndexInGroup }` | — | Initial image in `groupedImages` mode (group index counts only non-empty groups); overrides `defaultIndex` |
+| `defaultIndex` | `number` | `0` | Initial index in the flattened list; ignored when `defaultGroupedSelection` is set with groups |
 | `stops` | `number[]` | `[10,25,50,75,100,150,200]` | Discrete zoom stops in % (ascending); raise the cap by passing a longer list |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | Initial zoom mode |
 | `initialNativePercent` | `number` | first stop | Initial native percent when `initialMode='native'` |
@@ -190,6 +191,11 @@ interface ImageGroup {
   images: ImageItem[];
 }
 
+interface DefaultGroupedSelection {
+  defaultGroupIndex: number;   // among non-empty groups only, in order
+  defaultIndexInGroup: number; // 0-based within that group’s `images`
+}
+
 interface ZoomState {
   mode: 'fit' | 'native';
   nativePercent: number;
@@ -197,7 +203,7 @@ interface ZoomState {
 }
 ```
 
-The package also exports **`resolvePreviewImages`**, **`flattenGroupedImages`**, and **`FlattenedGroupSlice`** if you need the same flattened list and per-group index ranges outside the component.
+The package also exports **`resolvePreviewImages`**, **`flattenGroupedImages`**, **`resolveDefaultGroupedFlatIndex`**, **`FlattenedGroupSlice`**, and **`DefaultGroupedSelection`** if you need the same flattened list and per-group index ranges outside the component.
 
 ### Ref API
 

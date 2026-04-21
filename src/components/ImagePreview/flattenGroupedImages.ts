@@ -1,4 +1,4 @@
-import type { ImageGroup, ImageItem, ImagePreviewProps } from './types';
+import type { DefaultGroupedSelection, ImageGroup, ImageItem, ImagePreviewProps } from './types';
 
 /** Internal flat index range after {@link flattenGroupedImages}. Not a public input shape. */
 export interface FlattenedGroupSlice {
@@ -36,6 +36,26 @@ export function flattenGroupedImages(grouped: ImageGroup[]): {
     groupSlices.push({ name: g.name, start, end: idx - 1, id: g.id });
   }
   return { images, groupSlices };
+}
+
+/**
+ * Maps {@link DefaultGroupedSelection} to an index in the flattened list produced by {@link flattenGroupedImages}.
+ * Out-of-range group or in-group indices are clamped. Empty groups are not counted in `defaultGroupIndex`.
+ */
+export function resolveDefaultGroupedFlatIndex(
+  groupedImages: ImageGroup[],
+  selection: DefaultGroupedSelection,
+): number {
+  const { groupSlices } = flattenGroupedImages(groupedImages);
+  if (groupSlices.length === 0) return 0;
+  let g = selection.defaultGroupIndex;
+  if (!Number.isFinite(g) || g < 0 || g >= groupSlices.length) g = 0;
+  const slice = groupSlices[g];
+  const span = slice.end - slice.start + 1;
+  let inner = selection.defaultIndexInGroup;
+  if (!Number.isFinite(inner) || inner < 0) inner = 0;
+  if (inner >= span) inner = Math.max(0, span - 1);
+  return slice.start + inner;
 }
 
 /** Resolves props to a flat image list and optional group slices. Priority: `groupedImages` → `images` → `src`. */

@@ -17,7 +17,8 @@
 | `images` | `ImageItem[]` | — | Flat list; when provided without non-empty `groupedImages`, `src`/`alt` are ignored; if both `images` and non-empty `groupedImages` are set, `images` is ignored (dev `console.warn`) |
 | `groupedImages` | `ImageGroup[]` | — | Folder-style groups; each group’s `images` are concatenated in order; takes precedence over `images` and `src`; arrows navigate within a group, toolbar gains prev/next-group when multiple groups exist |
 | `visible` | `boolean` | — | Controlled visibility |
-| `defaultIndex` | `number` | `0` | Initially displayed image index |
+| `defaultGroupedSelection` | `DefaultGroupedSelection` | — | Initial `{ defaultGroupIndex, defaultIndexInGroup }` when using non-empty `groupedImages` (group index counts only non-empty groups); overrides `defaultIndex` |
+| `defaultIndex` | `number` | `0` | Initially displayed index in the flattened list; ignored when `defaultGroupedSelection` is set with groups |
 
 ### Zoom Configuration
 
@@ -96,6 +97,13 @@ interface ImageGroup {
   id?: string; // optional stable key for the folder / album
   name: string; // group label displayed below the filename
   images: ImageItem[];
+}
+
+interface DefaultGroupedSelection {
+  /** Index among groups with `images.length > 0` only, in source order */
+  defaultGroupIndex: number;
+  /** 0-based index within that group’s `images` */
+  defaultIndexInGroup: number;
 }
 
 type ArrowsConfig = 'both' | 'side' | 'toolbar' | 'none';

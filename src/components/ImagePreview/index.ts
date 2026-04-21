@@ -1,10 +1,15 @@
 export { ImagePreview } from './ImagePreview';
-export { flattenGroupedImages, resolvePreviewImages } from './flattenGroupedImages';
+export {
+  flattenGroupedImages,
+  resolveDefaultGroupedFlatIndex,
+  resolvePreviewImages,
+} from './flattenGroupedImages';
 export { resolveStrings } from './locale';
 export type { LocaleStrings } from './locale';
 export type { FlattenedGroupSlice } from './flattenGroupedImages';
 export type {
   ArrowsConfig,
+  DefaultGroupedSelection,
   FirstZoomInStrategy,
   ImageGroup,
   ImageItem,

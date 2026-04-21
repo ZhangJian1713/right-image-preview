@@ -140,7 +140,8 @@ import { ImagePreview } from './components/ImagePreview';
 | `images` | `ImageItem[]` | — | 扁平多图列表（高于 `src`）；非空 `groupedImages` 时忽略（开发环境若同时传入可能 `console.warn`）；每项可带 `minimapSrc` / `minimap` |
 | `groupedImages` | `ImageGroup[]` | — | 文件夹式分组；按顺序拼接各组的 `images`；优先级高于 `images` 与 `src` |
 | `visible` | `boolean` | `true` | 控制预览显示/隐藏 |
-| `defaultIndex` | `number` | `0` | 初始图片索引 |
+| `defaultGroupedSelection` | `{ defaultGroupIndex, defaultIndexInGroup }` | — | `groupedImages` 模式下的初始图（组下标只计非空组）；优先于 `defaultIndex` |
+| `defaultIndex` | `number` | `0` | 扁平列表中的初始下标；与分组同时传入 `defaultGroupedSelection` 时忽略 |
 | `stops` | `number[]` | `[10,25,50,75,100,150,200]` | Native zoom 档位（%，升序）；需要更高上限请传入更长列表 |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | 初始缩放模式 |
 | `initialNativePercent` | `number` | 第一档 | `initialMode='native'` 时的初始比例 |
@@ -190,6 +191,11 @@ interface ImageGroup {
   images: ImageItem[];
 }
 
+interface DefaultGroupedSelection {
+  defaultGroupIndex: number;   // 仅统计非空组，顺序同 `groupedImages`
+  defaultIndexInGroup: number; // 在该组 `images` 内的 0-based 下标
+}
+
 interface ZoomState {
   mode: 'fit' | 'native';
   nativePercent: number;
@@ -197,7 +203,7 @@ interface ZoomState {
 }
 ```
 
-包内还导出 **`resolvePreviewImages`**、**`flattenGroupedImages`** 与 **`FlattenedGroupSlice`**，便于在组件外复用相同的扁平列表与组内下标范围。
+包内还导出 **`resolvePreviewImages`**、**`flattenGroupedImages`**、**`resolveDefaultGroupedFlatIndex`**、**`FlattenedGroupSlice`** 与 **`DefaultGroupedSelection`**，便于在组件外复用相同的扁平列表与组内下标范围。
 
 ### Ref API
 

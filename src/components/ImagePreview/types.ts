@@ -102,6 +102,16 @@ export type MainImageLoadStage =
   | 'full-ready'
   | 'error';
 
+/**
+ * Initial picture when using {@link ImagePreviewProps.groupedImages}.
+ * `defaultGroupIndex` is the index among groups that have `images.length > 0` only, in array order (skipped empty groups are not counted).
+ */
+export interface DefaultGroupedSelection {
+  defaultGroupIndex: number;
+  /** 0-based index within that group's `images` array. */
+  defaultIndexInGroup: number;
+}
+
 export interface ImagePreviewProps {
   // ── Data ──────────────────────────────────────────────────────────────────
   /** Single image shorthand. Ignored when `images` or non-empty `groupedImages` is provided. */
@@ -128,7 +138,15 @@ export interface ImagePreviewProps {
   groupedImages?: ImageGroup[];
   /** Controlled visibility. */
   visible?: boolean;
-  /** Initial visible index (multi-image). Default 0. */
+  /**
+   * Initial image when using non-empty {@link groupedImages}: which group and which item inside that group.
+   * Takes precedence over {@link defaultIndex} in that mode.
+   */
+  defaultGroupedSelection?: DefaultGroupedSelection;
+  /**
+   * Initial visible index in the **flattened** list (single `src`, flat `images`, or derived from `groupedImages`).
+   * When {@link defaultGroupedSelection} is set and groups exist, this prop is ignored.
+   */
   defaultIndex?: number;
 
   // ── Zoom configuration ────────────────────────────────────────────────────
@@ -261,6 +279,7 @@ export interface ImagePreviewProps {
   // ── Callbacks ──────────────────────────────────────────────────────────────
   onClose?: () => void;
   onZoomChange?: (state: ZoomState) => void;
+  /** Active image changed; `index` is always the flattened list position (including when using `groupedImages`). */
   onIndexChange?: (index: number) => void;
   /** Called when attempting to zoom in at the maximum stop (only when zoomInAtMaxBehaviour === 'notify'). */
   onMaxStopReached?: () => void;

@@ -25,7 +25,11 @@ import {
   WHEEL_PIXEL_MOUSE_NOTCH_MIN,
 } from './imagePreviewTuning';
 import { resolveStrings } from './locale';
-import { resolvePreviewImages, type FlattenedGroupSlice } from './flattenGroupedImages';
+import {
+  resolveDefaultGroupedFlatIndex,
+  resolvePreviewImages,
+  type FlattenedGroupSlice,
+} from './flattenGroupedImages';
 import type { ImageItem, ImagePreviewProps, ImagePreviewRef, NativePercent } from './types';
 import { useImageTransform } from './useImageTransform';
 import { useProgressiveMainImage } from './useProgressiveMainImage';
@@ -138,7 +142,12 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     const showToolbarArrows = hasGroups || arrows === 'both' || arrows === 'toolbar';
     const sortedStops = useMemo(() => [...stops].sort((a, b) => a - b), [stops]);
 
-    const [currentIndex, setCurrentIndex] = useState(defaultIndex);
+    const [currentIndex, setCurrentIndex] = useState(() => {
+      if (hasGroups && props.defaultGroupedSelection && props.groupedImages?.length) {
+        return resolveDefaultGroupedFlatIndex(props.groupedImages, props.defaultGroupedSelection);
+      }
+      return defaultIndex;
+    });
     const [zoomLocked, setZoomLocked] = useState(initialZoomLocked);
     const [minimapDragging, setMinimapDragging] = useState(false);
     const overlayRef = useRef<HTMLDivElement>(null);

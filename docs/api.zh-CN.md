@@ -17,7 +17,8 @@
 | `images` | `ImageItem[]` | — | 扁平多图；无非空 `groupedImages` 时 `src`/`alt` 被忽略；若与非空 `groupedImages` 同时传入则忽略 `images`（开发环境 `console.warn`） |
 | `groupedImages` | `ImageGroup[]` | — | 文件夹式分组；各组 `images` 按顺序拼接；优先于 `images`/`src`；多组时左右箭头组内导航，工具栏出现上一组/下一组 |
 | `visible` | `boolean` | — | 受控可见性 |
-| `defaultIndex` | `number` | `0` | 初始显示的图片下标 |
+| `defaultGroupedSelection` | `DefaultGroupedSelection` | — | 非空 `groupedImages` 时的初始 `{ defaultGroupIndex, defaultIndexInGroup }`（组下标只计非空组）；覆盖 `defaultIndex` |
+| `defaultIndex` | `number` | `0` | 扁平列表中的初始下标；与分组同时设置 `defaultGroupedSelection` 时忽略 |
 
 ### 缩放配置
 
@@ -96,6 +97,13 @@ interface ImageGroup {
   id?: string; // 可选稳定主键（目录/相册）
   name: string; // 文件夹名，显示在文件名下方
   images: ImageItem[];
+}
+
+interface DefaultGroupedSelection {
+  /** 仅统计 `images.length > 0` 的组，顺序同 `groupedImages` */
+  defaultGroupIndex: number;
+  /** 在该组 `images` 内的从 0 开始的下标 */
+  defaultIndexInGroup: number;
 }
 
 type ArrowsConfig = 'both' | 'side' | 'toolbar' | 'none';

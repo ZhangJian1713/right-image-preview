@@ -180,12 +180,6 @@ function buildFolderData(locale: DemoLocale): { folderGroups: FolderGroup[]; gro
   return { folderGroups, groupedImages };
 }
 
-function getFlatIndex(folderGroups: FolderGroup[], folderIdx: number, imgIdx: number): number {
-  let o = 0;
-  for (let i = 0; i < folderIdx; i++) o += folderGroups[i].images.length;
-  return o + imgIdx;
-}
-
 function largeGallery(locale: DemoLocale): ImageItem[] {
   const mbZh = '（18.6 MB）';
   const mbEn = ' (18.6 MB)';
@@ -428,7 +422,7 @@ export default function App() {
   const demo1Ref = useRef<ImagePreviewRef>(null);
 
   const [demo2Visible, setDemo2Visible] = useState(false);
-  const [demo2Index, setDemo2Index] = useState(0);
+  const [demo2Selection, setDemo2Selection] = useState({ defaultGroupIndex: 0, defaultIndexInGroup: 0 });
 
   const [demo3Visible, setDemo3Visible] = useState(false);
   const [demo3Index, setDemo3Index] = useState(0);
@@ -437,8 +431,8 @@ export default function App() {
     setDemo1Index(idx);
     setDemo1Visible(true);
   };
-  const openDemo2 = (idx: number) => {
-    setDemo2Index(idx);
+  const openDemo2 = (folderIdx: number, imageIdxInFolder: number) => {
+    setDemo2Selection({ defaultGroupIndex: folderIdx, defaultIndexInGroup: imageIdxInFolder });
     setDemo2Visible(true);
   };
 
@@ -559,7 +553,7 @@ export default function App() {
                   alt={img.alt ?? ''}
                   label={img.name ?? img.alt ?? ''}
                   ariaLabel={t.thumbAria(img.name ?? img.alt ?? '')}
-                  onClick={() => openDemo2(getFlatIndex(folderGroups, gi, ii))}
+                  onClick={() => openDemo2(gi, ii)}
                 />
               ))}
             </div>
@@ -614,7 +608,7 @@ export default function App() {
       <ImagePreview
         groupedImages={groupedImages}
         visible={demo2Visible}
-        defaultIndex={demo2Index}
+        defaultGroupedSelection={demo2Selection}
         initialMode="fit"
         firstZoomInStrategy="above-fit"
         zoomOutBelowMinBehaviour="noop"
