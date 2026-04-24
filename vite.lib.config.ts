@@ -11,7 +11,8 @@ export default defineConfig({
     react(),
     dts({
       tsconfigPath: './tsconfig.lib.json',
-      rollupTypes: true,          // merge all .d.ts into a single index.d.ts
+      // Single bundled .d.ts hits API Extractor + TS 6.x issues (empty `export {}`); flat emit works.
+      rollupTypes: false,
       insertTypesEntry: true,
     }),
   ],

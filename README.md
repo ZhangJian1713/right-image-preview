@@ -4,17 +4,6 @@
 
 > A dependency-free React image preview component with Lightroom-style discrete zoom stops, multi-group navigation, flip/rotate, keyboard shortcuts, and auto-fading controls.
 
-### What’s new in **v0.0.8**
-
-- **Default zoom stops** now top out at **200%** (high stops looked soft in preview); pass a custom **`stops`** array if you need higher ratios.
-- **Toolbar zoom field** clamps typed values to the **maximum configured stop** (defaults to 200%); imperative **`ref.setNative(...)`** is not clamped.
-- **GitHub Pages demo**: **EN / 中文** language toggle (top-right).
-- **Wheel zoom** remains tuned for mice that report small pixel deltas per detent.
-
-### Earlier **v0.0.7**
-
-- Navigation **minimap**, compact zoom field in Fit mode, and **`language`** prop (EN/zh UI).
-
 ---
 
 ## ✨ Features
@@ -30,20 +19,31 @@
 | **Smart side arrows** | Hidden when no navigation is possible; replaced by a group-jump button (double chevron) at group boundaries |
 | **Auto-fade controls** | All controls fade to ~10 % opacity after 3 s of inactivity; any activity instantly restores them |
 | **Navigation minimap** | Corner thumbnail + draggable viewport frame when the image overflows; optional via `showMinimap` |
+| **Minimap source per item** | Each **`ImageItem`** (and single-**`src`** mode) can set **`minimapSrc`** / **`minimap`** so the map uses a lighter tile or custom node; defaults to the main **`src`** |
+| **Localized toolbar** | **`language`** prop with built-in **English** and **Simplified Chinese** (`en`, `zh`, `zh-CN`, …) |
 | **Rich keyboard shortcuts** | Esc · +/- · arrow keys · Space · PageUp/Down · Ctrl+arrow |
 | **Accessibility** | `role="dialog"` + `aria-modal`, all buttons have `aria-label`, focus is trapped |
 | **TypeScript first** | Full type exports, `forwardRef` imperative ref API |
 | **Zero production dependencies** | Only requires React |
+| **React 17+** | Peer `react` / `react-dom` ≥ 17; React 18+ still recommended (native `flushSync` for fastest multi-step wheel zoom) |
 
 ---
 
 ## Quick Start
 
+**In your app**
+
+```bash
+npm install right-image-preview
+```
+
+**This repository** (demos, tests, contributing)
+
 ```bash
 npm install
-npm run dev       # dev server with live demos
-npm test          # run unit & integration tests
-npm run build     # production build
+npm run dev       # demo at http://localhost:5173
+npm test
+npm run build     # Vite production build of the demo
 ```
 
 Open `http://localhost:5173` for the demo page (**EN / 中文** toggle in the top-right):
@@ -56,7 +56,7 @@ Open `http://localhost:5173` for the demo page (**EN / 中文** toggle in the to
 ## Basic Usage
 
 ```tsx
-import { ImagePreview } from './components/ImagePreview';
+import { ImagePreview } from 'right-image-preview';
 
 // Single image
 <ImagePreview
@@ -80,10 +80,23 @@ import { ImagePreview } from './components/ImagePreview';
 
 // Multiple groups (folders)
 <ImagePreview
-  images={allImages}
-  groups={[
-    { name: 'Travel/', start: 0, end: 2 },
-    { name: 'Events/', start: 3, end: 5 },
+  groupedImages={[
+    {
+      name: 'Travel/',
+      images: [
+        { id: 'travel/a', src: '/a.jpg', name: 'a.jpg' },
+        { src: '/b.jpg', name: 'b.jpg' },
+        { src: '/c.jpg', name: 'c.jpg' },
+      ],
+    },
+    {
+      name: 'Events/',
+      images: [
+        { src: '/d.jpg', name: 'd.jpg' },
+        { src: '/e.jpg', name: 'e.jpg' },
+        { src: '/f.jpg', name: 'f.jpg' },
+      ],
+    },
   ]}
   visible={open}
   onClose={() => setOpen(false)}
@@ -100,11 +113,14 @@ import { ImagePreview } from './components/ImagePreview';
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `src` | `string` | — | Single image URL (ignored when `images` is provided) |
-| `images` | `ImageItem[]` | — | Image list (takes precedence over `src`) |
-| `groups` | `ImageGroup[]` | — | Group definitions for folder-style navigation |
+| `src` | `string` | — | Single image URL (ignored when `images` or non-empty `groupedImages` is provided) |
+| `minimapSrc` | `string` | — | Single-image only: minimap tile URL (defaults to main `src`); ignored if `minimap` is set |
+| `minimap` | `React.ReactNode` | — | Single-image only: custom minimap content (overrides `minimapSrc`) |
+| `images` | `ImageItem[]` | — | Flat image list (over `src`); ignored when non-empty `groupedImages` is set (dev may warn if both are passed); per-item `minimapSrc` / `minimap` supported |
+| `groupedImages` | `ImageGroup[]` | — | Folder-style groups; concatenates each group’s `images` in order; takes precedence over `images` and `src` |
 | `visible` | `boolean` | `true` | Controls visibility |
-| `defaultIndex` | `number` | `0` | Initial image index |
+| `defaultGroupedSelection` | `{ defaultGroupIndex, defaultIndexInGroup }` | — | Initial image in `groupedImages` mode (group index counts only non-empty groups); overrides `defaultIndex` |
+| `defaultIndex` | `number` | `0` | Initial index in the flattened list; ignored when `defaultGroupedSelection` is set with groups |
 | `stops` | `number[]` | `[10,25,50,75,100,150,200]` | Discrete zoom stops in % (ascending); raise the cap by passing a longer list |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | Initial zoom mode |
 | `initialNativePercent` | `number` | first stop | Initial native percent when `initialMode='native'` |
@@ -117,7 +133,7 @@ import { ImagePreview } from './components/ImagePreview';
 | `switchImageResetTransform` | `boolean` | `false` | Reset flip/rotation when switching images |
 | `fitResetPan` | `boolean` | `true` | Reset pan offset when switching to Fit mode |
 | `showFlip` | `boolean` | `false` | Show horizontal/vertical flip buttons |
-| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | **Side** arrows only; with `groups`, toolbar prev/next always on |
+| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | **Side** arrows only; with non-empty `groupedImages`, toolbar prev/next always on |
 | `initialZoomLocked` | `boolean` | `false` | Start with zoom lock enabled |
 | `closeOnMaskClick` | `boolean` | `false` | Close when clicking outside the image/toolbar |
 | `onClose` | `() => void` | — | Called when the preview is closed |
@@ -134,21 +150,29 @@ import { ImagePreview } from './components/ImagePreview';
 | `'toolbar'` | Toolbar prev/next only; no side arrows |
 | `'none'` | No side arrows; keyboard ← → still works; flat lists still get toolbar prev/next + index |
 
-With **`groups`**, toolbar prev/next are always shown; only side arrows follow this table.
+With non-empty **`groupedImages`**, toolbar prev/next are always shown; only side arrows follow this table.
 
 ### Types
 
 ```ts
 interface ImageItem {
+  id?: string;   // stable key (e.g. path); prefer over `name` for identity
   src: string;
   alt?: string;
   name?: string; // filename shown in the info badge
+  minimapSrc?: string;
+  minimap?: React.ReactNode;
 }
 
 interface ImageGroup {
+  id?: string;   // optional stable key for the folder / album
   name: string;  // group label shown below the filename
-  start: number; // inclusive start index in the images array
-  end: number;   // inclusive end index in the images array
+  images: ImageItem[];
+}
+
+interface DefaultGroupedSelection {
+  defaultGroupIndex: number;   // among non-empty groups only, in order
+  defaultIndexInGroup: number; // 0-based within that group’s `images`
 }
 
 interface ZoomState {
@@ -157,6 +181,8 @@ interface ZoomState {
   fitEquivalentNativePercent?: number; // for displaying "Fit ≈ xx%"
 }
 ```
+
+The package also exports **`resolvePreviewImages`**, **`flattenGroupedImages`**, **`resolveDefaultGroupedFlatIndex`**, **`FlattenedGroupSlice`**, and **`DefaultGroupedSelection`** if you need the same flattened list and per-group index ranges outside the component.
 
 ### Ref API
 
@@ -202,8 +228,8 @@ interface ImagePreviewRef {
 | `←` / `→` | Previous / next image |
 | `Ctrl/⌘ + ←` | Rotate 90° counter-clockwise |
 | `Ctrl/⌘ + →` | Rotate 90° clockwise |
-| `PageUp` | Jump to previous group |
-| `PageDown` | Jump to next group |
+| `PageUp` | Jump to first image of the previous group (non-empty `groupedImages`) |
+| `PageDown` | Jump to first image of the next group (non-empty `groupedImages`) |
 
 > Any key press resets the auto-fade inactivity timer.
 
@@ -215,12 +241,14 @@ interface ImagePreviewRef {
 src/
   components/ImagePreview/
     types.ts              # TypeScript type definitions
+    flattenGroupedImages.ts  # resolvePreviewImages / flattenGroupedImages helpers
     useZoomState.ts       # Zoom state machine hook (pure logic, no DOM)
     useImageTransform.ts  # Size measurement + CSS transform + drag-to-pan
     Toolbar.tsx           # Bottom toolbar (zoom / rotate / flip / nav / filename)
     ImagePreview.tsx      # Main component (overlay / keyboard / wheel / double-click / auto-fade)
     index.ts              # Public exports
-  App.tsx                 # Demo page
+  App.tsx                 # Demo shell
+  demos/                  # Demo sections + demo-only copy (not published to npm)
 docs/
   api.md                  # Full API reference (English)
   api.zh-CN.md            # Full API reference (中文)
@@ -259,6 +287,17 @@ fitEquivalentNativePercent   = fitScale × 100  (used to display "Fit ≈ xx%")
 
 ---
 
+## Versioning (pre-1.0)
+
+While the package is **0.x**, releases follow this convention:
+
+- **Patch** — New or updated **built-in** copy (e.g. extra keys on **`LocaleStrings`**, tooltip text, `locales/*.ts` tweaks), internal-only prop changes on non-exported components, bug fixes, and other changes that do **not** alter the **documented public API** of **`ImagePreview`** (props, ref, and exported helpers/types used as documented).
+- **Minor** — New **documented** props, ref methods, exported APIs, or behavior changes that integrators are expected to react to.
+
+Custom implementations that satisfy **`LocaleStrings`** in TypeScript may need to add fields when new strings are introduced; that is treated as a **patch** bump, not a minor, because typical usage is **`language`** + built-in **`resolveStrings`**.
+
+---
+
 ## License
 
-MIT © [YOUR_NAME](https://github.com/YOUR_GITHUB_USERNAME)
+MIT © [ZhangJian](https://github.com/ZhangJian1713)

@@ -189,6 +189,8 @@ export function useImageTransform(options: UseImageTransformOptions): UseImageTr
   const prevModeRef = useRef(mode);
   useEffect(() => {
     if (prevModeRef.current !== 'fit' && mode === 'fit' && fitResetPan) {
+      // Pan state is translate state; resetting when entering Fit must follow mode transition.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync translate with zoom mode
       applyTranslate(0, 0);
     }
     prevModeRef.current = mode;
@@ -364,6 +366,7 @@ export function useImageTransform(options: UseImageTransformOptions): UseImageTr
       newTy = c.y;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clamp pan after zoom stop / container change
     applyTranslate(newTx, newTy);
   }, [nativePercent, mode, imageDims, containerSize, rotation, applyTranslate]);
 

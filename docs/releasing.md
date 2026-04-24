@@ -21,18 +21,20 @@ This document describes the end-to-end process for releasing a new version of `r
 
 ### npm
 
-The auth token is stored in `~/.npmrc` so `npm publish` can authenticate without prompting:
+The auth token is stored in `~/.npmrc` so `npm publish` can authenticate without prompting. Prefer an environment variable so the secret is not stored as plain text in the file:
 
 ```
-//registry.npmjs.org/:_authToken=<YOUR_TOKEN>
+//registry.npmjs.org/:_authToken=${NPM_TOKEN}
 ```
+
+Then set `NPM_TOKEN` in your shell (or CI secrets) to the token value. Alternatively, you may put the raw token after `=` instead of `${NPM_TOKEN}` if the file stays on your machine only and never enters version control.
 
 To create or rotate a token:
 
 1. Go to [https://www.npmjs.com/settings/tokens](https://www.npmjs.com/settings/tokens)
 2. Click **Generate New Token → Classic Token**
 3. Choose type **Automation** (allows publishing from CI without 2FA prompt)
-4. Copy the token and paste it into `~/.npmrc` replacing the old one
+4. Copy the token into your environment or `~/.npmrc` as described above
 
 > **Security note**: Never commit your token to source control. The `~/.npmrc` file is on your local machine and is not tracked by this repository.
 
@@ -59,13 +61,13 @@ Edit `package.json` manually, following [SemVer](https://semver.org/):
 
 | Change type | Example |
 |---|---|
-| Bug fix | e.g. `0.0.7` → `0.0.8` |
-| Backward-compatible new feature | `0.0.8` → `0.1.0` |
+| Bug fix | e.g. `0.0.12` → `0.0.13` |
+| Backward-compatible new feature | `0.0.13` → `0.1.0` |
 | Breaking API change | `0.1.0` → `1.0.0` |
 
 ```json
 {
-  "version": "0.0.8"
+  "version": "0.0.13"
 }
 ```
 
@@ -110,7 +112,7 @@ This triggers `prepublishOnly` → `build:lib` before uploading. Only the files 
 
 A successful publish prints:
 ```
-+ right-image-preview@0.0.8
++ right-image-preview@0.0.13
 ```
 
 Verify on npm: [https://www.npmjs.com/package/right-image-preview](https://www.npmjs.com/package/right-image-preview)
@@ -119,8 +121,8 @@ Verify on npm: [https://www.npmjs.com/package/right-image-preview](https://www.n
 
 ```bash
 git add -A
-git commit -m "chore: release v0.0.8"
-git tag v0.0.8
+git commit -m "chore: release v0.0.13"
+git tag v0.0.13
 git push origin feature-init --tags
 ```
 

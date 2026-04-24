@@ -10,12 +10,15 @@
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `src` | `string` | — | Single image URL (ignored when `images` is provided) |
+| `src` | `string` | — | Single image URL (ignored when `images` or non-empty `groupedImages` is provided) |
 | `alt` | `string` | — | Alt text for single image |
-| `images` | `ImageItem[]` | — | Image array; when provided, `src`/`alt` are ignored |
-| `groups` | `ImageGroup[]` | — | Group definitions (folder mode); arrows navigate within a group, toolbar gains prev/next-group buttons |
+| `minimapSrc` | `string` | — | Single-image only: optional minimap image URL (defaults to `src`); ignored when `minimap` is set |
+| `minimap` | `React.ReactNode` | — | Single-image only: optional custom minimap content (overrides `minimapSrc`) |
+| `images` | `ImageItem[]` | — | Flat list; when provided without non-empty `groupedImages`, `src`/`alt` are ignored; if both `images` and non-empty `groupedImages` are set, `images` is ignored (dev `console.warn`) |
+| `groupedImages` | `ImageGroup[]` | — | Folder-style groups; each group’s `images` are concatenated in order; takes precedence over `images` and `src`; arrows navigate within a group, toolbar gains prev/next-group when multiple groups exist |
 | `visible` | `boolean` | — | Controlled visibility |
-| `defaultIndex` | `number` | `0` | Initially displayed image index |
+| `defaultGroupedSelection` | `DefaultGroupedSelection` | — | Initial `{ defaultGroupIndex, defaultIndexInGroup }` when using non-empty `groupedImages` (group index counts only non-empty groups); overrides `defaultIndex` |
+| `defaultIndex` | `number` | `0` | Initially displayed index in the flattened list; ignored when `defaultGroupedSelection` is set with groups |
 
 ### Zoom Configuration
 
@@ -46,7 +49,7 @@
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | **Side** arrows only; see table (`groups` forces toolbar prev/next on) |
+| `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | **Side** arrows only; see table (non-empty `groupedImages` forces toolbar prev/next on) |
 | `showFlip` | `boolean` | `false` | Show horizontal/vertical flip buttons in the toolbar |
 | `showMinimap` | `boolean` | `true` | When the image overflows the viewport, show the bottom-right navigation minimap (drag the frame to pan) |
 | `language` | `string` | `'en'` | UI locale: built-in `en` and `zh` (primary subtag match, e.g. `zh-CN` → `zh`) |
@@ -60,7 +63,7 @@
 | `'toolbar'` | Toolbar prev/next only; no side arrows |
 | `'none'` | No side arrows; keyboard ← → always works; flat lists still get toolbar prev/next + index |
 
-When **`groups`** is set, **toolbar prev/next are always shown**; only **side** arrows follow this table.
+When non-empty **`groupedImages`** is provided, **toolbar prev/next are always shown**; only **side** arrows follow this table.
 
 #### Smart side-arrow behaviour
 
@@ -82,15 +85,25 @@ When **`groups`** is set, **toolbar prev/next are always shown**; only **side** 
 
 ```typescript
 interface ImageItem {
+  id?: string; // stable key (e.g. file path); prefer over name for identity
   src: string;
   alt?: string;
   name?: string; // filename shown in the info badge
+  minimapSrc?: string; // navigation minimap URL; defaults to src; ignored if minimap is set
+  minimap?: React.ReactNode; // custom minimap body; overrides minimapSrc
 }
 
 interface ImageGroup {
-  name: string;  // group label displayed below the filename
-  start: number; // inclusive start index in the images array
-  end: number;   // inclusive end index in the images array
+  id?: string; // optional stable key for the folder / album
+  name: string; // group label displayed below the filename
+  images: ImageItem[];
+}
+
+interface DefaultGroupedSelection {
+  /** Index among groups with `images.length > 0` only, in source order */
+  defaultGroupIndex: number;
+  /** 0-based index within that group’s `images` */
+  defaultIndexInGroup: number;
 }
 
 type ArrowsConfig = 'both' | 'side' | 'toolbar' | 'none';
@@ -123,7 +136,7 @@ interface ImagePreviewRef {
   flipVertical(): void;
 
   // image navigation
-  next(): void;            // next image within group (or globally if no groups)
+  next(): void;            // next image within group (or globally if no groupedImages)
   prev(): void;            // previous image within group
   nextGroup(): void;       // jump to first image of the next group
   prevGroup(): void;       // jump to first image of the previous group

@@ -7,11 +7,12 @@
     "jsx": "react-jsx",
     "declaration": true,
     "emitDeclarationOnly": true,
+    "rootDir": "src/components/ImagePreview",
     "skipLibCheck": true,
     "verbatimModuleSyntax": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["src/components/ImagePreview"]
+  "include": ["src/components/ImagePreview/**/*.ts", "src/components/ImagePreview/**/*.tsx"]
 }

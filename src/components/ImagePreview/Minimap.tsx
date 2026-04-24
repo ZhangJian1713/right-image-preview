@@ -1,4 +1,6 @@
-import React, { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { DelayedTooltip } from './DelayedTooltip';
 import type { ZoomMode } from './types';
 import {
   clampNatural,
@@ -16,6 +18,28 @@ const BORDER = 2;
 /** Flush to preview corner; bottom ~toolbar baseline (toolbar uses bottom: 20). */
 const MINIMAP_RIGHT = 10;
 const MINIMAP_BOTTOM = 22;
+
+const DIM_OVERLAY_FILL = 'rgba(0,0,0,0.52)';
+
+/** When the viewport quad is axis-aligned, dim with 4 `<rect>`s (no mask / evenodd). Some WebViews mis-composite those over `<img>`. */
+function axisAlignedViewportInset(
+  poly: [number, number][],
+  tol = 0.75,
+): { minX: number; maxX: number; minY: number; maxY: number } | null {
+  if (poly.length !== 4) return null;
+  const xs = poly.map((p) => p[0]);
+  const ys = poly.map((p) => p[1]);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const near = (a: number, b: number) => Math.abs(a - b) <= tol;
+  const onRectCorner = (x: number, y: number) =>
+    (near(x, minX) || near(x, maxX)) && (near(y, minY) || near(y, maxY));
+  if (!poly.every(([x, y]) => onRectCorner(x, y))) return null;
+  if (maxX - minX < 0.5 || maxY - minY < 0.5) return null;
+  return { minX, maxX, minY, maxY };
+}
 
 type PointerCapableElement = globalThis.Element & {
   setPointerCapture?: (pointerId: number) => void;
@@ -47,7 +71,13 @@ function releasePointerCaptureIfActive(el: globalThis.Element, pointerId: number
 }
 
 export interface MinimapProps {
+  /**
+   * URL for the default minimap `<img>`. Parent should pass `minimapSrc ?? main src`.
+   * Unused when {@link thumbnail} is set.
+   */
   imageSrc: string;
+  /** Custom minimap content; replaces the default `<img>`. */
+  thumbnail?: ReactNode;
   imageAlt: string;
   nw: number;
   nh: number;
@@ -72,6 +102,8 @@ export interface MinimapProps {
   /** Fires when the user starts / ends dragging the viewport frame (for disabling main-image transition). */
   onDragChange?: (dragging: boolean) => void;
   ariaLabel: string;
+  /** Hover help for the minimap control (delayed tooltip). */
+  minimapTooltip: string;
 }
 
 /**
@@ -84,6 +116,7 @@ export interface MinimapProps {
  */
 export function Minimap({
   imageSrc,
+  thumbnail,
   imageAlt,
   nw,
   nh,
@@ -102,9 +135,8 @@ export function Minimap({
   onUserActivity,
   onDragChange,
   ariaLabel,
+  minimapTooltip,
 }: MinimapProps) {
-  const maskId = useId().replace(/:/g, '_');
-
   const mainP: MinimapTransformParams = useMemo(
     () => ({ cw, ch, nw, nh, scale, tx, ty, rotationDeg, flipH, flipV }),
     [cw, ch, nw, nh, scale, tx, ty, rotationDeg, flipH, flipV],
@@ -136,6 +168,21 @@ export function Minimap({
     return viewportMinimapPoly.map(([mx, my]) => `${mx.toFixed(2)},${my.toFixed(2)}`).join(' ');
   }, [viewportMinimapPoly]);
 
+  /** Axis-aligned inset → 4 rects; else evenodd path (rotated viewport on desktop). */
+  const dimAxisInset = useMemo(
+    () => axisAlignedViewportInset(viewportMinimapPoly),
+    [viewportMinimapPoly],
+  );
+
+  const dimOverlayPathD = useMemo(() => {
+    const outer = `M 0 0 L ${INNER} 0 L ${INNER} ${INNER} L 0 ${INNER} Z`;
+    if (viewportMinimapPoly.length < 3) return outer;
+    const hole = `${viewportMinimapPoly
+      .map(([mx, my]) => `${mx.toFixed(2)} ${my.toFixed(2)}`)
+      .reduce((cmd, pair, i) => (i === 0 ? `M ${pair}` : `${cmd} L ${pair}`), '')} Z`;
+    return `${outer} ${hole}`;
+  }, [viewportMinimapPoly]);
+
   /** Fresh `tx`/`ty` for each `pointermove` (updated in layout after `panByDelta`). */
   const dragTransformRef = useRef({ p: mainP, nw, nh, thumbS });
   useLayoutEffect(() => {
@@ -153,13 +200,15 @@ export function Minimap({
   const pointerCaptureRef = useRef<{ el: globalThis.Element; id: number } | null>(null);
 
   const onPanByDeltaRef = useRef(onPanByDelta);
-  onPanByDeltaRef.current = onPanByDelta;
   const onJumpToNaturalRef = useRef(onJumpToNatural);
-  onJumpToNaturalRef.current = onJumpToNatural;
   const onUserActivityRef = useRef(onUserActivity);
-  onUserActivityRef.current = onUserActivity;
   const onDragChangeRef = useRef(onDragChange);
-  onDragChangeRef.current = onDragChange;
+  useLayoutEffect(() => {
+    onPanByDeltaRef.current = onPanByDelta;
+    onJumpToNaturalRef.current = onJumpToNatural;
+    onUserActivityRef.current = onUserActivity;
+    onDragChangeRef.current = onDragChange;
+  }, [onPanByDelta, onJumpToNatural, onUserActivity, onDragChange]);
 
   const teardownMinimapDrag = () => {
     const s = docSessionRef.current;
@@ -192,7 +241,6 @@ export function Minimap({
         onDragChangeRef.current?.(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount-only: no setState
     [],
   );
 
@@ -298,13 +346,20 @@ export function Minimap({
 
   if (!overflow || nw <= 0 || nh <= 0 || cw <= 0 || ch <= 0) return null;
 
-  const thumbTransform = `rotate(${rotationDeg}deg)${flipH ? ' scaleX(-1)' : ''}${flipV ? ' scaleY(-1)' : ''} scale(${thumbS})`;
+  /**
+   * Bake `thumbS` into width/height instead of `transform: scale(thumbS)` on full natural pixels.
+   * VS Code / embedded Chromium often composites a **multi‑megapixel layer** + tiny scale as solid black;
+   * removing inline styles “fixes” it because the box drops to intrinsic size.
+   */
+  const thumbW = nw * thumbS;
+  const thumbH = nh * thumbS;
+  const thumbTransform = `rotate(${rotationDeg}deg)${flipH ? ' scaleX(-1)' : ''}${flipV ? ' scaleY(-1)' : ''}`;
 
   return (
+    <DelayedTooltip content={minimapTooltip}>
     <div
       role="navigation"
       aria-label={ariaLabel}
-      title={imageAlt}
       onWheel={(e) => {
         e.stopPropagation();
         onUserActivity?.();
@@ -335,34 +390,52 @@ export function Minimap({
           background: 'rgba(0,0,0,0.35)',
         }}
       >
-        <img
-          src={imageSrc}
-          alt=""
-          aria-hidden="true"
-          draggable={false}
+        <div
           style={{
             position: 'absolute',
-            left: (INNER - nw) / 2,
-            top: (INNER - nh) / 2,
-            width: nw,
-            height: nh,
+            left: (INNER - thumbW) / 2,
+            top: (INNER - thumbH) / 2,
+            width: thumbW,
+            height: thumbH,
             transform: thumbTransform,
             transformOrigin: 'center center',
             pointerEvents: 'none',
+            overflow: 'hidden',
           }}
-        />
+        >
+          {thumbnail != null ? (
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {thumbnail}
+            </div>
+          ) : (
+            <img
+              src={imageSrc}
+              alt={imageAlt}
+              draggable={false}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'fill',
+                display: 'block',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+        </div>
         <svg
           width={INNER}
           height={INNER}
           style={{ position: 'absolute', left: 0, top: 0, display: 'block' }}
           aria-hidden="true"
         >
-          <defs>
-            <mask id={maskId}>
-              <rect width={INNER} height={INNER} fill="white" />
-              <polygon points={polyPts} fill="black" />
-            </mask>
-          </defs>
           {/* Hit target below dimmed overlay + viewport polygon: click outside the frame to recenter. */}
           {onJumpToNatural && (
             <rect
@@ -373,7 +446,49 @@ export function Minimap({
               onPointerDown={onBackgroundPointerDown}
             />
           )}
-          <rect width={INNER} height={INNER} fill="rgba(0,0,0,0.52)" mask={`url(#${maskId})`} style={{ pointerEvents: 'none' }} />
+          {dimAxisInset ? (
+            <>
+              <rect
+                x={0}
+                y={0}
+                width={INNER}
+                height={dimAxisInset.minY}
+                fill={DIM_OVERLAY_FILL}
+                style={{ pointerEvents: 'none' }}
+              />
+              <rect
+                x={0}
+                y={dimAxisInset.maxY}
+                width={INNER}
+                height={INNER - dimAxisInset.maxY}
+                fill={DIM_OVERLAY_FILL}
+                style={{ pointerEvents: 'none' }}
+              />
+              <rect
+                x={0}
+                y={dimAxisInset.minY}
+                width={dimAxisInset.minX}
+                height={dimAxisInset.maxY - dimAxisInset.minY}
+                fill={DIM_OVERLAY_FILL}
+                style={{ pointerEvents: 'none' }}
+              />
+              <rect
+                x={dimAxisInset.maxX}
+                y={dimAxisInset.minY}
+                width={INNER - dimAxisInset.maxX}
+                height={dimAxisInset.maxY - dimAxisInset.minY}
+                fill={DIM_OVERLAY_FILL}
+                style={{ pointerEvents: 'none' }}
+              />
+            </>
+          ) : (
+            <path
+              d={dimOverlayPathD}
+              fill={DIM_OVERLAY_FILL}
+              fillRule="evenodd"
+              style={{ pointerEvents: 'none' }}
+            />
+          )}
           {/* Viewport frame: thin solid light stroke (Lightroom-style), single interactive layer */}
           <polygon
             points={polyPts}
@@ -388,5 +503,6 @@ export function Minimap({
         </svg>
       </div>
     </div>
+    </DelayedTooltip>
   );
 }

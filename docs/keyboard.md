@@ -24,10 +24,10 @@ When the preview is open, focus is automatically trapped in the overlay and the 
 
 | Key | Action |
 |-----|--------|
-| `←` | Previous image (within group; globally if no groups) |
-| `→` | Next image (within group; globally if no groups) |
-| `PageUp` | Jump to first image of the previous group (requires `groups` prop) |
-| `PageDown` | Jump to first image of the next group (requires `groups` prop) |
+| `←` | Previous image (within group; globally if no `groupedImages`) |
+| `→` | Next image (within group; globally if no `groupedImages`) |
+| `PageUp` | Jump to first image of the previous group (requires non-empty `groupedImages`) |
+| `PageDown` | Jump to first image of the next group (requires non-empty `groupedImages`) |
 
 ## Rotation
 

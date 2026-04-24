@@ -60,6 +60,11 @@
 - [x] 增加 5%、10%、800%、1600% 档位（历史迭代）
 - [x] 删除 5% 和 1600%；默认档位曾上至 800%
 - [x] **v0.0.8**：默认最高档位改为 **200%**；更高比例通过自定义 **`stops`** 提供
+- [x] **v0.0.9**：对等依赖 **React / React DOM ≥ 17**；`flushSync` 兼容层
+- [x] **v0.0.10**：小地图压暗改为 `evenodd` path，避免 WebView 下 `mask`+`<img>` 纯黑
+- [x] **v0.0.11**：轴对齐视口用小地图 **4 条 rect** 压暗；旋转时仍用 evenodd path
+- [x] **v0.0.12**：小地图 `<img>` 用 **width/height × thumbS**，不用 **transform scale** 压自然像素（避免 WebView 黑块）
+- [x] **v0.0.13**：`ImageItem.minimapSrc` / `minimap`（及单图同名 props）：可选小图 URL 或自定义 React 节点；未传仍用原图
 
 ### 翻转与旋转
 - [x] 水平翻转、垂直翻转
@@ -67,7 +72,7 @@
 
 ### 文件名显示
 - [x] `ImageItem.name` 字段，显示在工具栏信息栏
-- [x] `countRender(current, total)` — 自定义计数内容（已废弃，建议改用 `groups`）
+- [x] `countRender(current, total)` — 自定义计数内容（已废弃，建议改用 `groupedImages` 分组导航与工具栏计数）
 
 ---
 
@@ -89,8 +94,8 @@
 
 ## 阶段 4 — 多文件夹支持
 
-### `groups` 分组导航
-- [x] 新增 `ImageGroup` 接口（`name / start / end`）
+### `groupedImages` 分组导航
+- [x] `ImageGroup`：`id?`、`name`、`images: ImageItem[]`（不再使用 `start` / `end` 区间）
 - [x] 左右箭头在组内导航，到达边界时禁用
 - [x] 工具栏新增"上一组"（⏮）/ "下一组"（⏭）按钮
 - [x] 工具栏序号显示组内序号（如 `2/3`），不显示全局序号
@@ -98,7 +103,7 @@
 
 ### Demo 改进
 - [x] Demo 1：5 张单组图片，无文件夹信息
-- [x] Demo 2：3 个文件夹共 10 张图片，使用 `groups` 分组导航
+- [x] Demo 2：3 个文件夹共 10 张图片，使用 `groupedImages` 分组导航
 
 ---
 

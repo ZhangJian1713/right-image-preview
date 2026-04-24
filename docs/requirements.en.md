@@ -60,6 +60,11 @@
 - [x] Added 5%, 10%, 800%, 1600% stops (historical)
 - [x] Removed 5% and 1600%; default set later spanned up to 800%
 - [x] **v0.0.8**: default max stop is **200%**; higher ratios via custom **`stops`**
+- [x] **v0.0.9**: peer **React / React DOM ≥ 17**; `flushSync` compatibility shim
+- [x] **v0.0.10**: minimap dim uses `evenodd` path instead of SVG `mask` over `<img>` (fixes black tile in some WebViews)
+- [x] **v0.0.11**: axis-aligned minimap viewport uses **four `<rect>`** dim strips; rotated viewports keep `evenodd` path
+- [x] **v0.0.12**: minimap `<img>` uses **width/height × thumbS**, not **transform: scale** on full natural pixels (fixes black tile in some WebViews)
+- [x] **v0.0.13**: `ImageItem.minimapSrc` / `minimap` (+ same props for single-`src` mode): optional thumbnail URL or custom React node; default remains main `src`
 
 ### Flip & Rotate
 - [x] Horizontal flip, vertical flip
@@ -67,7 +72,7 @@
 
 ### Filename Display
 - [x] `ImageItem.name` field displayed in the toolbar info badge
-- [x] `countRender(current, total)` — custom count content (deprecated; use `groups` instead)
+- [x] `countRender(current, total)` — custom count content (deprecated; use `groupedImages` group navigation / toolbar counter instead)
 
 ---
 
@@ -89,8 +94,8 @@
 
 ## Phase 4 — Multi-folder Support
 
-### `groups` Group Navigation
-- [x] Added `ImageGroup` interface (`name / start / end`)
+### `groupedImages` Group Navigation
+- [x] `ImageGroup`: optional `id`, `name`, and `images: ImageItem[]` (no `start` / `end` ranges)
 - [x] Side arrows navigate within group; disabled at boundaries
 - [x] Toolbar gains "prev group" (⏮) / "next group" (⏭) buttons
 - [x] Toolbar counter shows within-group index (e.g. `2/3`), not global index
@@ -98,7 +103,7 @@
 
 ### Demo Improvements
 - [x] Demo 1: 5 images, single group, no folder info
-- [x] Demo 2: 10 images in 3 folders, using `groups`
+- [x] Demo 2: 10 images in 3 folders, using `groupedImages`
 
 ---
 

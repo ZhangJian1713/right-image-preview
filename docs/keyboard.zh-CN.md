@@ -24,10 +24,10 @@
 
 | 按键 | 功能 |
 |------|------|
-| `←` | 上一张（组内；无分组时全局） |
-| `→` | 下一张（组内；无分组时全局） |
-| `PageUp` | 跳到上一组第一张（需传入 `groups` prop） |
-| `PageDown` | 跳到下一组第一张（需传入 `groups` prop） |
+| `←` | 上一张（组内；无 `groupedImages` 时全局） |
+| `→` | 下一张（组内；无 `groupedImages` 时全局） |
+| `PageUp` | 跳到上一组第一张（需非空 `groupedImages`） |
+| `PageDown` | 跳到下一组第一张（需非空 `groupedImages`） |
 
 ## 旋转
 

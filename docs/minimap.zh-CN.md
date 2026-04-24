@@ -43,6 +43,22 @@
 
 **直接拖动大图**使用 **`MAIN_DRAG_MIN_VIEWPORT_COVERAGE`**（默认每轴 **50%**），更松。
 
+## 问题三：小地图缩略图整块发黑（嵌入式 WebView）
+
+**现象：** 主图正常，但右下角导航缩略图里只有黑底（有时白框还在）。
+
+**原因：** 曾在压暗「视口外」区域时使用 SVG **`<mask>`** + **`url(#id)`** 作用在叠在 HTML **`<img>`** 上的 `<rect>`。部分嵌入式 Chromium（尤其是 **VS Code webview**）对这种与 `<img>` 的合成处理有缺陷，遮罩层可能把整张缩略图挡死。
+
+**做法（两档）：**（1）视口四边形**与坐标轴对齐**时（常见为 **0°** 旋转），用 **四条 `<rect>`** 条带压暗上/下/左/右，不用 mask、不用复合 path。（2）**有旋转**时仍用 **`fill-rule="evenodd"`** 的单 `<path>`（外矩形减内四边形），在桌面 Chromium 上可靠。
+
+## 问题四：缩略图 `<img>` 整块发黑（WebView），去掉行内 style 反而能看见
+
+**现象：** 小地图里图全黑；在 DevTools 里**关掉缩略图 img 的所有行内样式**后图能显示（虚线框可能不准）。
+
+**典型问题样式：** `width`/`height` 写成**完整自然分辨率**（如 3000×4000），`left`/`top` 大负数，再用 **`transform: scale(很小)`** 缩小。这会形成**巨大合成层**再整体缩小；嵌入式 Chromium（VS Code webview）常**合成失败**显示纯黑，普通桌面 Chrome 有时却正常。
+
+**做法：** 把缩小倍数 **写进 `width` / `height`**（`natural × thumbS`），用较小的 `left`/`top` **居中**；**`transform` 只做旋转/翻转**，不要再乘统一 `scale(thumbS)`。
+
 ## 相关文件
 
 - `src/components/ImagePreview/Minimap.tsx` — 视图与指针会话生命周期。
