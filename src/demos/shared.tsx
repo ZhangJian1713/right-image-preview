@@ -8,12 +8,15 @@ export function ThumbCard({
   alt,
   label,
   ariaLabel,
+  clickHint,
   onClick,
 }: {
   src: string;
   alt: string;
   label: string;
   ariaLabel: string;
+  /** Shown on hover to signal “click to open viewer”. */
+  clickHint: string;
   onClick: () => void;
 }) {
   const [hover, setHover] = useState(false);
@@ -22,15 +25,48 @@ export function ThumbCard({
       type="button"
       style={{
         ...cardStyle,
-        borderColor: hover ? '#5865f2' : 'transparent',
-        transform: hover ? 'scale(1.02)' : 'scale(1)',
+        borderColor: hover ? 'rgba(88,101,242,0.75)' : 'rgba(255,255,255,0.08)',
+        transform: hover ? 'translateY(-2px)' : 'translateY(0)',
+        boxShadow: hover
+          ? '0 16px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(88,101,242,0.35)'
+          : cardStyle.boxShadow,
       }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onClick={onClick}
       aria-label={ariaLabel}
     >
-      <img src={src} alt={alt} style={thumbImgStyle} />
+      <span style={{ position: 'relative', display: 'block' }}>
+        <img src={src} alt={alt} style={thumbImgStyle} />
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            background: hover ? 'rgba(6,8,14,0.55)' : 'rgba(6,8,14,0)',
+            color: '#f0f4ff',
+            fontSize: 13,
+            fontWeight: 600,
+            letterSpacing: '0.02em',
+            transition: 'background 0.18s ease',
+            pointerEvents: 'none',
+          }}
+        >
+          {hover ? (
+            <>
+              <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35M11 8v6M8 11h6" strokeLinecap="round" />
+              </svg>
+              {clickHint}
+            </>
+          ) : null}
+        </span>
+      </span>
       <div style={thumbLabelStyle}>{label}</div>
     </button>
   );
