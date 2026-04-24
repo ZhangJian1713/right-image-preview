@@ -14,6 +14,7 @@ import { Toolbar } from './Toolbar';
 import { runFlushSync } from './flushSyncCompat';
 import {
   IMAGE_DECODE_TIMEOUT_MS,
+  MIN_PROGRESSIVE_THUMB_VISIBLE_MS,
   PROGRESSIVE_MAIN_DEFAULT_FADE_MS,
   toolbarZoomDropdownWidthPx,
   toolbarZoomLabelSlotPx,
@@ -113,6 +114,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       initialZoomLocked = false,
       showMinimap = true,
       progressiveMain = true,
+      progressivePlaceholderMinMs = MIN_PROGRESSIVE_THUMB_VISIBLE_MS,
       progressiveFadeMs = PROGRESSIVE_MAIN_DEFAULT_FADE_MS,
       onMainImageLoadStageChange,
       closeOnMaskClick = false,
@@ -206,6 +208,7 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       minimapSrc: currentImage.minimapSrc,
       minimapCustom: !!currentImage.minimap,
       enabled: progressiveMain,
+      placeholderMinVisibleMs: progressivePlaceholderMinMs,
       onImageLayout: onImageLoad,
       onStageChange: onMainImageLoadStageChange,
     });

@@ -227,6 +227,13 @@ export interface ImagePreviewProps {
    */
   progressiveMain?: boolean;
   /**
+   * Minimum time (ms) the low-res {@link ImageItem.minimapSrc} placeholder stays visible in the
+   * main area after the full `src` is ready to show. Lets users see a deliberate “small/blurry
+   * first, then sharp” beat even when the full image loads from cache. Default matches internal
+   * tuning (~160 ms). Only applies when the progressive pipeline is active.
+   */
+  progressivePlaceholderMinMs?: number;
+  /**
    * Opacity crossfade duration (ms) when revealing the full main image over the thumbnail
    * placeholder. `0` (default) switches instantly to avoid any double-exposure flash.
    */

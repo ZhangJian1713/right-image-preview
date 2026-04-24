@@ -16,11 +16,13 @@ function largeGallery(locale: DemoLocale): ImageItem[] {
   return [
     {
       src: `${BASE}/test-images/seagull-nebula.jpg`,
+      minimapSrc: `${BASE}/test-images/seagull-nebula-thumb.jpg`,
       alt: 'Seagull Nebula',
       name: `seagull-nebula.jpg${z ? mbZh : mbEn}`,
     },
     {
       src: `${BASE}/test-images/eagle-nebula.jpg`,
+      minimapSrc: `${BASE}/test-images/eagle-nebula-thumb.jpg`,
       alt: 'Eagle Nebula',
       name: `eagle-nebula.jpg${z ? mb2Zh : mb2En}`,
     },
@@ -41,7 +43,7 @@ export function Demo3HighRes({ t, locale, previewLanguage }: { t: DemoStrings; l
           {items.map((img, idx) => (
             <ThumbCard
               key={img.src}
-              src={img.src}
+              src={img.minimapSrc ?? img.src}
               alt={img.alt ?? ''}
               label={img.name ?? img.alt ?? ''}
               ariaLabel={t.thumbAria(img.name ?? img.alt ?? '')}
@@ -67,6 +69,8 @@ export function Demo3HighRes({ t, locale, previewLanguage }: { t: DemoStrings; l
         wheelEnabled
         doubleClickEnabled
         switchImageResetTransform
+        progressivePlaceholderMinMs={2800}
+        progressiveFadeMs={600}
         language={previewLanguage}
         onClose={() => setVisible(false)}
       />

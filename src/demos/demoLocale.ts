@@ -121,7 +121,7 @@ export const STRINGS: Record<DemoLocale, DemoStrings> = {
       'Ten photos in three folders, like a trip album. The bar can show the folder name, your place in the folder, and your place in the whole set.',
     demo3Title: 'Demo 3 · Very large photos',
     demo3Desc:
-      'Two huge sky photos stored on this site. Good for testing load time, “fit whole photo,” wheel zoom, and drag. File size is in each name.',
+      'Two huge sky photos on this site. Each item sets a small `minimapSrc` file so the viewer stretches a tiny preview first, then crossfades to the full image after a short wait (progressive loading). File size is in each name.',
     photosBadge: (n) => `${n} photos`,
     thumbAria: (label) => `Open photo: ${label}`,
   },
@@ -187,7 +187,7 @@ export const STRINGS: Record<DemoLocale, DemoStrings> = {
       '旅行相册场景，共 3 个文件夹 · 10 张图片。预览工具栏通过 `groupedImages` 同时显示：文件夹名称、在文件夹内的序号（X/Y）以及全局序号（M/N）。',
     demo3Title: 'Demo 3 · 超高分辨率图片',
     demo3Desc:
-      '使用本地深空摄影样张（单文件十余 MB 级）测试首次加载、适应视口与滚轮缩放/平移。文件名括号内为压缩前文件体积。',
+      '本地深空摄影大图。每张在数据里单独配置了较小的 `minimapSrc`，查看器会先把小图放大铺满（偏糊），再短暂停留后淡入真正的大图（渐进加载）。括号内为未压缩体积。',
     photosBadge: (n) => `${n} 张`,
     thumbAria: (label) => `预览图片：${label}`,
   },
