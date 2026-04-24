@@ -75,7 +75,7 @@ export const STRINGS: Record<DemoLocale, DemoStrings> = {
     heroTagline: 'A lightweight, full-featured image viewer for the web.',
     heroLead:
       'Fullscreen dialog, discrete zoom stops, drag to pan, wheel & double-click zoom, multi-image and folder groups, corner minimap, and keyboard shortcuts — zero runtime dependencies beyond React.',
-    heroCtaTry: 'Open a picture',
+    heroCtaTry: 'Open sample image',
     heroCtaGitHub: 'GitHub',
     heroCtaScroll: 'More demos below',
     featuresTitle: 'What you get',
@@ -152,7 +152,7 @@ export const STRINGS: Record<DemoLocale, DemoStrings> = {
     heroTagline: '轻量、功能齐全的全屏网页图片查看器。',
     heroLead:
       '全屏对话框、固定档位缩放、拖动平移、滚轮与双击缩放、多图与分组相册、角落小地图与完整快捷键支持 — 除 React 外无运行时依赖。',
-    heroCtaTry: '打开一张图',
+    heroCtaTry: '打开示例图',
     heroCtaGitHub: 'GitHub',
     heroCtaScroll: '更多演示在下方',
     featuresTitle: '核心能力',
