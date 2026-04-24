@@ -36,7 +36,7 @@ export function ThumbCard({
       aria-label={ariaLabel}
     >
       <span style={{ position: 'relative', display: 'block' }}>
-        <img src={src} alt={alt} style={thumbImgStyle} />
+        <img src={src} alt={alt} style={thumbImgStyle} loading="lazy" decoding="async" />
         <span
           aria-hidden
           style={{

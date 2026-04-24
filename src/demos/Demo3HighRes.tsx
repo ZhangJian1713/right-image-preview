@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { ImagePreview } from '../components/ImagePreview';
 import type { ImageItem } from '../components/ImagePreview';
-import { cardStyle, sectionDescStyle, sectionHeadStyle } from './demoStyles';
+import { gridStyle, sectionDescStyle, sectionHeadStyle } from './demoStyles';
 import type { DemoLocale, DemoStrings } from './demoLocale';
+import { ThumbCard } from './shared';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -36,24 +37,20 @@ export function Demo3HighRes({ t, locale, previewLanguage }: { t: DemoStrings; l
       <section>
         <h2 style={sectionHeadStyle}>{t.demo3Title}</h2>
         <p style={sectionDescStyle}>{t.demo3Desc}</p>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={gridStyle}>
           {items.map((img, idx) => (
-            <button
+            <ThumbCard
               key={img.src}
-              type="button"
-              style={{
-                ...cardStyle,
-                background: '#1a1d27',
-                border: '1px solid #2a2d3a',
-                padding: '10px 18px',
-              }}
+              src={img.src}
+              alt={img.alt ?? ''}
+              label={img.name ?? img.alt ?? ''}
+              ariaLabel={t.thumbAria(img.name ?? img.alt ?? '')}
+              clickHint={t.thumbClickHint}
               onClick={() => {
                 setIndex(idx);
                 setVisible(true);
               }}
-            >
-              <span style={{ color: '#8ec7ff', fontSize: 13 }}>{img.name}</span>
-            </button>
+            />
           ))}
         </div>
       </section>
@@ -69,6 +66,7 @@ export function Demo3HighRes({ t, locale, previewLanguage }: { t: DemoStrings; l
         closeOnMaskClick
         wheelEnabled
         doubleClickEnabled
+        switchImageResetTransform
         language={previewLanguage}
         onClose={() => setVisible(false)}
       />
