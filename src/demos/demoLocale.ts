@@ -55,17 +55,6 @@ export interface DemoStrings {
   demo3Title: string;
   demo3Desc: string;
   photosBadge: (n: number) => string;
-  refSectionTitle: string;
-  refZoomIn: string;
-  refZoomOut: string;
-  refFit: string;
-  ref100: string;
-  ref200: string;
-  refPrev: string;
-  refNext: string;
-  refRotateCW: string;
-  refFlipH: string;
-  refReadState: string;
   thumbAria: (label: string) => string;
 }
 
@@ -134,17 +123,6 @@ export const STRINGS: Record<DemoLocale, DemoStrings> = {
     demo3Desc:
       'Two huge sky photos stored on this site. Good for testing load time, “fit whole photo,” wheel zoom, and drag. File size is in each name.',
     photosBadge: (n) => `${n} photos`,
-    refSectionTitle: 'From code (while the viewer is open)',
-    refZoomIn: 'Zoom in',
-    refZoomOut: 'Zoom out',
-    refFit: 'Fit whole photo',
-    ref100: '100%',
-    ref200: '200%',
-    refPrev: 'Previous',
-    refNext: 'Next',
-    refRotateCW: 'Turn 90° right',
-    refFlipH: 'Flip sideways',
-    refReadState: 'Show details',
     thumbAria: (label) => `Open photo: ${label}`,
   },
   zh: {
@@ -211,17 +189,6 @@ export const STRINGS: Record<DemoLocale, DemoStrings> = {
     demo3Desc:
       '使用本地深空摄影样张（单文件十余 MB 级）测试首次加载、适应视口与滚轮缩放/平移。文件名括号内为压缩前文件体积。',
     photosBadge: (n) => `${n} 张`,
-    refSectionTitle: '通过 ref 程序化控制（预览打开后可用）',
-    refZoomIn: '放大',
-    refZoomOut: '缩小',
-    refFit: '适应',
-    ref100: '100%',
-    ref200: '200%',
-    refPrev: '上一张',
-    refNext: '下一张',
-    refRotateCW: '顺时针旋转',
-    refFlipH: '水平翻转',
-    refReadState: '读取状态',
     thumbAria: (label) => `预览图片：${label}`,
   },
 };

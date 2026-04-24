@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useState, type MutableRefObject } from 'react';
 import { ImagePreview } from '../components/ImagePreview';
-import type { ImageItem, ImagePreviewRef } from '../components/ImagePreview';
+import type { ImageItem } from '../components/ImagePreview';
 import { gridStyle, sectionDescStyle, sectionHeadStyle } from './demoStyles';
 import type { DemoStrings } from './demoLocale';
-import { RefControls, ThumbCard } from './shared';
+import { ThumbCard } from './shared';
 
 const SINGLE_GALLERY: ImageItem[] = [
   { src: 'https://picsum.photos/seed/sg-mtn/1920/1280', alt: '山间云雾', name: 'mountain-mist.jpg' },
@@ -29,7 +29,6 @@ export function Demo1SingleGallery({
 }) {
   const [visible, setVisible] = useState(false);
   const [index, setIndex] = useState(0);
-  const previewRef = useRef<ImagePreviewRef>(null);
 
   const open = useCallback((i = 0) => {
     setIndex(i);
@@ -62,11 +61,9 @@ export function Demo1SingleGallery({
             />
           ))}
         </div>
-        <RefControls previewRef={previewRef} t={t} />
       </section>
 
       <ImagePreview
-        ref={previewRef}
         images={SINGLE_GALLERY}
         visible={visible}
         defaultIndex={index}
