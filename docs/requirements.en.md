@@ -99,7 +99,7 @@
 - [x] Side arrows navigate within group; disabled at boundaries
 - [x] Toolbar gains "prev group" (⏮) / "next group" (⏭) buttons
 - [x] Toolbar counter shows within-group index (e.g. `2/3`), not global index
-- [x] Info badge second line shows folder name (small, dimmed)
+- [x] Info badge second line: `(i/n)` group position (same styling as in-group counter), small gap, then folder name (may differ slightly)
 
 ### Demo Improvements
 - [x] Demo 1: 5 images, single group, no folder info
