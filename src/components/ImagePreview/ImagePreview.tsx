@@ -26,6 +26,14 @@ import {
   WHEEL_PIXEL_MOUSE_NOTCH_MAX,
   WHEEL_PIXEL_MOUSE_NOTCH_MIN,
 } from './imagePreviewTuning';
+import {
+  NAV_ARROW_POLY_NEXT_GROUP_INNER,
+  NAV_ARROW_POLY_NEXT_GROUP_OUTER,
+  NAV_ARROW_POLY_NEXT_SINGLE,
+  NAV_ARROW_POLY_PREV_GROUP_INNER,
+  NAV_ARROW_POLY_PREV_GROUP_OUTER,
+  NAV_ARROW_POLY_PREV_SINGLE,
+} from './navArrowPolylines';
 import { resolveStrings } from './locale';
 import {
   resolveDefaultGroupedFlatIndex,
@@ -33,6 +41,7 @@ import {
   type FlattenedGroupSlice,
 } from './flattenGroupedImages';
 import type { ImageItem, ImagePreviewProps, ImagePreviewRef, NativePercent } from './types';
+import { useImagePreviewKeyboard } from './useImagePreviewKeyboard';
 import { useImageTransform } from './useImageTransform';
 import { useProgressiveMainImage } from './useProgressiveMainImage';
 import { useZoomState } from './useZoomState';
@@ -458,90 +467,27 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       return () => el.removeEventListener('wheel', handleWheel);
     }, [handleWheel]);
 
-    // ── Keyboard ────────────────────────────────────────────────────────────
-    useEffect(() => {
-      const onKeyDown = (e: KeyboardEvent) => {
-        // Any key press wakes up the controls.
-        resetHideTimer();
-
-        // Let the zoom-input field handle its own keys without interference.
-        const target = e.target as HTMLElement;
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
-
-        const mod = e.ctrlKey || e.metaKey;
-
-        switch (e.key) {
-          case 'Escape':
-            onClose?.();
-            break;
-
-          // Zoom in: + = ↑
-          case '+':
-          case '=':
-          case 'ArrowUp':
-            e.preventDefault();
-            zoomIn(fitEquivalentNativePercent);
-            break;
-
-          // Zoom out: - ↓
-          case '-':
-          case 'ArrowDown':
-            e.preventDefault();
-            zoomOut(fitEquivalentNativePercent);
-            break;
-
-          // Fit / 100%
-          case '0': fit(); break;
-          case '1': setNative(100); break;
-
-          // Space: toggle fit ↔ 100% (same as double-click)
-          case ' ':
-            e.preventDefault();
-            if (mode === 'fit') setNative(100);
-            else fit();
-            break;
-
-          // Navigate images / rotate (Ctrl/Cmd modifier)
-          case 'ArrowLeft':
-            e.preventDefault();
-            if (mod) {
-              rotateCCW();
-            } else {
-              // When at the first image of a group and a previous group exists,
-              // arrow key mirrors the side "prev-group" double-chevron button.
-              const atStart = currentGroup ? currentIndex === currentGroup.start : currentIndex === 0;
-              if (atStart && currentGroupIdx > 0) prevGroup(); else prev();
-            }
-            break;
-          case 'ArrowRight':
-            e.preventDefault();
-            if (mod) {
-              rotateCW();
-            } else {
-              // When at the last image of a group and a next group exists,
-              // arrow key mirrors the side "next-group" double-chevron button.
-              const atEnd = currentGroup ? currentIndex === currentGroup.end : currentIndex === images.length - 1;
-              const hasNext = groupSlices ? currentGroupIdx < groupSlices.length - 1 : false;
-              if (atEnd && hasNext) nextGroup(); else next();
-            }
-            break;
-
-          // Group navigation
-          case 'PageUp':   e.preventDefault(); prevGroup(); break;
-          case 'PageDown': e.preventDefault(); nextGroup(); break;
-        }
-      };
-      window.addEventListener('keydown', onKeyDown);
-      return () => window.removeEventListener('keydown', onKeyDown);
-    }, [
-      zoomIn, zoomOut, fit, setNative, mode,
-      prev, next, prevGroup, nextGroup,
-      rotateCW, rotateCCW,
-      onClose, fitEquivalentNativePercent,
+    useImagePreviewKeyboard({
       resetHideTimer,
-      // boundary-jump deps
-      currentIndex, currentGroup, currentGroupIdx, groupSlices, images.length,
-    ]);
+      onClose,
+      zoomIn,
+      zoomOut,
+      fit,
+      setNative,
+      mode,
+      prev,
+      next,
+      prevGroup,
+      nextGroup,
+      rotateCW,
+      rotateCCW,
+      fitEquivalentNativePercent,
+      currentIndex,
+      currentGroup,
+      currentGroupIdx,
+      groupSlices,
+      imagesLength: images.length,
+    });
 
     // ── Double-click ────────────────────────────────────────────────────────
     const handleDoubleClick = useCallback(() => {
@@ -551,6 +497,8 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     }, [doubleClickEnabled, mode, fit, setNative]);
 
     // ── Focus ───────────────────────────────────────────────────────────────
+    // Outer `ImagePreview` unmounts the inner dialog when `visible` is false, so each open
+    // remounts — one focus on mount is enough for the trap.
     useEffect(() => { overlayRef.current?.focus(); }, []);
 
     // ── Imperative ref ──────────────────────────────────────────────────────
@@ -1045,14 +993,23 @@ function NavArrow({ direction, isGroupJump = false, onClick, label, tip, visible
       >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
         strokeWidth={2.5} width={22} height={22} aria-hidden="true">
-        {direction === 'left'
-          ? isGroupJump
-            ? <><polyline points="19,18 13,12 19,6"/><polyline points="11,18 5,12 11,6"/></>
-            : <polyline points="15,18 9,12 15,6"/>
-          : isGroupJump
-            ? <><polyline points="5,18 11,12 5,6"/><polyline points="13,18 19,12 13,6"/></>
-            : <polyline points="9,18 15,12 9,6"/>
-        }
+        {direction === 'left' ? (
+          isGroupJump ? (
+            <>
+              <polyline points={NAV_ARROW_POLY_PREV_GROUP_OUTER} />
+              <polyline points={NAV_ARROW_POLY_PREV_GROUP_INNER} />
+            </>
+          ) : (
+            <polyline points={NAV_ARROW_POLY_PREV_SINGLE} />
+          )
+        ) : isGroupJump ? (
+          <>
+            <polyline points={NAV_ARROW_POLY_NEXT_GROUP_OUTER} />
+            <polyline points={NAV_ARROW_POLY_NEXT_GROUP_INNER} />
+          </>
+        ) : (
+          <polyline points={NAV_ARROW_POLY_NEXT_SINGLE} />
+        )}
       </svg>
     </button>
     </DelayedTooltip>
