@@ -648,19 +648,22 @@ const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
         : 'none';
 
     // Group-aware toolbar props
-    const groupToolbarProps = currentGroup
-      ? {
-          groupCurrentIndex: currentIndex - currentGroup.start + 1,
-          groupTotal:        currentGroup.end - currentGroup.start + 1,
-          atGroupStart:      currentIndex === currentGroup.start,
-          atGroupEnd:        currentIndex === currentGroup.end,
-          hasPrevGroup:      currentGroupIdx > 0,
-          hasNextGroup:      groupSlices ? currentGroupIdx < groupSlices.length - 1 : false,
-          groupName:         currentGroup.name,
-          onPrevGroup:       prevGroup,
-          onNextGroup:       nextGroup,
-        }
-      : {};
+    const groupToolbarProps =
+      currentGroup && groupSlices
+        ? {
+            groupCurrentIndex: currentIndex - currentGroup.start + 1,
+            groupTotal:        currentGroup.end - currentGroup.start + 1,
+            atGroupStart:      currentIndex === currentGroup.start,
+            atGroupEnd:        currentIndex === currentGroup.end,
+            hasPrevGroup:      currentGroupIdx > 0,
+            hasNextGroup:      currentGroupIdx < groupSlices.length - 1,
+            groupName:         currentGroup.name,
+            groupOrdinal:      currentGroupIdx + 1,
+            groupCount:        groupSlices.length,
+            onPrevGroup:       prevGroup,
+            onNextGroup:       nextGroup,
+          }
+        : {};
 
     return (
       <div

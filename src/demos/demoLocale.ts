@@ -118,7 +118,7 @@ export const STRINGS: Record<DemoLocale, DemoStrings> = {
       'Five photos: wide ones, tall ones, mixed sizes. The counter shows where you are (like 2 of 5). No folders in this demo.',
     demo2Title: 'Demo 2 · Photos in folders',
     demo2Desc:
-      'Ten photos in three folders, like a trip album. The badge shows the folder name. The counter between the arrows is only your place inside that folder (e.g. 2/3). The toolbar does not show a global count across folders — use the double-chevron buttons to jump folders.',
+      'Ten photos in three folders, like a trip album. The badge’s second line starts with which folder you are in (e.g. (1/3)), then the folder name; the style of (1/3) matches the in-folder counter between the arrows. The counter between the arrows is only your place inside that folder (e.g. 2/3). Use the double-chevron buttons to jump folders.',
     demo3Title: 'Demo 3 · Very large photos',
     demo3Desc:
       'Two huge sky photos on this site. Each item sets a small `minimapSrc` file so the viewer stretches a tiny preview first, then crossfades to the full image after a short wait (progressive loading). File size is in each name.',
@@ -184,7 +184,7 @@ export const STRINGS: Record<DemoLocale, DemoStrings> = {
       '适合相册、作品集等场景。5 张图片，比例各不相同（含竖图）。工具栏仅显示全局序号（2/5 这样），无文件夹信息。',
     demo2Title: 'Demo 2 · 多文件夹图片',
     demo2Desc:
-      '旅行相册场景，共 3 个文件夹 · 10 张图片。上方信息条显示文件夹名称；工具栏中间的序号只表示当前文件夹内第几张（如 2/3），不显示跨文件夹的全局序号。切换到其他文件夹请用两侧的双箭头按钮。',
+      '旅行相册场景，共 3 个文件夹 · 10 张图片。信息条第二行先显示当前第几组、共几组（如 (1/3)），样式与工具栏组内序号一致，与组名略有区分，中间留一点间距；再跟文件夹名称。工具栏中间的序号只表示当前文件夹内第几张（如 2/3）。切换到其他文件夹请用两侧的双箭头按钮。',
     demo3Title: 'Demo 3 · 超高分辨率图片',
     demo3Desc:
       '本地深空摄影大图。每张在数据里单独配置了较小的 `minimapSrc`，查看器会先把小图放大铺满（偏糊），再短暂停留后淡入真正的大图（渐进加载）。括号内为未压缩体积。',
