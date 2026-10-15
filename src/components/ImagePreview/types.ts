@@ -405,6 +405,10 @@ export interface ImagePreviewProps {
    * dragging inside the frame pans the main image.
    */
   showMinimap?: boolean;
+  /** Disable preview keyboard handling while a host dialog is open. Default true. */
+  keyboardEnabled?: boolean;
+  /** Host-owned read-only shortcut reference, opened with ?. */
+  onShowShortcuts?: () => void;
 
   /**
    * Show the bottom horizontal thumbnail strip. Default: `false`.

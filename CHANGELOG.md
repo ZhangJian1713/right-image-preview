@@ -11,6 +11,8 @@ Versioning follows [Semantic Versioning](https://semver.org/) (see `README.md` f
 
 ### Added
 
+- Fixed image shortcuts matching shared desktop-viewer behavior, a read-only exported help reference, and host keyboard suspension. Preserve existing aliases while guarding modifiers, IME, input fields, numpad identity and held-key cleanup.
+
 - Controlled filmstrip toolbar switches, bounded visible-index reporting, dedicated thumbnail URLs with explicit no-original placeholders, and failure states. Reserve main viewport space while retaining Native zoom and orientation.
 
 - Host-owned fullscreen adapters: controlled `isFullscreen/enter/exit`, or toggle-only hosts with truthful fixed button labels. DOM fullscreen is bypassed in host mode.

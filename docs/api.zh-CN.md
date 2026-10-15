@@ -232,3 +232,10 @@ interface ImagePreviewRef {
 显示占位，绝不请求原图。`thumbnailError?: boolean` 表示宿主生成失败，图片加载失败同样变成占位，
 仍可点击切换主图。组件不负责生成、文件系统或缓存。开启时从主图视口预留底片高度，Fit 随测量适配，
 主动缩放比例和旋转保持；小图 URL 完成不会让用户手动滚动的底片条重复居中。
+
+### 固定快捷键集成（本地未发布）
+
+- `keyboardEnabled?: boolean` 默认 true；false 暂停键盘动作并释放长按切图。
+- `onShowShortcuts?: () => void` 由 ? 调用，宿主提供只读帮助按钮与弹窗。
+- `getPreviewShortcutHelp(capabilities)` 从运行时固定表生成 `{ action, keys }[]`；`navigation`、`groups`、`exif`、`delete`、`shortcuts` 为可选能力标志，仅支持的功能传 true。
+- 未引入可配置键位或用户设置。完整表见[键盘快捷键](./keyboard.zh-CN.md)。

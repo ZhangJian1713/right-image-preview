@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { ZoomMode } from './types';
 import type { ThumbPaceHoldDir } from './useThumbPacedNavigation';
+import { previewPhysicalKey, resolvePreviewShortcut } from './previewShortcuts';
 
 export interface UseImagePreviewKeyboardParams {
   resetHideTimer(): void;
@@ -11,6 +12,12 @@ export interface UseImagePreviewKeyboardParams {
   setNative(percent: number): void;
   mode: ZoomMode;
   cycleZoom?(): void;
+  first?(): void;
+  last?(): void;
+  canPan?: boolean;
+  toggleFullscreen?(): void;
+  showShortcuts?(): void;
+  toggleExif?(): void;
   prev(): void;
   next(): void;
   prevGroup(): void;
@@ -40,175 +47,88 @@ export interface UseImagePreviewKeyboardParams {
   endNavHold?: (dir?: ThumbPaceHoldDir) => void;
 }
 
-/**
- * Global keydown for the preview dialog (zoom, navigate, rotate, close).
- * Skips handling when focus is in an input/textarea (e.g. zoom % field).
- *
- * Listeners are registered once and read the latest params via a ref — so navigating
- * (which recreates `prev`/`next`) must not tear down the effect and call `endNavHold`
- * mid-hold (that bug made long-press ←/→ stop after one step).
- */
+/** Stable listeners keep held navigation alive across image/thumbnail renders. */
 export function useImagePreviewKeyboard(p: UseImagePreviewKeyboardParams): void {
-  const paramsRef = useRef(p);
-  useLayoutEffect(() => { paramsRef.current = p; });
-
-  // Contained: when focus leaves the preview, stop any in-flight hold.
+  const params = useRef(p);
+  const heldPan = useRef(new Map<string, readonly [number, number]>());
+  const heldNav = useRef(new Map<string, ThumbPaceHoldDir>());
+  useLayoutEffect(() => { params.current = p; });
   useEffect(() => {
-    if (p.keyboardActive !== false) return;
-    paramsRef.current.endNavHold?.();
-  }, [p.keyboardActive]);
-
+    if (p.keyboardActive === false || p.canPan === false) heldPan.current.clear();
+    if (p.keyboardActive === false) { heldNav.current.clear(); params.current.endNavHold?.(); }
+  }, [p.keyboardActive, p.canPan]);
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const {
-        keyboardActive = true,
-        resetHideTimer,
-        onClose,
-        zoomIn,
-        zoomOut,
-        fit,
-        setNative,
-        mode,
-        cycleZoom,
-        prev,
-        next,
-        prevGroup,
-        nextGroup,
-        rotateCW,
-        rotateCCW,
-        panByDelta,
-        keyboardPanStepPx,
-        fitEquivalentNativePercent,
-        onDeleteImage,
-        isFullscreen,
-        exitFullscreen,
-        beginNavHold,
-      } = paramsRef.current;
-
-      if (!keyboardActive) return;
-
-      resetHideTimer();
-
-      const target = e.target as HTMLElement;
-      if (e.defaultPrevented || target.isContentEditable ||
-        target.closest('input,textarea,select,[contenteditable]')) return;
-
-      const mod = e.ctrlKey || e.metaKey;
-
-      switch (e.key) {
-        case 'Escape':
-          if (isFullscreen?.()) {
-            e.preventDefault();
-            void exitFullscreen?.();
-            break;
-          }
-          onClose?.();
+    const clear = () => { heldPan.current.clear(); heldNav.current.clear(); params.current.endNavHold?.(); };
+    const down = (event: KeyboardEvent) => {
+      const p = params.current;
+      if (p.keyboardActive === false || event.defaultPrevented) return;
+      const target = event.target;
+      if (target instanceof Element && target.closest('input,textarea,select,[contenteditable]')) return;
+      p.resetHideTimer();
+      const shortcut = resolvePreviewShortcut(event, { navigation: true, groups: true,
+        exif: !!p.toggleExif, delete: !!p.onDeleteImage, shortcuts: !!p.showShortcuts }, p.canPan ?? p.mode === 'native');
+      if (!shortcut) return;
+      if (shortcut.physicalKey === 'Space' && target instanceof Element && target.closest('button,[role="button"]')) return;
+      event.preventDefault();
+      if (shortcut.action === 'previous' || shortcut.action === 'next') {
+        if (!event.repeat && !heldNav.current.has(shortcut.physicalKey)) {
+          const dir = shortcut.action === 'previous' ? 'prev' : 'next';
+          heldNav.current.set(shortcut.physicalKey, dir);
+          if (p.beginNavHold) p.beginNavHold(dir);
+          else if (dir === 'prev') p.prev(); else p.next();
+        }
+        return;
+      }
+      if (shortcut.pan) {
+        p.endNavHold?.(); heldNav.current.clear();
+        heldPan.current.set(shortcut.physicalKey, shortcut.pan);
+        let x = 0, y = 0;
+        for (const vector of heldPan.current.values()) { x += vector[0]; y += vector[1]; }
+        const length = Math.hypot(x, y);
+        if (length) p.panByDelta(x / length * p.keyboardPanStepPx, y / length * p.keyboardPanStepPx);
+        return;
+      }
+      if (event.repeat && !shortcut.repeat) return;
+      switch (shortcut.action) {
+        case 'zoomIn': p.zoomIn(p.fitEquivalentNativePercent); break;
+        case 'zoomOut': p.zoomOut(p.fitEquivalentNativePercent); break;
+        case 'fit': p.fit(); break;
+        case 'actualSize': p.setNative(100); break;
+        case 'cycleZoom':
+          if (p.cycleZoom) p.cycleZoom(); else if (p.mode === 'fit') p.setNative(100); else p.fit();
           break;
-
-        case 'Delete':
-        case 'Backspace':
-          if (onDeleteImage) {
-            e.preventDefault();
-            onDeleteImage();
-          }
-          break;
-
-        case '+':
-        case '=':
-        case 'Add':
-        case 'ArrowUp':
-          e.preventDefault();
-          if (e.shiftKey && !mod) {
-            panByDelta(0, keyboardPanStepPx);
-            break;
-          }
-          zoomIn(fitEquivalentNativePercent);
-          break;
-
-        case '-':
-        case 'Subtract':
-        case 'ArrowDown':
-          e.preventDefault();
-          if (e.shiftKey && !mod) {
-            panByDelta(0, -keyboardPanStepPx);
-            break;
-          }
-          zoomOut(fitEquivalentNativePercent);
-          break;
-
-        case '0':
-          fit();
-          break;
-        case '1':
-          setNative(100);
-          break;
-
-        case ' ':
-          if (mod || e.altKey || target.closest('button,[role="button"]')) return;
-          e.preventDefault();
-          if (e.repeat) return;
-          if (cycleZoom) cycleZoom();
-          else if (mode === 'fit') setNative(100);
-          else fit();
-          break;
-
-        case 'ArrowLeft':
-          e.preventDefault();
-          if (e.shiftKey && !mod) {
-            panByDelta(keyboardPanStepPx, 0);
-            break;
-          }
-          if (mod) {
-            rotateCCW();
-          } else if (beginNavHold && !e.repeat) {
-            // Ignore OS key-repeat — pacing is driven by stage presentation while held.
-            beginNavHold('prev');
-          } else if (!beginNavHold) {
-            prev();
-          }
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          if (e.shiftKey && !mod) {
-            panByDelta(-keyboardPanStepPx, 0);
-            break;
-          }
-          if (mod) {
-            rotateCW();
-          } else if (beginNavHold && !e.repeat) {
-            beginNavHold('next');
-          } else if (!beginNavHold) {
-            next();
-          }
-          break;
-
-        case 'PageUp':
-          e.preventDefault();
-          prevGroup();
-          break;
-        case 'PageDown':
-          e.preventDefault();
-          nextGroup();
+        case 'rotateCW': p.rotateCW(); break;
+        case 'rotateCCW': p.rotateCCW(); break;
+        case 'first': clear(); p.first?.(); break;
+        case 'last': clear(); p.last?.(); break;
+        case 'previousGroup': p.prevGroup(); break;
+        case 'nextGroup': p.nextGroup(); break;
+        case 'fullscreen': clear(); p.toggleFullscreen?.(); break;
+        case 'shortcuts': clear(); p.showShortcuts?.(); break;
+        case 'exif': p.toggleExif?.(); break;
+        case 'delete': p.onDeleteImage?.(); break;
+        case 'close':
+          clear();
+          if (p.isFullscreen?.()) void p.exitFullscreen?.(); else p.onClose?.();
           break;
       }
     };
-
-    const onKeyUp = (e: KeyboardEvent) => {
-      // Always end hold on keyup (do not gate on keyboardActive): otherwise a
-      // focus flicker with holdMinVisibleMs=0 can leave the paced hold running.
-      const { endNavHold } = paramsRef.current;
-      if (!endNavHold) return;
-      if (e.key === 'ArrowLeft') endNavHold('prev');
-      if (e.key === 'ArrowRight') endNavHold('next');
+    const up = (event: KeyboardEvent) => {
+      const key = previewPhysicalKey(event);
+      heldPan.current.delete(key);
+      const wasHeld = heldNav.current.delete(key);
+      if (wasHeld) {
+        const remaining = Array.from(heldNav.current.values());
+        if (!remaining.length) params.current.endNavHold?.();
+        else params.current.beginNavHold?.(remaining[remaining.length - 1]);
+      }
     };
-
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
+    const visibility = () => { if (document.hidden) clear(); };
+    window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('blur', clear);
+    document.addEventListener('visibilitychange', visibility);
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-      // True unmount only (empty deps) — safe to clear hold.
-      paramsRef.current.endNavHold?.();
+      window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', clear);
+      document.removeEventListener('visibilitychange', visibility); clear();
     };
   }, []);
 }

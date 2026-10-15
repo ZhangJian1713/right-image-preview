@@ -93,6 +93,8 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       arrows = 'both',
       initialZoomLocked = false,
       showMinimap = true,
+      keyboardEnabled = true,
+      onShowShortcuts,
       showThumbnails = false,
       showThumbnailToggle = false,
       onThumbnailsVisibleChange,
@@ -822,6 +824,12 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       minVisibleMs: holdMinVisibleMs,
     });
 
+    const canKeyboardPan = mode === 'native' && !!imageDims && !!containerSize && (() => {
+      const swapped = Math.abs(transform.rotation % 180) === 90;
+      const width = swapped ? imageDims.naturalHeight : imageDims.naturalWidth;
+      const height = swapped ? imageDims.naturalWidth : imageDims.naturalHeight;
+      return width * transform.scale > containerSize.width + 0.5 || height * transform.scale > containerSize.height + 0.5;
+    })();
     useImagePreviewKeyboard({
       resetHideTimer,
       onClose,
@@ -841,7 +849,13 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       fitEquivalentNativePercent,
       cycleZoom: clickZoomEnabled ? adaptive.cycle : undefined,
       onDeleteImage: showDelete ? deleteCurrentImage : undefined,
-      keyboardActive: isContained ? keyboardActive : true,
+      first: () => goTo(0),
+      last: () => goTo(images.length - 1),
+      canPan: canKeyboardPan,
+      toggleFullscreen,
+      showShortcuts: onShowShortcuts,
+      toggleExif: showExif ? () => setExifOpen((open) => !open) : undefined,
+      keyboardActive: keyboardEnabled && (!isContained || keyboardActive),
       isFullscreen,
       exitFullscreen,
       beginNavHold,

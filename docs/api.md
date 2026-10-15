@@ -235,3 +235,10 @@ legacy minimap/original fallback; explicit null shows a placeholder and never fe
 tiles remain navigable. No resizing/generation or host filesystem access is performed by the component.
 The main viewport reserves strip height while visible; Fit follows measured space, Native zoom and
 orientation are retained. Thumbnail URL completion does not recenter a manually scrolled strip.
+
+### Fixed shortcut integration (local, unreleased)
+
+- `keyboardEnabled?: boolean` defaults true and suspends keyboard actions/held navigation when false.
+- `onShowShortcuts?: () => void` is called by ?; the host owns the read-only dialog/button.
+- `getPreviewShortcutHelp(capabilities)` returns `{ action, keys }[]` from fixed runtime bindings. Optional flags `navigation`, `groups`, `exif`, `delete`, `shortcuts` select available rows; pass true only for supported host features.
+- No customizable key mapping or user settings are added. See [Keyboard shortcuts](./keyboard.md).

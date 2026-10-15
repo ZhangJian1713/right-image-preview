@@ -1,55 +1,42 @@
-# Keyboard Shortcuts
+# Keyboard shortcuts
 
 **English** · [中文](./keyboard.zh-CN.md)
 
----
+Bindings are fixed. Overlay previews focus on open; contained previews respond only while focused.
+Text fields, editable content and IME composition retain editing behavior. Hosts can pause image shortcuts
+with `keyboardEnabled={false}` while displaying a dialog.
 
-When the preview is open, focus is automatically trapped in the overlay and the following shortcuts take effect immediately.
+| Keys | Action |
+| --- | --- |
+| `←` / `Q`, `→` / `E` | Previous / next image; hold for paced navigation |
+| `Home` / `End` | First / last image |
+| `↑` / `+` / `=` / Numpad `+` | Zoom in one stop |
+| `↓` / `-` / Numpad `-` | Zoom out one stop |
+| `Space` / Numpad `0` | Adaptive cycle with clickZoomEnabled; otherwise Fit ↔ 100% |
+| Main keyboard `0` / `1` | Fit / native 100% |
+| `R` / `Shift+R` | Rotate 90° clockwise / counter-clockwise |
+| `Ctrl/⌘+→` / `Ctrl/⌘+←` | Existing clockwise / counter-clockwise aliases |
+| `W/A/S/D` | Reveal up / left / down / right |
+| Numpad `8/4/2(or 5)/6` | Reveal up / left / down / right |
+| Numpad `7/9/1/3` | Reveal upper-left / upper-right / lower-left / lower-right |
+| `Shift+↑/↓/←/→` | Existing pan aliases |
+| `PageUp` / `PageDown` | First image of previous / next group |
+| `F` | Toggle fullscreen, delegating to the host adapter when supplied |
+| `?` | Invoke onShowShortcuts, when provided |
+| `I` | Toggle EXIF panel when showExif=true |
+| `Delete` / `Backspace` | Request host deletion when showDelete=true |
+| `Esc` | Exit confirmed fullscreen; otherwise close preview |
 
-With **`presentation="contained"`**, shortcuts are handled only while focus is inside the preview root (click the preview to activate); sidebar interactions will not swallow arrow keys / Esc.
+Pan requires Native mode and geometric viewport overflow. Diagonal and cardinal speeds match. Physical
+numpad identity is preserved with NumLock off. Zoom/pan allow repeat; navigation remains presentation-paced.
+Single-shot actions ignore repeat. Blur, hidden documents, keyboard suspension and unmount release held state.
 
-> When the zoom input field is being edited, arrow keys and Space are handled by the input itself and do not trigger global shortcuts.
+Unlisted Ctrl/⌘/Alt combinations are left to the host, including modified Space. Space on a button retains
+native button activation. Zoom input submits within the stops maximum; Enter commits and Esc cancels.
 
-## Zoom
+`getPreviewShortcutHelp({ navigation, groups, exif, delete, shortcuts })` returns action/key rows from the
+actual fixed binding table. Hosts translate action labels and filter unavailable features. There is no
+rebinding API, persistence or customization UI.
 
-| Key | Action |
-|-----|--------|
-| `+` / `=` / `↑` | Zoom in (jump to the next larger stop) |
-| `-` / `↓` | Zoom out (jump to the next smaller stop) |
-| `0` | Switch to Fit mode |
-| `1` | Switch to native 100 % |
-| `Space` | Toggle Fit ↔ 100 % (same as double-click) |
-
-> The zoom input field accepts a positive integer and **clamps to the maximum configured stop** (default max 200 %). Press **Enter** to confirm, **Esc** to cancel.
-
-## Image Navigation
-
-| Key | Action |
-|-----|--------|
-| `←` | Previous image in the flat list (crosses groups when using `groupedImages`) |
-| `→` | Next image in the flat list (crosses groups when using `groupedImages`) |
-| `PageUp` | Jump to first image of the previous group (requires non-empty `groupedImages`) |
-| `PageDown` | Jump to first image of the next group (requires non-empty `groupedImages`) |
-
-## Rotation
-
-| Key | Action |
-|-----|--------|
-| `Ctrl / ⌘` + `←` | Rotate 90° counter-clockwise |
-| `Ctrl / ⌘` + `→` | Rotate 90° clockwise |
-
-## Close
-
-| Key | Action |
-|-----|--------|
-| `Esc` | Close the preview |
-
----
-
-> Any key press resets the auto-fade inactivity timer, immediately restoring all controls to full opacity.
-
-## Adaptive Space
-
-With `clickZoomEnabled`, Space advances the same observation cycle as a primary mouse click. It preserves the viewport-center image point, ignores held repeats and Ctrl/Meta/Alt modifiers, and leaves controls to their normal keyboard behavior. Existing contained focus rules remain.
-
-Host fullscreen adapters: Escape exits only when a controlled adapter reports active fullscreen. Toggle-only hosts (for example VS Code) retain preview-close behavior; use the host fullscreen button or native shortcut to toggle the window.
+Toggle-only fullscreen hosts such as VS Code retain preview-close semantics for Esc; use F/the fullscreen
+button to toggle the window. Host help dialogs should handle Esc/? first, suspend image shortcuts, and restore focus.

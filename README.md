@@ -279,21 +279,11 @@ interface ImagePreviewRef {
 
 ## Keyboard Shortcuts
 
-| Key | Action |
-|-----|--------|
-| `Esc` | Close preview |
-| `+` / `=` / `↑` | Zoom in one stop |
-| `-` / `↓` | Zoom out one stop |
-| `0` | Fit to viewport |
-| `1` | Native 100 % |
-| `Space` | Toggle Fit ↔ 100 % |
-| `←` / `→` | Previous / next image |
-| `Ctrl/⌘ + ←` | Rotate 90° counter-clockwise |
-| `Ctrl/⌘ + →` | Rotate 90° clockwise |
-| `PageUp` | Jump to first image of the previous group (non-empty `groupedImages`) |
-| `PageDown` | Jump to first image of the next group (non-empty `groupedImages`) |
+Fixed aliases include Q/E navigation, Home/End, R/Shift+R rotation, F fullscreen, WASD/numpad pan,
+and ? for host-provided help, alongside existing zoom and navigation keys.
+See the [complete keyboard reference](./docs/keyboard.md) for conditions and compatibility bindings.
+Hosts can use `getPreviewShortcutHelp` for a read-only table; no shortcut customization is provided.
 
-> Any key press resets the auto-fade inactivity timer.
 
 ---
 

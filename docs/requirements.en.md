@@ -307,3 +307,5 @@ orientation are retained. Thumbnail URL completion does not recenter a manually 
 Size budget: the controlled strip and placeholders measure about 36.19 kB gzipped (size-limit), roughly 0.57 kB above the previous local fullscreen build. The budget is 37 kB, with no new dependency.
 
 Filmstrip selection uses a border only; inactive images retain the same brightness and opacity as the active image.
+
+Fixed shortcuts match shared desktop-viewer actions, with host-owned read-only help and input/IME/NumLock/focus guards. The gzip budget is 38 kB for the fixed reference and held-key lifecycle; no dependency is added.
