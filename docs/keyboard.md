@@ -47,3 +47,7 @@ With **`presentation="contained"`**, shortcuts are handled only while focus is i
 ---
 
 > Any key press resets the auto-fade inactivity timer, immediately restoring all controls to full opacity.
+
+## Adaptive Space
+
+With `clickZoomEnabled`, Space advances the same observation cycle as a primary mouse click. It preserves the viewport-center image point, ignores held repeats and Ctrl/Meta/Alt modifiers, and leaves controls to their normal keyboard behavior. Existing contained focus rules remain.

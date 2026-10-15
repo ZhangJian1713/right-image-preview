@@ -58,6 +58,9 @@ import { useProgressiveMainImage } from '../useProgressiveMainImage';
 import { usePinchZoom } from '../usePinchZoom';
 import { useWheelZoom } from '../useWheelZoom';
 import { useZoomState } from '../useZoomState';
+import { useAdaptiveZoom } from '../useAdaptiveZoom';
+import { nextAdaptiveZoom } from '../adaptiveZoom';
+import { useClickZoomGesture } from '../useClickZoomGesture';
 
 const DEFAULT_STOPS: NativePercent[] = [10, 25, 50, 75, 100, 125, 150, 175, 200];
 
@@ -70,11 +73,13 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       stops = DEFAULT_STOPS,
       initialMode = 'fit',
       initialNativePercent,
+      fitMaxNativePercent,
       firstZoomInStrategy = 'above-fit',
       zoomOutBelowMinBehaviour = 'noop',
       zoomInAtMaxBehaviour = 'noop',
       wheelEnabled = true,
       doubleClickEnabled = true,
+      clickZoomEnabled = false,
       pinchEnabled = true,
       switchImageResetZoom = true,
       switchImageResetTransform = true,
@@ -165,7 +170,7 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     const [zoomLocked, setZoomLocked] = useState(initialZoomLocked);
     const [exifOpen, setExifOpen] = useState(initialExifOpen && showExif);
     const [minimapDragging, setMinimapDragging] = useState(false);
-    const [imageLoadError, setImageLoadError] = useState(false);
+    const [failedSrc, setFailedSrc] = useState<string | null>(null);
     const overlayRef = useRef<HTMLDivElement>(null);
 
     // ── Zoom state machine ──────────────────────────────────────────────────
@@ -203,10 +208,41 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       zoomAnchorTranslate,
       panByDelta,
       panJumpToNatural,
-    } = useImageTransform({ mode, nativePercent, fitResetPan });
+    } = useImageTransform({ mode, nativePercent, fitResetPan, fitMaxNativePercent });
 
     // ── Current image ───────────────────────────────────────────────────────
     const currentImage = images[currentIndex] ?? images[0];
+    const imageLoadError = failedSrc === currentImage.src;
+    const mediaViewportRef = useRef<HTMLDivElement | null>(null);
+    const setMediaViewport = useCallback((element: HTMLDivElement | null) => {
+      mediaViewportRef.current = element;
+      setContainerEl(element);
+    }, [setContainerEl]);
+    const adaptive = useAdaptiveZoom({
+      enabled: clickZoomEnabled && imageDims !== null && containerSize !== null,
+      resourceKey: currentImage.src,
+      viewportRef: mediaViewportRef,
+      fitEquivalentNativePercent,
+      zoomState,
+      zoomAnchorTranslate,
+    });
+    const isImagePoint = useCallback((clientX: number, clientY: number) => {
+      if (!imageDims || !containerSize || transform.scale <= 0) return false;
+      const rect = mediaViewportRef.current?.getBoundingClientRect();
+      if (!rect) return false;
+      const x = clientX - rect.left - rect.width / 2 - transform.translateX;
+      const y = clientY - rect.top - rect.height / 2 - transform.translateY;
+      const radians = transform.rotation * Math.PI / 180;
+      const localX = Math.cos(radians) * x + Math.sin(radians) * y;
+      const localY = -Math.sin(radians) * x + Math.cos(radians) * y;
+      return Math.abs(localX) <= imageDims.naturalWidth * transform.scale / 2 &&
+        Math.abs(localY) <= imageDims.naturalHeight * transform.scale / 2;
+    }, [imageDims, containerSize, transform]);
+    const clickGesture = useClickZoomGesture({
+      enabled: clickZoomEnabled && imageDims !== null && containerSize !== null,
+      resourceKey: currentImage.src, mode, onCycle: adaptive.cycle,
+      onPanStart, onPanMove, onPanEnd,
+    });
 
     const {
       displayReadyIndexes,
@@ -574,7 +610,7 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
         }
 
         if (!isIndexControlled) setCurrentIndex(clamped);
-        setImageLoadError(false);
+        setFailedSrc(null);
         onIndexChange?.(clamped);
         // Reset zoom only when not locked (and when switchImageResetZoom allows it).
         if (switchImageResetZoom && !zoomLocked) reset();
@@ -836,6 +872,7 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       panByDelta,
       keyboardPanStepPx,
       fitEquivalentNativePercent,
+      cycleZoom: clickZoomEnabled ? adaptive.cycle : undefined,
       onDeleteImage: showDelete ? deleteCurrentImage : undefined,
       keyboardActive: isContained ? keyboardActive : true,
       isFullscreen,
@@ -846,10 +883,10 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
 
     // ── Double-click ────────────────────────────────────────────────────────
     const handleDoubleClick = useCallback(() => {
-      if (!doubleClickEnabled) return;
+      if (!doubleClickEnabled || clickZoomEnabled) return;
       if (mode === 'fit') setNative(100);
       else fit();
-    }, [doubleClickEnabled, mode, fit, setNative]);
+    }, [doubleClickEnabled, clickZoomEnabled, mode, fit, setNative]);
 
     // ── Focus ───────────────────────────────────────────────────────────────
     // Overlay: focus on mount (modal). Contained: do not steal focus; activate keys when focused.
@@ -997,7 +1034,7 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     // Current main image counts as ready once the full src is usable.
     useEffect(() => {
       const src = currentImage?.src;
-      if (!src) return;
+      if (!src || imageLoadError) return;
       if (progressive.pipelineActive) {
         if (progressive.fullDecoded) {
           markSrcReady(src);
@@ -1012,7 +1049,7 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
         }
         return;
       }
-      if (imageShowReady) {
+      if (imageShowReady && paceMainPainted) {
         markSrcReady(src);
         if (imageDims) {
           markSrcDisplayReady(src, {
@@ -1025,6 +1062,8 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       }
     }, [
       currentImage?.src,
+      imageLoadError,
+      paceMainPainted,
       progressive.pipelineActive,
       progressive.fullDecoded,
       imageShowReady,
@@ -1090,7 +1129,7 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       delayedPreloadSpinner;
 
     const showCenterLoader =
-      showSwitchLoader &&
+      showSwitchLoader && !imageLoadError &&
       (awaitingMainReveal ||
         progressiveWaitingFullOverThumb ||
         progressivePreloadSpinnerNoThumbYet ||
@@ -1117,6 +1156,13 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
             onNextGroup:       nextGroup,
           }
         : {};
+
+    const hintTarget = adaptive.hintTarget;
+    const hintNext = hintTarget ? nextAdaptiveZoom({ mode: hintTarget.mode,
+      nativePercent: hintTarget.mode === 'native' ? hintTarget.percent : nativePercent,
+      fitEquivalentNativePercent }) : null;
+    const zoomTargetLabel = (target: { mode: 'fit' } | { mode: 'native'; percent: number }) =>
+      target.mode === 'fit' ? t.fit : `${target.percent}%`;
 
     const showStrip = showThumbnails;
     const stripStart =
@@ -1173,7 +1219,8 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
         {/* NOTE: This div is 100 % × 100 % and covers the whole overlay, so mask
             clicks land here (not on the overlay root). We mirror the same check. */}
         <div
-          ref={setContainerEl}
+          ref={setMediaViewport}
+          onClickCapture={clickGesture.onClickCapture}
           onClick={(e) => { if (closeOnMaskClick && e.target === e.currentTarget) onClose?.(); }}
           style={{
             position: 'relative',
@@ -1196,14 +1243,13 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
                 liveTransform={transform.cssTransform}
                 frozenBySrc={frozenBySrc}
                 hideCurrentUntilDecoded={hideMainUntilDecoded}
-                suppressTransformTransition={suppressTransformTransition}
+                suppressTransformTransition={clickZoomEnabled || suppressTransformTransition}
                 isPanning={isPanning || minimapDragging}
                 imageShowReady={imageShowReady}
                 bindLayerRef={bindLayerRef}
                 onCurrentLoad={onCurrentLayerLoad}
                 onCurrentError={() => {
-                  onMainImgDecoded();
-                  setImageLoadError(true);
+                  setFailedSrc(currentImage.src);
                   onImageError?.(currentIndex, currentImage.src);
                 }}
                 onNeighborLoad={onSlotImgLoad}
@@ -1247,17 +1293,37 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
               position: 'absolute',
               inset: 0,
               zIndex: 1,
-              cursor: mode === 'native' ? 'grab' : 'zoom-in',
+              cursor: clickZoomEnabled
+                ? clickGesture.dragging ? 'grabbing' : adaptive.nextScale > transform.scale ? 'zoom-in' : 'zoom-out'
+                : mode === 'native' ? 'grab' : 'zoom-in',
               touchAction: 'none',
               userSelect: 'none',
             }}
-            onPointerDown={onPanStart}
-            onPointerMove={onPanMove}
-            onPointerUp={(e) => onPanEnd(e)}
-            onPointerCancel={(e) => onPanEnd(e)}
-            onLostPointerCapture={(e) => onPanEnd(e)}
-            onDoubleClick={handleDoubleClick}
+            onPointerDown={(event) => {
+              if (isContained) overlayRef.current?.focus({ preventScroll: true });
+              if (isImagePoint(event.clientX, event.clientY)) clickGesture.onPointerDown(event);
+            }}
+            onPointerMove={clickGesture.onPointerMove}
+            onPointerUp={clickGesture.onPointerUp}
+            onPointerCancel={clickGesture.onPointerCancel}
+            onLostPointerCapture={clickGesture.onPointerCancel}
+            onDoubleClick={(event) => {
+              if (isImagePoint(event.clientX, event.clientY)) handleDoubleClick();
+            }}
+            onClick={(event) => {
+              if (closeOnMaskClick && !isImagePoint(event.clientX, event.clientY)) onClose?.();
+            }}
           />
+
+          {hintTarget && hintNext && (
+            <div role="status" style={{ position: 'absolute', bottom: 100, left: '50%',
+              transform: 'translateX(-50%)', padding: '8px 12px', borderRadius: 6,
+              background: 'rgba(0,0,0,.7)', color: '#fff', fontSize: 12,
+              pointerEvents: 'none', zIndex: 4 }}>
+              {t.zoomHint(zoomTargetLabel(hintTarget), zoomTargetLabel(hintNext))}
+              {hintTarget.mode === 'native' ? ` · ${t.dragToPan}` : ''}
+            </div>
+          )}
 
           {/* L3 — chrome: close, ←/→, toolbar/filename, minimap, filmstrip, EXIF */}
           <div
@@ -1395,6 +1461,8 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
               stops={sortedStops}
               atMinStop={atMinStop}
               atMaxStop={atMaxStop}
+              zoomInAvailable={(mode === 'native' ? nativePercent : fitEquivalentNativePercent ?? 0) < sortedStops[sortedStops.length - 1]}
+              zoomOutAvailable={(mode === 'fit' ? fitEquivalentNativePercent ?? 0 : nativePercent) > sortedStops[0] || (mode === 'native' && zoomOutBelowMinBehaviour === 'fit')}
               totalImages={images.length}
               currentIndex={currentIndex}
               imageName={currentImage.name}

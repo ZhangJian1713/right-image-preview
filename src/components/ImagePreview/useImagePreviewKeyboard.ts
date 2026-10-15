@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import type { ZoomMode } from './types';
 import type { ThumbPaceHoldDir } from './useThumbPacedNavigation';
 
@@ -10,6 +10,7 @@ export interface UseImagePreviewKeyboardParams {
   fit(): void;
   setNative(percent: number): void;
   mode: ZoomMode;
+  cycleZoom?(): void;
   prev(): void;
   next(): void;
   prevGroup(): void;
@@ -49,13 +50,13 @@ export interface UseImagePreviewKeyboardParams {
  */
 export function useImagePreviewKeyboard(p: UseImagePreviewKeyboardParams): void {
   const paramsRef = useRef(p);
-  paramsRef.current = p;
+  useLayoutEffect(() => { paramsRef.current = p; });
 
   // Contained: when focus leaves the preview, stop any in-flight hold.
   useEffect(() => {
     if (p.keyboardActive !== false) return;
-    p.endNavHold?.();
-  }, [p.keyboardActive, p.endNavHold]);
+    paramsRef.current.endNavHold?.();
+  }, [p.keyboardActive]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -68,6 +69,7 @@ export function useImagePreviewKeyboard(p: UseImagePreviewKeyboardParams): void 
         fit,
         setNative,
         mode,
+        cycleZoom,
         prev,
         next,
         prevGroup,
@@ -88,7 +90,8 @@ export function useImagePreviewKeyboard(p: UseImagePreviewKeyboardParams): void 
       resetHideTimer();
 
       const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+      if (e.defaultPrevented || target.isContentEditable ||
+        target.closest('input,textarea,select,[contenteditable]')) return;
 
       const mod = e.ctrlKey || e.metaKey;
 
@@ -141,8 +144,11 @@ export function useImagePreviewKeyboard(p: UseImagePreviewKeyboardParams): void 
           break;
 
         case ' ':
+          if (mod || e.altKey || target.closest('button,[role="button"]')) return;
           e.preventDefault();
-          if (mode === 'fit') setNative(100);
+          if (e.repeat) return;
+          if (cycleZoom) cycleZoom();
+          else if (mode === 'fit') setNative(100);
           else fit();
           break;
 

@@ -203,3 +203,12 @@ interface ImagePreviewRef {
 - [Main display & navigation flow](./main-display-flow.md) — thumb underlay then original, long-dwell fast path, hold pacing.
 - [Minimap viewport drag](./minimap.md) — WebView pointer quirks and Jacobian-based 1:1 panning.
 - [Media Lens integration](./media-lens-integration.md) — Tauri memory budget and recommended props.
+
+## Adaptive observation in 0.8.0
+
+- `clickZoomEnabled?: boolean` defaults to false. Click and Space share the adaptive cycle; button/input focus and held Space repeats are ignored. Legacy double-click is bypassed while enabled.
+- `fitMaxNativePercent?: number` independently caps Fit; 100 preserves actual size for small images. Omitted/non-positive/non-finite values retain the uncapped behavior.
+- Detail = nearest 5% to `sqrt(Fit% × 100)`, retained only when both adjacent ratios are at least 1.5. Fit≈100% uses 200% as the detail target. Manual scales outside the cycle return to Fit.
+- Fit may step down through wheel/toolbar; at the maximum, zoom-in remains bounded and never jumps down. `setNative` rejects non-positive/non-finite inputs.
+- `language` supports `en`, `zh-CN`, `zh-TW`, `zh-Hans`, `zh-Hant` and regional aliases; an explicit script wins over region. Hot updates preserve view state. `strings.zoomHint` and `strings.dragToPan` localize observation hints.
+- A recorded neighbor decode is best effort, not a live residency guarantee. Set `preloadRadius={0}` to disable neighbor work.

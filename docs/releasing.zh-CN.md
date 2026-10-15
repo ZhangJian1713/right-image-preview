@@ -10,7 +10,7 @@
 
 | 工具 | 说明 |
 |---|---|
-| Node.js ≥ 18 | Vite 和构建流程所需 |
+| Node.js ≥ 20.19 (or ≥ 22.12) | Vite 和构建流程所需 |
 | npm 账户 | 需要是 `right-image-preview` 包的协作者 |
 | npm 授权 Token | 存储在 `~/.npmrc`（参见[身份验证](#身份验证)） |
 | Git 写权限 | 需要能推送到 `ZhangJian1713/right-image-preview` 仓库 |
@@ -67,7 +67,7 @@ npm run pack:local
 
 ```bash
 git status          # 改动应只含本版内容
-npx tsc --noEmit
+npm run check-type
 npm test
 npm run build:lib
 npm run size

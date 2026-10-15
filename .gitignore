@@ -32,3 +32,6 @@ icon-candidates.html
 *.njsproj
 *.sln
 *.sw?
+
+# Test coverage output
+coverage/

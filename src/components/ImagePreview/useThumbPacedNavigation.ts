@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useLayoutEffect, useCallback, useEffect, useRef } from 'react';
 import { NAV_HOLD_MIN_VISIBLE_MS } from './imagePreviewTuning';
 
 export type ThumbPaceHoldDir = 'prev' | 'next';
@@ -49,9 +49,9 @@ export function useThumbPacedNavigation({
 }: UseThumbPacedNavigationParams): UseThumbPacedNavigationResult {
   const holdRef = useRef<ThumbPaceHoldDir | null>(null);
   const thumbReadyRef = useRef(thumbReady);
-  thumbReadyRef.current = thumbReady;
+  useLayoutEffect(() => { thumbReadyRef.current = thumbReady; });
   const currentIndexRef = useRef(currentIndex);
-  currentIndexRef.current = currentIndex;
+  useLayoutEffect(() => { currentIndexRef.current = currentIndex; });
 
   /** Index we already advanced away from after its min-visible dwell. */
   const advancedFromIndexRef = useRef<number | null>(null);
@@ -60,11 +60,11 @@ export function useThumbPacedNavigation({
   const dwellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const prevRef = useRef(prev);
-  prevRef.current = prev;
+  useLayoutEffect(() => { prevRef.current = prev; });
   const nextRef = useRef(next);
-  nextRef.current = next;
+  useLayoutEffect(() => { nextRef.current = next; });
   const minVisibleRef = useRef(minVisibleMs);
-  minVisibleRef.current = minVisibleMs;
+  useLayoutEffect(() => { minVisibleRef.current = minVisibleMs; });
 
   const clearDwellTimer = useCallback(() => {
     if (dwellTimerRef.current != null) {

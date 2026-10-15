@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { PROGRESSIVE_PRELOAD_TIMEOUT_MS } from './imagePreviewTuning';
 import type { MainImageLoadStage } from './types';
 import type { ImageDimensions } from './useImageTransform';
@@ -35,6 +35,17 @@ export interface UseProgressiveMainImageResult {
   onMainImgDecoded: () => void;
 }
 
+interface ProgressiveVisit {
+  active: boolean;
+  stage: MainImageLoadStage;
+  fullDecoded: boolean;
+  minimapReady: boolean;
+  pendingReveal: boolean;
+  placeholderAt: number | null;
+  timer: number | null;
+  completed: boolean;
+}
+
 function useLatestRef<T>(value: T) {
   const r = useRef(value);
   useLayoutEffect(() => {
@@ -68,64 +79,67 @@ export function useProgressiveMainImage({
 
   const effectiveDwellMsRef = useLatestRef(preferFastReveal ? 0 : placeholderMinVisibleMs);
 
-  const [preloadStage, setPreloadStage] = useState<MainImageLoadStage>('inactive');
-  const [fullDecoded, setFullDecoded] = useState(false);
-  /** Minimap `Image()` finished while main is still preloading — layout + underlay can show immediately. */
-  const [minimapPrelayoutReady, setMinimapPrelayoutReady] = useState(false);
+  const initialStage: MainImageLoadStage = pipelineActive ? 'preloading' : 'inactive';
+  const visit = useMemo(() => ({ mainSrc, minimapSrc, pipelineActive }),
+    [mainSrc, minimapSrc, pipelineActive]);
+  const sessions = useRef(new WeakMap<object, ProgressiveVisit>());
+  // Invoked only by events/effects. A new source can receive a cached-image ref callback
+  // before its parent's effects, without mutating any shared session during render.
+  const getVisit = useCallback(() => {
+    let session = sessions.current.get(visit);
+    if (!session) {
+      session = { active: true, stage: pipelineActive ? 'preloading' : 'inactive',
+        fullDecoded: false, minimapReady: false, pendingReveal: false,
+        placeholderAt: null, timer: null, completed: false };
+      sessions.current.set(visit, session);
+    }
+    return session;
+  }, [visit, pipelineActive]);
+  const [snapshot, setSnapshot] = useState<{ visit: typeof visit; stage: MainImageLoadStage;
+    fullDecoded: boolean; minimapReady: boolean }>({ visit, stage: initialStage,
+    fullDecoded: false, minimapReady: false });
+  const current = snapshot.visit === visit ? snapshot :
+    { visit, stage: initialStage, fullDecoded: false, minimapReady: false };
+  const preloadStage = current.stage;
+  const fullDecoded = current.fullDecoded;
+  const minimapPrelayoutReady = current.minimapReady;
   const genRef = useRef(0);
-  const preloadStageRef = useRef<MainImageLoadStage>(preloadStage);
-  useLayoutEffect(() => {
-    preloadStageRef.current = preloadStage;
-  }, [preloadStage]);
-
-  /** Main &lt;img&gt; is ready before preload promoted to `thumbnail-placeholder` (typical with HTTP cache). */
-  const pendingMainRevealRef = useRef(false);
-  const thumbPlaceholderEnteredAtRef = useRef<number | null>(null);
-  const revealTimeoutRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
-  /** After we reveal the main layer, ignore duplicate `onMainImgDecoded` (decode + timeout). */
-  const revealCompletedRef = useRef(false);
-
+  const update = useCallback((changes: Partial<Pick<ProgressiveVisit, 'stage' | 'fullDecoded' | 'minimapReady'>>) => {
+    const session = getVisit();
+    if (!session.active) return;
+    Object.assign(session, changes);
+    const next = { visit, stage: session.stage, fullDecoded: session.fullDecoded,
+      minimapReady: session.minimapReady };
+    // A cached image ref may report decoded again after every commit. Preserve identity
+    // on no-op notifications, or the callback itself would keep scheduling renders.
+    setSnapshot((previous) => previous.visit === next.visit &&
+      previous.stage === next.stage && previous.fullDecoded === next.fullDecoded &&
+      previous.minimapReady === next.minimapReady ? previous : next);
+  }, [getVisit, visit]);
+  const setPreloadStage = useCallback((stage: MainImageLoadStage) => update({ stage }), [update]);
+  const setFullDecoded = useCallback((value: boolean) => update({ fullDecoded: value }), [update]);
+  const setMinimapPrelayoutReady = useCallback((value: boolean) => update({ minimapReady: value }), [update]);
   const clearRevealTimeout = useCallback(() => {
-    if (revealTimeoutRef.current !== null) {
-      window.clearTimeout(revealTimeoutRef.current);
-      revealTimeoutRef.current = null;
-    }
-  }, []);
-
-  /**
-   * Sync reset when `mainSrc` / pipeline flips — must run during render so refs are already
-   * cleared before the new viewport `<img>` ref/onLoad runs (cached neighbors often complete
-   * in the same commit; a post-paint reset would swallow that reveal forever).
-   */
-  const trackedSrcRef = useRef(mainSrc);
-  const trackedPipelineRef = useRef(pipelineActive);
-  if (trackedSrcRef.current !== mainSrc || trackedPipelineRef.current !== pipelineActive) {
-    trackedSrcRef.current = mainSrc;
-    trackedPipelineRef.current = pipelineActive;
-    if (revealTimeoutRef.current !== null) {
-      window.clearTimeout(revealTimeoutRef.current);
-      revealTimeoutRef.current = null;
-    }
-    pendingMainRevealRef.current = false;
-    thumbPlaceholderEnteredAtRef.current = null;
-    revealCompletedRef.current = false;
-    const nextStage: MainImageLoadStage = pipelineActive ? 'preloading' : 'inactive';
-    preloadStageRef.current = nextStage;
-    if (fullDecoded) setFullDecoded(false);
-    if (minimapPrelayoutReady) setMinimapPrelayoutReady(false);
-    if (preloadStage !== nextStage) setPreloadStage(nextStage);
-  }
+    const timer = getVisit().timer;
+    if (timer !== null) window.clearTimeout(timer);
+    getVisit().timer = null;
+  }, [getVisit]);
+  useEffect(() => {
+    getVisit().active = true;
+    return () => { getVisit().active = false; clearRevealTimeout(); };
+  }, [getVisit, clearRevealTimeout]);
 
   const armRevealAfterDwell = useCallback(() => {
-    if (revealCompletedRef.current) return;
+    if (getVisit().completed) return;
     clearRevealTimeout();
-    const t0 = thumbPlaceholderEnteredAtRef.current;
+    const t0 = getVisit().placeholderAt;
     const dwell = effectiveDwellMsRef.current;
     const elapsed = t0 == null ? 0 : performance.now() - t0;
     const wait = Math.max(0, dwell - elapsed);
     const finish = () => {
-      revealTimeoutRef.current = null;
-      revealCompletedRef.current = true;
+      if (!getVisit().active) return;
+      getVisit().timer = null;
+      getVisit().completed = true;
       setFullDecoded(true);
       onStageChangeRef.current?.('full-ready');
     };
@@ -134,9 +148,8 @@ export function useProgressiveMainImage({
       finish();
       return;
     }
-    revealTimeoutRef.current = window.setTimeout(finish, wait);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onStageChangeRef, effectiveDwellMsRef
-  }, [clearRevealTimeout]);
+    getVisit().timer = window.setTimeout(finish, wait);
+  }, [clearRevealTimeout, getVisit, setFullDecoded, onStageChangeRef, effectiveDwellMsRef]);
 
   useEffect(() => {
     if (!pipelineActive) {
@@ -160,14 +173,16 @@ export function useProgressiveMainImage({
 
     if (knownOk) {
       onImageLayoutRef.current(known!);
-      thumbPlaceholderEnteredAtRef.current = performance.now();
-      preloadStageRef.current = 'thumbnail-placeholder';
+      getVisit().placeholderAt = performance.now();
+      getVisit().stage = 'thumbnail-placeholder';
+      // Known dimensions enter the external preload pipeline once per resource visit.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPreloadStage('thumbnail-placeholder');
       onStageChangeRef.current?.('thumbnail-placeholder');
       // Layout microtask may have called onMainImgDecoded while stage was still `preloading`
       // (sync reset on src change). Drain that pending now — do not wait for a main probe.
-      if (pendingMainRevealRef.current) {
-        pendingMainRevealRef.current = false;
+      if (getVisit().pendingReveal) {
+        getVisit().pendingReveal = false;
         armRevealAfterDwell();
       }
     }
@@ -185,13 +200,13 @@ export function useProgressiveMainImage({
           });
         }
         setMinimapPrelayoutReady(true);
-        if (preloadStageRef.current === 'preloading') {
-          thumbPlaceholderEnteredAtRef.current = performance.now();
-          preloadStageRef.current = 'thumbnail-placeholder';
+        if (getVisit().stage === 'preloading') {
+          getVisit().placeholderAt = performance.now();
+          getVisit().stage = 'thumbnail-placeholder';
           setPreloadStage('thumbnail-placeholder');
           onStageChangeRef.current?.('thumbnail-placeholder');
-          if (pendingMainRevealRef.current) {
-            pendingMainRevealRef.current = false;
+          if (getVisit().pendingReveal) {
+            getVisit().pendingReveal = false;
             armRevealAfterDwell();
           }
         }
@@ -210,7 +225,7 @@ export function useProgressiveMainImage({
 
     const img = new Image();
     /** Timeout id assigned after `img.src` (sync cache `onload` must not read before assign). */
-    const preloadTimeoutHolder: { id?: ReturnType<typeof window.setTimeout> } = {};
+    const preloadTimeoutHolder: { id?: number } = {};
     /** After we fall back to minimap (or give up on main), ignore a very late main `onload`. */
     let ignoreMainPreloadResult = false;
     let minimapFallbackStarted = false;
@@ -221,7 +236,7 @@ export function useProgressiveMainImage({
       ignoreMainPreloadResult = true;
       mainProbeFinished = true;
       if (!minimapSrc || minimapSrc === mainSrc) {
-        preloadStageRef.current = 'error';
+        getVisit().stage = 'error';
         setPreloadStage('error');
         onStageChangeRef.current?.('error');
         return;
@@ -234,13 +249,13 @@ export function useProgressiveMainImage({
           naturalHeight: thumb.naturalHeight,
         });
         setFullDecoded(true);
-        preloadStageRef.current = 'thumb-only';
+        getVisit().stage = 'thumb-only';
         setPreloadStage('thumb-only');
         onStageChangeRef.current?.('thumb-only');
       };
       thumb.onerror = () => {
         if (cancelled || gen !== genRef.current) return;
-        preloadStageRef.current = 'error';
+        getVisit().stage = 'error';
         setPreloadStage('error');
         onStageChangeRef.current?.('error');
       };
@@ -255,12 +270,12 @@ export function useProgressiveMainImage({
         naturalWidth: img.naturalWidth,
         naturalHeight: img.naturalHeight,
       });
-      thumbPlaceholderEnteredAtRef.current = performance.now();
-      preloadStageRef.current = 'thumbnail-placeholder';
+      getVisit().placeholderAt = performance.now();
+      getVisit().stage = 'thumbnail-placeholder';
       setPreloadStage('thumbnail-placeholder');
       onStageChangeRef.current?.('thumbnail-placeholder');
-      if (pendingMainRevealRef.current) {
-        pendingMainRevealRef.current = false;
+      if (getVisit().pendingReveal) {
+        getVisit().pendingReveal = false;
         armRevealAfterDwell();
       }
     };
@@ -282,22 +297,23 @@ export function useProgressiveMainImage({
       if (preloadTimeoutHolder.id !== undefined) window.clearTimeout(preloadTimeoutHolder.id);
     };
   },
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- refs: layout/stage/known/preferFastReveal
-  [mainSrc, minimapSrc, pipelineActive, armRevealAfterDwell],
+  [mainSrc, minimapSrc, pipelineActive, armRevealAfterDwell, getVisit, setPreloadStage, setFullDecoded, setMinimapPrelayoutReady, onStageChangeRef, onImageLayoutRef, knownDimensionsRef, preferFastRevealRef],
   );
 
   const onMainImgDecoded = useCallback(() => {
     const active = enabled && !!minimapSrc && minimapSrc !== mainSrc && !minimapCustom;
     if (!active) {
+      if (!getVisit().active || getVisit().completed) return;
+      getVisit().completed = true;
       setFullDecoded(true);
       onStageChangeRef.current?.('full-ready');
       return;
     }
-    if (revealCompletedRef.current) return;
+    if (getVisit().completed) return;
 
-    const stage = preloadStageRef.current;
+    const stage = getVisit().stage;
     if (stage === 'preloading') {
-      pendingMainRevealRef.current = true;
+      getVisit().pendingReveal = true;
       // Display-ready: known dims mean we can enter placeholder + reveal without waiting for the
       // progressive effect (layout microtask often races ahead of that effect).
       const known = knownDimensionsRef.current;
@@ -307,10 +323,10 @@ export function useProgressiveMainImage({
         known.naturalWidth > 0 &&
         known.naturalHeight > 0
       ) {
-        thumbPlaceholderEnteredAtRef.current = performance.now();
-        preloadStageRef.current = 'thumbnail-placeholder';
+        getVisit().placeholderAt = performance.now();
+        getVisit().stage = 'thumbnail-placeholder';
         setPreloadStage('thumbnail-placeholder');
-        pendingMainRevealRef.current = false;
+        getVisit().pendingReveal = false;
         armRevealAfterDwell();
       }
       return;
@@ -324,8 +340,7 @@ export function useProgressiveMainImage({
     if (stage === 'error') {
       onStageChangeRef.current?.('full-ready');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- refs: stage/known/preferFastReveal
-  }, [enabled, minimapSrc, minimapCustom, mainSrc, armRevealAfterDwell]);
+  }, [enabled, minimapSrc, minimapCustom, mainSrc, armRevealAfterDwell, getVisit, setFullDecoded, setPreloadStage, onStageChangeRef, knownDimensionsRef, preferFastRevealRef]);
 
   const showMinimapUnderlay =
     pipelineActive &&

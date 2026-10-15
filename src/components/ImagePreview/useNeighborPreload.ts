@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useCallback, useEffect, useRef, useState } from 'react';
 import { PRELOAD_DISPLAY_SETTLE_MS } from './lib/neighborDisplayPreload';
 import type { ImageItem, NeighborPreloadEntry, NeighborPreloadStatusMap } from './types';
 
@@ -103,20 +103,20 @@ export function useNeighborPreload(p: UseNeighborPreloadParams): UseNeighborPrel
   const [status, setStatus] = useState<NeighborPreloadStatusMap>({});
 
   const onIndexesRef = useRef(onPreloadIndexesChange);
-  onIndexesRef.current = onPreloadIndexesChange;
+  useLayoutEffect(() => { onIndexesRef.current = onPreloadIndexesChange; });
   const onStatusRef = useRef(onPreloadStatusChange);
-  onStatusRef.current = onPreloadStatusChange;
+  useLayoutEffect(() => { onStatusRef.current = onPreloadStatusChange; });
 
   const activeRef = useRef<Map<number, HTMLImageElement>>(new Map());
   const doneSrcRef = useRef<Set<string>>(new Set());
   const loadingRef = useRef<Set<number>>(new Set());
   const errorRef = useRef<Set<number>>(new Set());
   const imagesRef = useRef(images);
-  imagesRef.current = images;
+  useLayoutEffect(() => { imagesRef.current = images; });
   const wantedRef = useRef<number[]>([]);
 
   const currentIndexRef = useRef(currentIndex);
-  currentIndexRef.current = currentIndex;
+  useLayoutEffect(() => { currentIndexRef.current = currentIndex; });
 
   const publish = useCallback((wanted: number[]) => {
     wantedRef.current = wanted;
@@ -143,6 +143,8 @@ export function useNeighborPreload(p: UseNeighborPreloadParams): UseNeighborPrel
   }, [publish]);
 
   useEffect(() => {
+    const active = activeRef.current;
+    const loading = loadingRef.current;
     const wanted = wantedIndexes(currentIndex, radius, images.length);
     onIndexesRef.current?.(wanted);
     wantedRef.current = wanted;
@@ -172,7 +174,7 @@ export function useNeighborPreload(p: UseNeighborPreloadParams): UseNeighborPrel
         if (activeRef.current.size >= maxConcurrent) return;
         for (const idx of wantedRef.current) {
           if (activeRef.current.size >= maxConcurrent) break;
-          if (activeRef.current.has(idx)) continue;
+          if (activeRef.current.has(idx) || errorRef.current.has(idx)) continue;
           const src = imagesRef.current[idx]?.src;
           if (!src) continue;
           if (doneSrcRef.current.has(src)) {
@@ -210,18 +212,19 @@ export function useNeighborPreload(p: UseNeighborPreloadParams): UseNeighborPrel
 
     return () => {
       window.clearTimeout(startId);
-      for (const [idx, img] of [...activeRef.current.entries()]) {
+      for (const [idx, img] of [...active.entries()]) {
         img.onload = null;
         img.onerror = null;
         img.src = '';
-        activeRef.current.delete(idx);
-        loadingRef.current.delete(idx);
+        active.delete(idx);
+        loading.delete(idx);
       }
     };
   }, [images, currentIndex, radius, maxConcurrent, settleMs, publish]);
 
   useEffect(() => {
     const active = activeRef.current;
+    const loading = loadingRef.current;
     return () => {
       for (const img of active.values()) {
         img.onload = null;
@@ -229,7 +232,7 @@ export function useNeighborPreload(p: UseNeighborPreloadParams): UseNeighborPrel
         img.src = '';
       }
       active.clear();
-      loadingRef.current.clear();
+      loading.clear();
     };
   }, []);
 

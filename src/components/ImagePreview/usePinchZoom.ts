@@ -79,7 +79,7 @@ export function usePinchZoom(options: UsePinchZoomOptions): void {
 
   const onPointerDown = useCallback(
     (e: PointerEvent) => {
-      if (!enabled) return;
+      if (!enabled || e.pointerType === 'mouse') return;
       pointersRef.current.set(e.pointerId, e);
 
       if (pointersRef.current.size === 2) {
@@ -110,7 +110,7 @@ export function usePinchZoom(options: UsePinchZoomOptions): void {
 
       const [a, b] = [...pointersRef.current.values()] as [PointerEvent, PointerEvent];
       const currentDist = getDistance(a, b);
-      if (currentDist === 0) return;
+      if (currentDist === 0 || pinchStartDistRef.current <= 0) return;
 
       const ratio = currentDist / pinchStartDistRef.current;
       const baseScale = pinchStartScaleRef.current;
@@ -118,8 +118,9 @@ export function usePinchZoom(options: UsePinchZoomOptions): void {
 
       // Clamp: allow zooming beyond max stop (up to 4×) for "wow" factor but
       // prevent extreme values that could lose the image off-screen.
-      const minScale = minStop / 100;
-      const maxScale = (maxStop * 4) / 100;
+      const minScale = Math.min(minStop / 100, baseScale);
+      // Preserve the existing cap, allowing an already-higher Fit without snapping down.
+      const maxScale = Math.max((maxStop * 4) / 100, baseScale);
       newScale = Math.max(minScale, Math.min(maxScale, newScale));
 
       const rect = containerRef.current?.getBoundingClientRect();

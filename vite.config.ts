@@ -89,6 +89,8 @@ export default defineConfig({
   },
   plugins: [react(), serveLocalTestImages()],
   test: {
+    // Bound concurrent jsdom instances for predictable local/CI resource use.
+    maxWorkers: 4,
     globals: true,
     environment: 'jsdom',
     setupFiles: './tests/setup.ts',

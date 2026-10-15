@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { useNeighborPreload } from '../src/components/ImagePreview/useNeighborPreload';
 
 describe('useNeighborPreload', () => {
@@ -58,9 +58,9 @@ describe('useNeighborPreload', () => {
       expect(created.length).toBeGreaterThanOrEqual(2);
     });
 
-    for (const img of created) {
-      img.onload?.(new Event('load') as never);
-    }
+    act(() => {
+      for (const img of created) img.onload?.(new Event('load') as never);
+    });
 
     await waitFor(() => {
       const last = onPreloadStatusChange.mock.calls.at(-1)?.[0] as Record<
@@ -86,9 +86,9 @@ describe('useNeighborPreload', () => {
     );
 
     await waitFor(() => expect(created.length).toBeGreaterThanOrEqual(2));
-    for (const img of created) {
-      img.onload?.(new Event('load') as never);
-    }
+    act(() => {
+      for (const img of created) img.onload?.(new Event('load') as never);
+    });
     await waitFor(() => {
       const last = onPreloadStatusChange.mock.calls.at(-1)?.[0] as Record<
         number,
@@ -124,7 +124,7 @@ describe('useNeighborPreload', () => {
       { initialProps: { index: 0 } },
     );
 
-    result.current.markSrcReady('https://example.com/0.jpg');
+    act(() => result.current.markSrcReady('https://example.com/0.jpg'));
     await waitFor(() => {
       const last = onPreloadStatusChange.mock.calls.at(-1)?.[0] as Record<
         number,
@@ -143,5 +143,30 @@ describe('useNeighborPreload', () => {
       >;
       expect(last[0]).toEqual({ phase: 'warm', progress: 1 });
     });
+  });
+});
+
+describe('failed neighbor scheduling', () => {
+  it('does not retry a failed source indefinitely or starve another neighbor', async () => {
+    const OriginalImage = globalThis.Image;
+    const created: HTMLImageElement[] = [];
+    globalThis.Image = class extends OriginalImage {
+      constructor() { super(); created.push(this); }
+    } as typeof Image;
+    try {
+      const dataset = [{ src: 'test:bad' }, { src: 'test:current' }, { src: 'test:good' }];
+      const { result, unmount } = renderHook(() => useNeighborPreload({
+        images: dataset,
+        currentIndex: 1, radius: 1, maxConcurrent: 1, settleMs: 0,
+      }));
+      await waitFor(() => expect(created).toHaveLength(1));
+      act(() => created[0].onerror?.(new Event('error') as never));
+      expect(created).toHaveLength(2);
+      act(() => created[1].onload?.(new Event('load') as never));
+      expect(created).toHaveLength(2);
+      expect(result.current.status[0].phase).toBe('error');
+      expect(result.current.status[2].phase).toBe('ready');
+      unmount();
+    } finally { globalThis.Image = OriginalImage; }
   });
 });

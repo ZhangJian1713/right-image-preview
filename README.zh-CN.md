@@ -1,5 +1,39 @@
 # right-image-preview
 
+
+## DOM 渲染与自适应观察
+
+0.8.0 延续 DOM `<img>` 主分支，保留 URL 形式的 `src` / `minimapSrc` API。
+WebGL 与 0.7 图源模型保留在独立分支。使用 0.7 `MediaSource` API 的消费者，
+升级到本 DOM 版本前需要调整输入模型。
+
+```tsx
+<ImagePreview
+  src="/photo.jpg"
+  visible={open}
+  onClose={() => setOpen(false)}
+  clickZoomEnabled
+  fitMaxNativePercent={100}
+  doubleClickEnabled={false}
+  preloadRadius={0}
+  language="zh-TW"
+/>
+```
+
+`clickZoomEnabled` 默认关闭；开启后单击和 Space 共用 Fit → 有意义的 Detail
+中间档 → 100% → Fit 循环。Fit 上限为 100% 的小图使用 Fit/100% → 200% → Fit。
+鼠标缩放保持光标锚点，Space 保持视口中心。拖动与双击序列不会额外推进倍率。
+Fit 上限是独立配置，省略或传入非法值时保持原来的无上限行为。
+滚轮及工具栏继续使用各自的固定档位。
+
+内置英文、简体中文和繁体中文。更新 `language` 或 `strings` 保留当前图片及浏览状态，
+短时缩放提示也支持文案覆盖。
+
+邻图预加载保留为可选的尽力优化。`preloadRadius={0}` 关闭邻图工作；DOM 的
+display-ready 记录不能保证浏览器仍保留解码位图。宿主未验证保活效果前，建议从关闭
+预加载的基线接入。失败邻图不会在同一窗口内无限立即重试。
+
+
 [English](./README.md) · **中文**
 
 ## 在线演示

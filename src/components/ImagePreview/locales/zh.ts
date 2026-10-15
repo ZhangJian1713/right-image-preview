@@ -50,6 +50,9 @@ export const zhStrings: LocaleStrings = {
   tipMinimap:
     '小地图：拖动高亮框可平移主视图；在框外点击可把该位置移到画面中央。',
 
+  zoomHint: (current, next) => `${current} → ${next}`,
+  dragToPan: '拖动以平移',
+
   showExif: '显示 EXIF 信息',
   hideExif: '隐藏 EXIF 信息',
   tipShowExif: '显示宿主应用提供的图片 EXIF / 元数据。',

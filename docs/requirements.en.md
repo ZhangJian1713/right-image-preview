@@ -272,3 +272,13 @@
 - [x] Exact `display-ready` (load + `decode`); hit uses fast reveal (no dwell/spinner; underlay until viewport drawable)
 - [x] Default `'slot'` (offscreen); `'decode'` is B fallback
 - [x] Docs: byte `ready` ≠ instant reveal; slot/memory budget is host-owned
+
+## DOM 0.8.0 — Return host adaptations upstream (2026-10-16)
+
+- [x] Opt-in adaptive click/Space Fit/Detail/100% cycle, with 200% observation for small images when Fit is capped at 100%.
+- [x] Cursor/viewport-center anchoring, 4 CSS px click/pan arbitration, double-click coalescing and session/timer cleanup.
+- [x] Independent `fitMaxNativePercent` without changing manual zoom stops.
+- [x] Complete Traditional Chinese and live locale updates; zoom out from Fit and finite maximum-stop behavior.
+- [x] Keep DOM `<img>` and `src`/`minimapSrc`; exclude WebGL/OpenGL.
+- [x] Stop immediate retries of failed neighbors; scope presentation and reveal timers to a visit. Neighbor decode retention remains best effort.
+- [x] React 19 source regressions and React 17 host tests against the packed npm build, replacing the host source snapshot with pinned 0.8.0.

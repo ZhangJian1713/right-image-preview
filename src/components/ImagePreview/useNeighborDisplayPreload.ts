@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { IMAGE_DECODE_TIMEOUT_MS } from './imagePreviewTuning';
 import { scheduleRevealAfterDecode } from './lib/imagePreviewDecode';
 import {
@@ -71,9 +71,6 @@ export function useNeighborDisplayPreload(
     settleMs = PRELOAD_DISPLAY_SETTLE_MS,
   } = p;
 
-  const estimateRef = useRef(estimateDecodedBytes);
-  estimateRef.current = estimateDecodedBytes;
-
   const slotIndexes = useMemo(
     () =>
       pickDisplaySlotIndexes({
@@ -82,33 +79,41 @@ export function useNeighborDisplayPreload(
         images,
         maxSlots: resolvePreloadDisplaySlotCeiling(displaySlots, memoryBudgetBytes),
         budgetBytes: memoryBudgetBytes,
-        estimateBytes: (item) => estimateRef.current(item),
+        estimateBytes: estimateDecodedBytes,
       }),
-    [currentIndex, radius, images, displaySlots, memoryBudgetBytes],
+    [currentIndex, radius, images, displaySlots, memoryBudgetBytes, estimateDecodedBytes],
   );
 
   const [displayReadyIndexes, setDisplayReadyIndexes] = useState<ReadonlySet<number>>(
     () => new Set(),
   );
   /** Navigation quiet long enough to warm neighbors. */
-  const [navSettled, setNavSettled] = useState(false);
+  const navigation = useMemo(() => ({ currentIndex }), [currentIndex]);
+  const [settledNavigation, setSettledNavigation] = useState<object | null>(null);
+  const navSettled = settledNavigation === navigation;
   /** Not panning / minimap-dragging (short idle after release). */
-  const [panIdle, setPanIdle] = useState(true);
-  /** Bumps when readySrcRef changes so isSrcDisplayReady closures refresh. */
-  const [readyEpoch, setReadyEpoch] = useState(0);
+  const interaction = useMemo(() => ({ interactionBusy }), [interactionBusy]);
+  const [idleInteraction, setIdleInteraction] = useState<object | null>(interaction);
+  const panIdle = idleInteraction === interaction;
+
 
   const neighborWarmActive = navSettled && panIdle && !interactionBusy;
 
-  const metaBySrcRef = useRef<Map<string, DisplaySlotMeta>>(new Map());
-  const readySrcRef = useRef<Set<string>>(new Set());
+  const [metaBySrc, setMetaBySrc] = useState<ReadonlyMap<string, DisplaySlotMeta>>(new Map());
+  const [readySources, setReadySources] = useState<ReadonlySet<string>>(new Set());
   const decodeImagesRef = useRef<Map<number, HTMLImageElement>>(new Map());
   const inFlightRef = useRef<Set<number>>(new Set());
-  const panIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const panIdleTimerRef = useRef<number | null>(null);
   const slotIndexesRef = useRef(slotIndexes);
-  slotIndexesRef.current = slotIndexes;
+  useLayoutEffect(() => { slotIndexesRef.current = slotIndexes; }, [slotIndexes]);
 
-  const bumpReady = useCallback(() => {
-    setReadyEpoch((n) => n + 1);
+  const rememberReady = useCallback((src: string, meta?: DisplaySlotMeta) => {
+    setReadySources((previous) => previous.has(src) ? previous : new Set(previous).add(src));
+    if (meta && meta.naturalWidth > 0 && meta.naturalHeight > 0) setMetaBySrc((previous) => {
+      const old = previous.get(src);
+      return old?.naturalWidth === meta.naturalWidth && old.naturalHeight === meta.naturalHeight
+        ? previous : new Map(previous).set(src, meta);
+    });
   }, []);
 
   /** Blue strip = in active neighbor slots AND decode settled — never “neighbor ⇒ blue”. */
@@ -117,11 +122,11 @@ export function useNeighborDisplayPreload(
       const next = new Set<number>();
       for (const i of slotIndexesRef.current) {
         const src = images[i]?.src;
-        if (src && readySrcRef.current.has(src)) next.add(i);
+        if (src && readySources.has(src)) next.add(i);
       }
       return next;
     });
-  }, [images]);
+  }, [images, readySources]);
 
   const clearPanIdleTimer = useCallback(() => {
     if (panIdleTimerRef.current != null) {
@@ -134,9 +139,9 @@ export function useNeighborDisplayPreload(
     clearPanIdleTimer();
     panIdleTimerRef.current = window.setTimeout(() => {
       panIdleTimerRef.current = null;
-      setPanIdle(true);
+      setIdleInteraction(interaction);
     }, DISPLAY_PRELOAD_IDLE_MS);
-  }, [clearPanIdleTimer]);
+  }, [clearPanIdleTimer, interaction]);
 
   const abortInFlightNeighborDecodes = useCallback(() => {
     for (const [idx, img] of [...decodeImagesRef.current.entries()]) {
@@ -150,16 +155,8 @@ export function useNeighborDisplayPreload(
 
   const markIndexReady = useCallback(
     (idx: number, src: string, img: HTMLImageElement) => {
-      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-        metaBySrcRef.current.set(src, {
-          naturalWidth: img.naturalWidth,
-          naturalHeight: img.naturalHeight,
-        });
-      }
-      // Sticky by src for fast-reveal when this neighbor is visited later.
-      readySrcRef.current.add(src);
+      rememberReady(src, { naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
       inFlightRef.current.delete(idx);
-      bumpReady();
       // Strip blue only if still in the neighbor slot window *and* decode just settled.
       if (!slotIndexesRef.current.includes(idx)) return;
       setDisplayReadyIndexes((prev) => {
@@ -169,17 +166,13 @@ export function useNeighborDisplayPreload(
         return next;
       });
     },
-    [bumpReady],
+    [rememberReady],
   );
 
   const markSrcDisplayReady = useCallback(
     (src: string, meta?: DisplaySlotMeta) => {
       if (!src) return;
-      if (meta && meta.naturalWidth > 0 && meta.naturalHeight > 0) {
-        metaBySrcRef.current.set(src, meta);
-      }
-      readySrcRef.current.add(src);
-      bumpReady();
+      rememberReady(src, meta);
       // Only paint blue for neighbors currently in slots that match this src.
       setDisplayReadyIndexes((prev) => {
         const next = new Set(prev);
@@ -193,28 +186,26 @@ export function useNeighborDisplayPreload(
         return changed ? next : prev;
       });
     },
-    [bumpReady, images],
+    [rememberReady, images],
   );
 
   const notifyInteraction = useCallback(() => {
-    setPanIdle(false);
+    setIdleInteraction(null);
     armPanIdle();
   }, [armPanIdle]);
 
   // Debounce neighbor warm after navigation (keydown scrub cancels pending timer).
   useEffect(() => {
-    setNavSettled(false);
     abortInFlightNeighborDecodes();
     const delay = Math.max(0, settleMs);
-    const id = window.setTimeout(() => setNavSettled(true), delay);
+    const id = window.setTimeout(() => setSettledNavigation(navigation), delay);
     return () => window.clearTimeout(id);
-  }, [currentIndex, settleMs, abortInFlightNeighborDecodes]);
+  }, [navigation, settleMs, abortInFlightNeighborDecodes]);
 
   // Pause while panning / minimap-dragging; resume shortly after release.
   useEffect(() => {
     if (interactionBusy) {
       clearPanIdleTimer();
-      setPanIdle(false);
       abortInFlightNeighborDecodes();
       return undefined;
     }
@@ -240,7 +231,7 @@ export function useNeighborDisplayPreload(
         inFlightRef.current.delete(idx);
       }
     }
-  }, [slotIndexes, images, readyEpoch, rebuildDisplayReadyIndexes]);
+  }, [slotIndexes, images, readySources, rebuildDisplayReadyIndexes]);
 
   const slotCeiling = resolvePreloadDisplaySlotCeiling(displaySlots, memoryBudgetBytes);
 
@@ -251,7 +242,7 @@ export function useNeighborDisplayPreload(
       if (inFlightRef.current.has(idx)) continue;
       const src = images[idx]?.src;
       if (!src) continue;
-      if (readySrcRef.current.has(src)) {
+      if (readySources.has(src)) {
         // Already decode-settled — eligible for blue in the active window only.
         rebuildDisplayReadyIndexes();
         continue;
@@ -273,7 +264,7 @@ export function useNeighborDisplayPreload(
       };
       img.src = src;
     }
-  }, [neighborWarmActive, mode, slotCeiling, radius, slotIndexes, images, markIndexReady, rebuildDisplayReadyIndexes]);
+  }, [neighborWarmActive, mode, slotCeiling, radius, slotIndexes, images, markIndexReady, rebuildDisplayReadyIndexes, readySources]);
 
   const onSlotImgLoad = useCallback(
     (index: number, el: HTMLImageElement) => {
@@ -302,12 +293,12 @@ export function useNeighborDisplayPreload(
       if (!src) continue;
       // While settle/pan-idle pauses *new* warm-up, keep already-ready neighbors mounted
       // so WebView does not discard their decoded bitmaps.
-      if (neighborWarmActive || readySrcRef.current.has(src)) {
+      if (neighborWarmActive || readySources.has(src)) {
         indexes.add(index);
       }
     }
     const curSrc = images[currentIndex]?.src;
-    if (curSrc && readySrcRef.current.has(curSrc)) {
+    if (curSrc && readySources.has(curSrc)) {
       indexes.add(currentIndex);
     }
     return [...indexes]
@@ -323,18 +314,18 @@ export function useNeighborDisplayPreload(
     slotIndexes,
     images,
     currentIndex,
-    readyEpoch,
+    readySources,
     neighborWarmActive,
   ]);
 
   const isSrcDisplayReady = useCallback(
-    (src: string) => (src ? readySrcRef.current.has(src) : false),
-    [readyEpoch],
+    (src: string) => (src ? readySources.has(src) : false),
+    [readySources],
   );
 
   const getMeta = useCallback(
-    (src: string) => metaBySrcRef.current.get(src),
-    [readyEpoch],
+    (src: string) => metaBySrc.get(src),
+    [metaBySrc],
   );
 
   useEffect(() => {

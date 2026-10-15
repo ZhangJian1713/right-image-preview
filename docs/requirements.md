@@ -272,3 +272,13 @@
 - [x] `display-ready` 确切判定（load + `decode`）；命中则快开（无 dwell/转圈；占位保留到视口可绘制）
 - [x] 默认 `'slot'`（离屏层）；`'decode'` 为 B 降级
 - [x] 文档：字节 `ready` ≠ 可秒切；槽位/内存由宿主决定
+
+## DOM 0.8.0 — 扩展定制回归上游（2026-10-16）
+
+- [x] `clickZoomEnabled` 默认关闭；启用后单击/Space 自适应 Fit/Detail/100% 循环，配合 100% Fit 上限支持小图 200%。
+- [x] Space 使用视口中心锚点，鼠标使用光标锚点；4 CSS px 区分 click 与 pan；合并双击，取消会话及清理提示计时器。
+- [x] `fitMaxNativePercent` 独立限制 Fit 上限，不改变手动缩放档位。
+- [x] 繁体中文完整文案与语言热切换；Fit 可直接缩小，最大档位不产生无效倍率。
+- [x] 保留 DOM `<img>`、`src`/`minimapSrc` API，不合入 WebGL/OpenGL 渲染。
+- [x] 邻图加载失败不再立即重复重试；展示确认按访问隔离并清理迟到计时器。邻图解码缓存仍为 best effort，不能承诺浏览器位图永久驻留。
+- [x] React 19 源码测试及 React 17 宿主 npm 产物集成验证；宿主取消源码副本，固定引用 0.8.0。

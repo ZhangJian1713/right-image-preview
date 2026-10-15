@@ -9,11 +9,33 @@ Versioning follows [Semantic Versioning](https://semver.org/) (see `README.md` f
 
 ## [Unreleased]
 
+---
+
+## [0.8.0] — 2026-10-16
+
+### Changed
+
+- Continue the DOM main rendering line, preserving `src` / `minimapSrc` inputs. The WebGL/source-aware 0.7 API remains on its separate branch; its consumers must adapt inputs before adopting this DOM release.
+- Scope progressive loading and presentation confirmation to a resource visit, and update scheduler inputs after commit rather than during render. Cancel departed-source reveal timers.
+- Run the referenced TypeScript projects in CI and retain usable ESM/CJS declaration exports.
+- Raise the minified gzip budget from 32 kB to 36 kB for the adaptive gesture controller and full Traditional Chinese catalog; the verified bundle measures 35 kB.
+
 ### Added
 
-- **`npm run pack:local`** — builds into `.local-pack/right-image-preview/` for host `file:` installs (no npm publish needed for Media Lens iteration). Local packs show a top-center badge `local vX.Y.Z · YYYY-MM-DD HH:mm:ss`; npm publish builds have no badge.
+- **`npm run pack:local`** — builds into `.local-pack/right-image-preview/` for local host validation without publishing; official npm builds have no local badge.
+- Opt-in `clickZoomEnabled`: adaptive click/Space Fit → Detail → 100% observation, pointer/center anchoring, click/drag arbitration, double-click coalescing, directional cursors and localized short hints.
+- Independent `fitMaxNativePercent` cap; 100 keeps small images at actual size, with a 200% observation step.
+- Complete Traditional Chinese locale, script/region resolution and state-preserving language updates.
 
 ### Fixed
+
+- Wheel/toolbar can zoom out directly from Fit; zoom-in above the configured maximum stays finite and never jumps down. Sequential zoom actions compose and invalid native percentages are ignored.
+- High-start pinch clamps preserve the start scale; mouse pointers are excluded from the touch pinch recognizer.
+- Failed neighbor loads stop retrying immediately and no longer starve other candidates.
+- Background hit testing respects the actual rotated image rectangle. Consumed image clicks do not close the mask; errors are scoped to their source and clear on navigation.
+- Repeated cached-image decode notifications preserve state identity and do not trigger render loops; departed visits cannot signal readiness.
+- No-op readiness updates preserve state identity, and tooltip hover handling retains child refs.
+
 
 - **Navigate hold keeps zoom/pan** — snapshot the leaving frame in `goTo` *before* `resetPan`/`reset`, and only demote outgoing→1×1 after the incoming `<img>` is laid out at full size (`getBoundingClientRect` ≥ 8px), not merely when decode flags flip (avoids black + one-pixel flash).
 - **Cold gallery open tall thin strip** — current layer keeps full geometry once dims exist (do not 1×1 the current img under underlay); seed layout from `exif.width/height` on open; underlay uses `objectFit: contain`.

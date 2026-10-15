@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useProgressiveMainImage } from '../src/components/ImagePreview/useProgressiveMainImage';
@@ -220,4 +221,30 @@ describe('useProgressiveMainImage', () => {
     });
     expect(result.current.fullDecoded).toBe(true);
   });
+});
+
+
+it('cached ref decode notifications settle without committing repeatedly', () => {
+  let commits = 0;
+  const onStageChange = vi.fn();
+  const { result, rerender, unmount } = renderHook(({ mainSrc }) => {
+    const api = useProgressiveMainImage({ mainSrc, minimapSrc: undefined,
+      minimapCustom: false, enabled: false, placeholderMinVisibleMs: 0,
+      onImageLayout: vi.fn(), onStageChange });
+    useLayoutEffect(() => { commits++; });
+    return api;
+  }, { initialProps: { mainSrc: 'test:first' } });
+  act(() => result.current.onMainImgDecoded());
+  expect(result.current.fullDecoded).toBe(true);
+  const settledCommits = commits;
+  const departedDecode = result.current.onMainImgDecoded;
+  for (let i = 0; i < 8; i++) act(() => result.current.onMainImgDecoded());
+  expect(commits).toBe(settledCommits);
+  expect(onStageChange).toHaveBeenCalledTimes(1);
+  rerender({ mainSrc: 'test:second' });
+  expect(result.current.fullDecoded).toBe(false);
+  act(() => departedDecode());
+  expect(result.current.fullDecoded).toBe(false);
+  expect(onStageChange).toHaveBeenCalledTimes(1);
+  unmount();
 });

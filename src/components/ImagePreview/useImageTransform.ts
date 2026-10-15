@@ -35,6 +35,7 @@ export interface UseImageTransformOptions {
   mode: ZoomMode;
   nativePercent: number;
   fitResetPan: boolean;
+  fitMaxNativePercent?: number;
 }
 
 export interface UseImageTransformResult {
@@ -129,7 +130,9 @@ function buildCssTransform(
 }
 
 export function useImageTransform(options: UseImageTransformOptions): UseImageTransformResult {
-  const { mode, nativePercent, fitResetPan } = options;
+  const { mode, nativePercent, fitResetPan, fitMaxNativePercent } = options;
+  const fitCap = fitMaxNativePercent !== undefined && Number.isFinite(fitMaxNativePercent) &&
+    fitMaxNativePercent > 0 ? fitMaxNativePercent / 100 : Infinity;
 
   const [imageDims, setImageDims] = useState<ImageDimensions | null>(null);
   const [containerSize, setContainerSize] = useState<ContainerSize | null>(null);
@@ -190,7 +193,8 @@ export function useImageTransform(options: UseImageTransformOptions): UseImageTr
   useEffect(() => {
     if (prevModeRef.current !== 'fit' && mode === 'fit' && fitResetPan) {
       // Pan state is translate state; resetting when entering Fit must follow mode transition.
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync translate with zoom mode
+      // One transition resets both React state and the external image-layer transform.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       applyTranslate(0, 0);
     }
     prevModeRef.current = mode;
@@ -366,7 +370,8 @@ export function useImageTransform(options: UseImageTransformOptions): UseImageTr
       newTy = c.y;
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- clamp pan after zoom stop / container change
+    // Synchronize toolbar/ref zoom with the imperative layer transform before paint.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     applyTranslate(newTx, newTy);
   }, [nativePercent, mode, imageDims, containerSize, rotation, applyTranslate]);
 
@@ -424,7 +429,7 @@ export function useImageTransform(options: UseImageTransformOptions): UseImageTr
     const fitDims = isSwapped
       ? { naturalWidth: imageDims.naturalHeight, naturalHeight: imageDims.naturalWidth }
       : imageDims;
-    const fitScale = computeFitScale(fitDims, containerSize);
+    const fitScale = Math.min(fitCap, computeFitScale(fitDims, containerSize));
     fitEquivalentNativePercent = fitScale * 100;
     scale = mode === 'fit' ? fitScale : nativePercent / 100;
   } else if (mode === 'fit' && imageDims && !containerReady) {

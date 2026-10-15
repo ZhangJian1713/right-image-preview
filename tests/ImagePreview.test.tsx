@@ -460,7 +460,7 @@ describe('ImagePreview component', () => {
         </div>,
       );
       const region = screen.getByRole('region', { name: '图片预览' });
-      region.focus();
+      act(() => region.focus());
       await userEvent.keyboard('{ArrowRight}');
       expect(onIndexChange).toHaveBeenCalledWith(1);
     });

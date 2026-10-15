@@ -57,6 +57,9 @@ export const enStrings: LocaleStrings = {
   tipMinimap:
     'Mini map of the image. Drag the highlighted frame to move the view; click outside the frame to center that spot.',
 
+  zoomHint: (current, next) => `${current} → ${next}`,
+  dragToPan: 'Drag to pan',
+
   showExif: 'Show EXIF info',
   hideExif: 'Hide EXIF info',
   tipShowExif: 'Show image EXIF / metadata provided by the host app.',

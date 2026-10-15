@@ -203,3 +203,12 @@ interface ImagePreviewRef {
 - [主图显示与切图主流程](./main-display-flow.zh-CN.md) — 先缩略占位再揭开原图、长停留后快开、连按节奏。
 - [小地图视口拖动](./minimap.zh-CN.md) — WebView 指针行为与基于雅可比的 1:1 平移。
 - [Media Lens 接入清单](./media-lens-integration.zh-CN.md) — Tauri 内存预算与推荐 props。
+
+## 0.8.0 自适应观察
+
+- `clickZoomEnabled?: boolean` 默认 false。单击与 Space 共用自适应循环；忽略控件输入、Space repeat 和修饰键；开启时不再执行旧的双击切档。
+- `fitMaxNativePercent?: number` 独立限制 Fit，100 让小图保持实际尺寸；省略、非正数或非有限值维持无上限。
+- Detail 为 `sqrt(Fit% × 100)` 取最近 5%，只有与两端均至少相差 1.5 倍才保留。Fit≈100% 时使用 200%；循环外手动倍率下一次回 Fit。
+- Fit 可用滚轮和工具栏直接缩小；最高档放大保持有界且不反向跳变。`setNative` 忽略非正数与非有限值。
+- `language` 支持英文、简中、繁中及 script/region 别名，显式 script 优先；热切换保留浏览状态。`strings.zoomHint` 与 `strings.dragToPan` 可覆盖提示。
+- 邻图完成过解码不代表位图持续驻留；`preloadRadius={0}` 可关闭邻图工作。

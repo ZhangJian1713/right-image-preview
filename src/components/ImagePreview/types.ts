@@ -305,6 +305,8 @@ export interface ImagePreviewProps {
   initialMode?: ZoomMode;
   /** Initial native% when initialMode === 'native'. Default: first stop. */
   initialNativePercent?: NativePercent;
+  /** Fit cap in native percent; 100 keeps small images at actual size. Omitted: no cap. */
+  fitMaxNativePercent?: NativePercent;
 
   // ── Behaviour options ──────────────────────────────────────────────────────
   firstZoomInStrategy?: FirstZoomInStrategy;
@@ -317,6 +319,8 @@ export interface ImagePreviewProps {
 
   /** Enable double-click to toggle fit ↔ 100%. Default: true. */
   doubleClickEnabled?: boolean;
+  /** Opt in to the shared primary-click / Space observation cycle. Default false. */
+  clickZoomEnabled?: boolean;
 
   /**
    * Enable two-finger pinch-to-zoom on touch screens and multi-touch trackpads.

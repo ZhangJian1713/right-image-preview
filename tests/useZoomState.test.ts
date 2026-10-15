@@ -49,12 +49,13 @@ describe('useZoomState', () => {
       expect(result.current.nativePercent).toBe(100);
     });
 
-    it('strategy=above-fit: falls back to maxStop when fit-equivalent is above all stops', () => {
+    it('strategy=above-fit: preserves a Fit above all stops instead of zooming out', () => {
       const { result } = renderHook(() => useZoomState(DEFAULT_OPTS));
       act(() => {
         result.current.zoomIn(500); // above all stops
       });
-      expect(result.current.nativePercent).toBe(400);
+      expect(result.current.mode).toBe('fit');
+      expect(result.current.nativePercent).toBe(DEFAULT_OPTS.stops[0]);
     });
 
     it('strategy=first-stop: always enters at first stop', () => {
@@ -238,5 +239,30 @@ describe('useZoomState', () => {
       act(() => result.current.zoomIn()); // already at max
       expect(result.current.nativePercent).toBe(400);
     });
+  });
+});
+
+describe('zoom boundary regressions', () => {
+  it('steps out of Fit and keeps peeks consistent with actions', () => {
+    const { result } = renderHook(() => useZoomState(DEFAULT_OPTS));
+    expect(result.current.peekZoomOut(150)).toEqual({ mode: 'native', percent: 100 });
+    act(() => result.current.zoomOut(150));
+    expect(result.current.nativePercent).toBe(100);
+    expect(result.current.mode).toBe('native');
+  });
+  it('keeps an above-maximum native value finite and permits stepping down', () => {
+    const { result } = renderHook(() => useZoomState(DEFAULT_OPTS));
+    act(() => { result.current.setNative(1000); result.current.zoomIn(); });
+    expect(result.current.nativePercent).toBe(1000);
+    expect(result.current.peekZoomIn()).toBeNull();
+    act(() => result.current.zoomOut());
+    expect(result.current.nativePercent).toBe(400);
+  });
+  it('composes sequential actions and ignores invalid values', () => {
+    const { result } = renderHook(() => useZoomState(DEFAULT_OPTS));
+    act(() => { result.current.setNative(50); result.current.zoomIn(); result.current.zoomIn(); });
+    expect(result.current.nativePercent).toBe(200);
+    for (const bad of [0, -1, NaN, Infinity]) act(() => result.current.setNative(bad));
+    expect(result.current.nativePercent).toBe(200);
   });
 });

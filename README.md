@@ -1,5 +1,43 @@
 # right-image-preview
 
+
+## DOM rendering and adaptive observation
+
+Version 0.8.0 continues the DOM `<img>` main branch. It keeps the URL-based
+`src` / `minimapSrc` API; WebGL and the 0.7 source-aware renderer branch are
+maintained separately. Consumers of the 0.7 `MediaSource` API must adapt their
+inputs before moving to this DOM release.
+
+```tsx
+<ImagePreview
+  src="/photo.jpg"
+  visible={open}
+  onClose={() => setOpen(false)}
+  clickZoomEnabled
+  fitMaxNativePercent={100}
+  doubleClickEnabled={false}
+  preloadRadius={0}
+  language="zh-TW"
+/>
+```
+
+`clickZoomEnabled` opts into a shared click/Space cycle: Fit → a meaningful
+geometric-middle Detail scale → 100% → Fit. Small images capped at 100% use
+Fit/100% → 200% → Fit. Mouse zoom preserves the pointer anchor; Space preserves
+the viewport center. Dragging and double-click sequences do not add extra zoom
+steps. Fit limiting is an independent option; omitted or invalid caps retain
+the existing uncapped behavior. Wheel and toolbar presets remain independent.
+
+English, Simplified Chinese and Traditional Chinese are built in. Updating
+`language` or `strings` preserves the active image and view state. Short zoom
+hints use the same locale overrides.
+
+Neighbor loading remains optional and best effort. `preloadRadius={0}` disables
+neighbor work; DOM display-ready records cannot guarantee that the browser still
+retains a decoded bitmap. Use the disabled setting as a baseline in hosts where
+retention has not been verified. Failed neighbors are not retried in a tight loop.
+
+
 **English** · [中文](./README.zh-CN.md)
 
 ## Live Demo

@@ -58,6 +58,8 @@ export interface LocaleStrings {
   tipZoomRowFit: string;
   tipZoomRowFitApprox(pct: number): string;
   tipMinimap: string;
+  zoomHint(current: string, next: string): string;
+  dragToPan: string;
 
   // EXIF panel
   showExif: string;

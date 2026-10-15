@@ -10,7 +10,7 @@ This document describes the end-to-end process for releasing a new version of `r
 
 | Tool | Notes |
 |---|---|
-| Node.js ≥ 18 | Required by Vite and the build pipeline |
+| Node.js ≥ 20.19 (or ≥ 22.12) | Required by Vite and the build pipeline |
 | npm account | Must be a collaborator on the `right-image-preview` package |
 | npm auth token | Stored in `~/.npmrc` (see [Authentication](#authentication)) |
 | Git write access | To the `ZhangJian1713/right-image-preview` repository |
@@ -67,7 +67,7 @@ Hosts (e.g. Media Lens) can `npm update` immediately. CI still runs tests / size
 
 ```bash
 git status          # only this release’s changes
-npx tsc --noEmit
+npm run check-type
 npm test
 npm run build:lib
 npm run size

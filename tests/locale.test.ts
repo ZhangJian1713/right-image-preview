@@ -79,3 +79,14 @@ describe('mergeStrings', () => {
     expect(result.zoomIn).toBe('放大');
   });
 });
+
+describe('Traditional Chinese locale', () => {
+  it.each(['zh-TW', 'zh_HK', 'zh-MO', 'zh-Hant', ' zh-Hant-TW '])('%s resolves Traditional Chinese', (tag) => {
+    expect(resolveStrings(tag).imagePreview).toBe('圖片預覽');
+  });
+  it('honors explicit Simplified script and retains complete locale catalogs', () => {
+    expect(resolveStrings('zh-Hans-HK').imagePreview).toBe('图片预览');
+    expect(Object.keys(resolveStrings('zh-TW')).sort()).toEqual(Object.keys(resolveStrings('en')).sort());
+    expect(resolveStrings('zh-TW').dragToPan).toBe('拖曳以平移');
+  });
+});

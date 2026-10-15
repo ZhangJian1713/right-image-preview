@@ -27,6 +27,8 @@ interface ToolbarProps {
   stops: NativePercent[];
   atMinStop: boolean;
   atMaxStop: boolean;
+  zoomInAvailable?: boolean;
+  zoomOutAvailable?: boolean;
 
   // ── Navigation ────────────────────────────────────────────────────────────
   totalImages: number;
@@ -562,7 +564,7 @@ function DropdownRow({ label, tip, active, onMouseDown }: DropdownRowProps) {
 
 export function Toolbar({
   mode, nativePercent, fitEquivalentNativePercent,
-  atMinStop, atMaxStop,
+  atMinStop, atMaxStop, zoomInAvailable, zoomOutAvailable,
   totalImages, currentIndex,
   groupCurrentIndex, groupTotal,
   hasPrevGroup, hasNextGroup,
@@ -588,8 +590,8 @@ export function Toolbar({
   zoomLabelSlotPx,
   zoomDropdownWidthPx,
 }: ToolbarProps) {
-  const canZoomOut = mode === 'native' && !atMinStop;
-  const canZoomIn  = !(mode === 'native' && atMaxStop);
+  const canZoomOut = zoomOutAvailable ?? (mode === 'native' && !atMinStop);
+  const canZoomIn = zoomInAvailable ?? !(mode === 'native' && atMaxStop);
   const isGroupMode = groupTotal !== undefined && groupCurrentIndex !== undefined;
   const showNav = isGroupMode || totalImages > 1;
 

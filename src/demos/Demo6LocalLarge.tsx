@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useLayoutEffect, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   ImagePreview,
   defaultEstimateDecodedBytes,
@@ -85,7 +85,7 @@ export function Demo6LocalLarge({
   const pathForNavRef = useRef<NavPath>('cold');
   const indexRef = useRef(0);
   const statusRef = useRef(preloadStatus);
-  statusRef.current = preloadStatus;
+  useLayoutEffect(() => { statusRef.current = preloadStatus; });
   const dimProbeRef = useRef(new Set<string>());
 
   useEffect(() => {
@@ -148,7 +148,7 @@ export function Demo6LocalLarge({
     }
   }, [preloadStatus, images, index, dimBySrc]);
 
-  const beginNav = (nextIndex: number) => {
+  const beginNav = useCallback((nextIndex: number) => {
     indexRef.current = nextIndex;
     setIndex(nextIndex);
     navStartRef.current = performance.now();
@@ -156,9 +156,9 @@ export function Demo6LocalLarge({
     const phase = statusRef.current[nextIndex]?.phase;
     pathForNavRef.current = phase === 'display-ready' ? 'fast-reveal' : 'cold';
     setLastTiming(null);
-  };
+  }, []);
 
-  const onStage = (stage: MainImageLoadStage) => {
+  const onStage = useCallback((stage: MainImageLoadStage) => {
     const t0 = navStartRef.current;
     if (t0 <= 0) return;
     if (stage === 'thumbnail-placeholder' && underlayAtRef.current == null) {
@@ -174,7 +174,7 @@ export function Demo6LocalLarge({
       setLastTiming(row);
       setHistory((h) => [row, ...h].slice(0, 8));
     }
-  };
+  }, []);
 
   const activeNeighborIndexes = useMemo(() => {
     if (!slotsOn) return [] as number[];
