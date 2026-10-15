@@ -212,3 +212,26 @@ interface ImagePreviewRef {
 - Fit may step down through wheel/toolbar; at the maximum, zoom-in remains bounded and never jumps down. `setNative` rejects non-positive/non-finite inputs.
 - `language` supports `en`, `zh-CN`, `zh-TW`, `zh-Hans`, `zh-Hant` and regional aliases; an explicit script wins over region. Hot updates preserve view state. `strings.zoomHint` and `strings.dragToPan` localize observation hints.
 - A recorded neighbor decode is best effort, not a live residency guarantee. Set `preloadRadius={0}` to disable neighbor work.
+
+## Local / unreleased: host fullscreen adapters
+
+`fullscreen?: FullscreenAdapter` hands toolbar/keyboard/ref fullscreen control to a host, exclusively bypassing DOM fullscreen APIs. Supported shapes:
+
+- Controlled: `{ isFullscreen, enter, exit }`; host props are the sole state source. Escape exits before closing the preview.
+- Toggle-only: `{ toggle }` for hosts such as VS Code that expose a toggle action without a reliable public state subscription. The button always says “Toggle fullscreen” (`strings.toggleFullscreen` override). No fullscreen state is inferred; `isFullscreen()` is false, explicit ref enter/exit report unsupported, and Escape retains preview-close behavior.
+
+`onFullscreenError?: (error: unknown) => void` reports host errors, unavailable/denied browser capability, or missing browser confirmation. Pending requests are deduplicated. Browser fallback requires API resolution and `fullscreenchange`; a 2s deadline also bounds API promises that never settle. Unmount cancels the browser handshake. These additions are local/unreleased and are not in the published 0.8.0 package.
+
+### Controlled filmstrip (local, unreleased)
+
+`showThumbnailToggle?: boolean` exposes a toolbar switch (default false). The host owns
+`showThumbnails` and handles `onThumbnailsVisibleChange(visible)`; the component stores no preference.
+`onThumbnailVisibleIndexesChange(indexes)` reports mounted flat indexes including overscan, and []
+when the strip is hidden or has fewer than two items. Hosts can generate only this bounded window.
+
+`ImageItem.thumbnailSrc?: string | null` is independent of main/minimap sources. Omitted preserves
+legacy minimap/original fallback; explicit null shows a placeholder and never fetches the original.
+`thumbnailError?: boolean` marks generation failure. An image load failure also becomes a placeholder;
+tiles remain navigable. No resizing/generation or host filesystem access is performed by the component.
+The main viewport reserves strip height while visible; Fit follows measured space, Native zoom and
+orientation are retained. Thumbnail URL completion does not recenter a manually scrolled strip.

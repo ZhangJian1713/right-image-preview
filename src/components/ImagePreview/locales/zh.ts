@@ -26,6 +26,10 @@ export const zhStrings: LocaleStrings = {
   loadingImage: '图片加载中',
   minimapNav: '导航缩略图',
   thumbnailsNav: '缩略图导航',
+  showThumbnails: '显示底片条',
+  hideThumbnails: '隐藏底片条',
+  thumbnailLoading: '缩略图加载中',
+  thumbnailFailed: '缩略图不可用',
   thumbStripItem: (index, total) => `第 ${index} 张，共 ${total} 张`,
 
   tipFitToViewport: '让整张图完整显示在窗口里，可能会缩小一些以免裁切边缘。',
@@ -64,6 +68,7 @@ export const zhStrings: LocaleStrings = {
   exifBoolNo: '否',
   deleteImage: '删除图片',
   tipDeleteImage: '从列表中移除当前图片。真正的删除由宿主应用处理。',
+  toggleFullscreen: '切换全屏',
   enterFullscreen: '进入全屏',
   exitFullscreen: '退出全屏',
   tipEnterFullscreen: '将预览扩展至全屏。按 Esc 可先退出全屏。',

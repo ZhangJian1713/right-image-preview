@@ -26,6 +26,10 @@ export const enStrings: LocaleStrings = {
   loadingImage: 'Loading image',
   minimapNav: 'Navigation minimap',
   thumbnailsNav: 'Image thumbnails',
+  showThumbnails: 'Show filmstrip',
+  hideThumbnails: 'Hide filmstrip',
+  thumbnailLoading: 'Loading thumbnail',
+  thumbnailFailed: 'Thumbnail unavailable',
   thumbStripItem: (index, total) => `Image ${index} of ${total}`,
 
   tipFitToViewport:
@@ -71,6 +75,7 @@ export const enStrings: LocaleStrings = {
   exifBoolNo: 'No',
   deleteImage: 'Delete image',
   tipDeleteImage: 'Remove this image from the list. The host app handles the real delete.',
+  toggleFullscreen: 'Toggle fullscreen',
   enterFullscreen: 'Enter fullscreen',
   exitFullscreen: 'Exit fullscreen',
   tipEnterFullscreen: 'Expand the preview to fill the screen. Press Esc to leave fullscreen first.',

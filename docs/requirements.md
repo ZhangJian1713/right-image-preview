@@ -282,3 +282,25 @@
 - [x] 保留 DOM `<img>`、`src`/`minimapSrc` API，不合入 WebGL/OpenGL 渲染。
 - [x] 邻图加载失败不再立即重复重试；展示确认按访问隔离并清理迟到计时器。邻图解码缓存仍为 best effort，不能承诺浏览器位图永久驻留。
 - [x] React 19 源码测试及 React 17 宿主 npm 产物集成验证；宿主取消源码副本，固定引用 0.8.0。
+
+## 本地未发布 — 宿主全屏
+
+- [x] 参考 0.7.1 的受控宿主全屏适配器，独立于 WebGL。
+- [x] 增加无可靠状态读取宿主的纯 toggle 适配器；不伪造进入/退出状态。
+- [x] 按钮/键盘/ref 共用适配路径，浏览器确认超时、失败与卸载清理。
+- [x] VS Code 扩展通过固定消息请求宿主窗口全屏，继续使用本地 link，不发布版本。
+
+### 受控底片条（本地未发布）
+
+`showThumbnailToggle?: boolean` 显示工具栏开关，默认 false。宿主控制 `showThumbnails`，通过
+`onThumbnailsVisibleChange(visible)` 接收切换意图，自行保存偏好。`onThumbnailVisibleIndexesChange(indexes)`
+报告已挂载底片的扁平索引（含 overscan）；关闭或不足两项时报告 []，用于有界的按需小图生成。
+
+`ImageItem.thumbnailSrc?: string | null` 专用于底片。省略时保留旧的 minimap/原图回退；明确传 null
+显示占位，绝不请求原图。`thumbnailError?: boolean` 表示宿主生成失败，图片加载失败同样变成占位，
+仍可点击切换主图。组件不负责生成、文件系统或缓存。开启时从主图视口预留底片高度，Fit 随测量适配，
+主动缩放比例和旋转保持；小图 URL 完成不会让用户手动滚动的底片条重复居中。
+
+包体检查：新增底片条控制/占位能力后，size-limit 实测约 36.19 kB（gzip），较此前本地全屏构建约增加 0.57 kB；预算由 36 调整为 37 kB，不引入依赖。
+
+底片条选中与未选中图片保持相同的原始亮度；仅使用边框标示当前图片，不降低未选中项透明度。

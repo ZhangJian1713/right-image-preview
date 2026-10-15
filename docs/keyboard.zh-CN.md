@@ -51,3 +51,5 @@
 ## 自适应 Space
 
 开启 `clickZoomEnabled` 后，Space 与鼠标主键共用观察循环，保持视口中心图像点，忽略长按 repeat 与 Ctrl/Meta/Alt 修饰键。控件保留原生键盘行为，contained 模式沿用原来的焦点范围。
+
+宿主全屏适配：只有受控适配器报告已全屏时，Esc 才先调用宿主退出；纯 toggle 宿主（例如 VS Code）保留关闭预览行为，窗口全屏通过按钮或宿主原生快捷键切换。

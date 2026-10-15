@@ -3,6 +3,11 @@ export type ZoomMode = 'fit' | 'native';
 /** Native zoom percentage: 100 means 1 CSS pixel = 1 image pixel. */
 export type NativePercent = number;
 
+/** A host with reliable state owns enter/exit; toggle-only hosts never fabricate state. */
+export type FullscreenAdapter =
+  | { isFullscreen: boolean; enter(): void | Promise<void>; exit(): void | Promise<void>; toggle?: never }
+  | { toggle(): void | Promise<void>; isFullscreen?: never; enter?: never; exit?: never };
+
 export interface ZoomState {
   mode: ZoomMode;
   /** Only meaningful when mode === 'native'. */
@@ -98,6 +103,10 @@ export interface ImageItem {
    * Defaults to {@link src}. Ignored when {@link minimap} is set.
    */
   minimapSrc?: string;
+  /** Bottom-strip image only. null reserves a placeholder and forbids original-image fallback. */
+  thumbnailSrc?: string | null;
+  /** Host thumbnail generation failed; the tile stays navigable. */
+  thumbnailError?: boolean;
   /**
    * Optional custom minimap content (e.g. `<img />`). When set, replaces the default minimap image;
    * layout still follows the main image’s natural aspect ratio, rotation, and flips. Overrides {@link minimapSrc}.
@@ -402,6 +411,11 @@ export interface ImagePreviewProps {
    * Hidden automatically when the navigable set has at most one image.
    */
   showThumbnails?: boolean;
+  /** Show an independent, host-controlled strip toggle. Default false. */
+  showThumbnailToggle?: boolean;
+  onThumbnailsVisibleChange?: (visible: boolean) => void;
+  /** Mounted strip indexes, including overscan. Reports [] when hidden. */
+  onThumbnailVisibleIndexesChange?: (indexes: number[]) => void;
 
   /**
    * Which images appear in the strip when {@link showThumbnails} is true.
@@ -415,6 +429,11 @@ export interface ImagePreviewProps {
    * See {@link PresentationMode}.
    */
   presentation?: PresentationMode;
+
+  /** Host-owned fullscreen. When provided, no browser fullscreen API is used. */
+  fullscreen?: FullscreenAdapter;
+  /** Browser capability, confirmation, or host action failures. */
+  onFullscreenError?: (error: unknown) => void;
 
   /**
    * Preload full `src` for neighbors within this flat-index radius of the current image.
@@ -668,13 +687,14 @@ export interface ImagePreviewRef {
    */
   goTo(index: number): void;
   /**
-   * Request browser fullscreen on the preview root. Resolves `true` on success, `false` on
+   * Request fullscreen through a controlled host adapter or the browser API.
+   * Toggle-only adapters cannot honor explicit enter/exit and report an error. Resolves `true` on success, `false` on
    * denial / unsupported (quiet degrade — never throws).
    */
   requestFullscreen(): Promise<boolean>;
-  /** Exit browser fullscreen if this preview owns it. */
+  /** Exit controlled-host or browser fullscreen; toggle-only hosts report unsupported. */
   exitFullscreen(): Promise<void>;
-  /** Whether the preview root is the current fullscreen element. */
+  /** Confirmed controlled-host/browser fullscreen state; false for toggle-only hosts. */
   isFullscreen(): boolean;
   getState(): ZoomState;
 }

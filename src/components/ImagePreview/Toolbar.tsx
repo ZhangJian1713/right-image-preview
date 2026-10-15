@@ -61,6 +61,10 @@ interface ToolbarProps {
   showDelete?: boolean;
   /** When true, show enter/exit fullscreen toggle. */
   showFullscreen?: boolean;
+  showThumbnailToggle?: boolean;
+  thumbnailsVisible?: boolean;
+  onToggleThumbnails?(): void;
+  fullscreenToggleOnly?: boolean;
   /** Whether the preview root is currently fullscreen. */
   isFullscreen?: boolean;
   /** Extra host content at the end of the toolbar. */
@@ -576,6 +580,10 @@ export function Toolbar({
   exifOpen = false,
   showDelete = false,
   showFullscreen = false,
+  showThumbnailToggle = false,
+  thumbnailsVisible = false,
+  onToggleThumbnails,
+  fullscreenToggleOnly = false,
   isFullscreen = false,
   toolbarExtra,
   zoomLocked,
@@ -867,12 +875,27 @@ export function Toolbar({
           </>
         )}
 
+        {showThumbnailToggle && (
+          <>
+            <Divider />
+            <TBtn
+              label={thumbnailsVisible ? strings.hideThumbnails : strings.showThumbnails}
+              tip={thumbnailsVisible ? strings.hideThumbnails : strings.showThumbnails}
+              active={thumbnailsVisible}
+              aria-pressed={thumbnailsVisible}
+              onClick={onToggleThumbnails}
+            >
+              <Icon><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M8 5v14M16 5v14" /></Icon>
+            </TBtn>
+          </>
+        )}
+
         {showFullscreen && (
           <>
             <Divider />
             <TBtn
-              label={isFullscreen ? strings.exitFullscreen : strings.enterFullscreen}
-              tip={isFullscreen ? strings.tipExitFullscreen : strings.tipEnterFullscreen}
+              label={fullscreenToggleOnly ? strings.toggleFullscreen : isFullscreen ? strings.exitFullscreen : strings.enterFullscreen}
+              tip={fullscreenToggleOnly ? strings.toggleFullscreen : isFullscreen ? strings.tipExitFullscreen : strings.tipEnterFullscreen}
               active={isFullscreen}
               onClick={onToggleFullscreen}
             >

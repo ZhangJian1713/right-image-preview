@@ -5,7 +5,6 @@ import {
   THUMBNAIL_STRIP_BOTTOM_INSET_PX,
   THUMBNAIL_STRIP_GAP_PX,
   THUMBNAIL_STRIP_HEIGHT_PX,
-  THUMBNAIL_STRIP_INACTIVE_OPACITY,
   THUMBNAIL_STRIP_PADDING_X_PX,
   THUMBNAIL_STRIP_PADDING_Y_PX,
   THUMBNAIL_STRIP_RADIUS_PX,
@@ -33,13 +32,25 @@ export interface ThumbnailsStripProps {
   /** Neighbor preload status keyed by flat index (progress line under tiles). */
   preloadStatus?: NeighborPreloadStatusMap;
   ariaLabel: string;
+  loadingLabel?: string;
+  errorLabel?: string;
+  onVisibleIndexesChange?: (indexes: number[]) => void;
   thumbAria: (index: number, total: number) => string;
   onSelect(flatIndex: number): void;
   onUserActivity?(): void;
 }
 
-function thumbSrc(item: ImageItem): string {
-  return item.minimapSrc ?? item.src;
+function ThumbnailVisual({ item, loadingLabel, errorLabel }: {
+  item: ImageItem; loadingLabel?: string; errorLabel?: string;
+}) {
+  const src = item.thumbnailSrc === undefined ? item.minimapSrc ?? item.src : item.thumbnailSrc;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const failed = item.thumbnailError || (!!src && failedSrc === src);
+  if (!src || failed) return <span title={failed ? errorLabel : loadingLabel}
+    style={{ color: '#cdd5e0', display: 'grid', placeItems: 'center', height: '100%' }}>{failed ? '!' : '…'}</span>;
+  return <img src={src} alt="" draggable={false} decoding="async"
+    onError={() => setFailedSrc(src)}
+    style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />;
 }
 
 function itemKey(item: ImageItem, flatIndex: number): string {
@@ -90,6 +101,9 @@ export function ThumbnailsStrip({
   preloadStatus,
   ariaLabel,
   thumbAria,
+  loadingLabel,
+  errorLabel,
+  onVisibleIndexesChange,
   onSelect,
   onUserActivity,
 }: ThumbnailsStripProps) {
@@ -104,18 +118,25 @@ export function ThumbnailsStrip({
   const stride = thumbnailStripTileStridePx();
   const tileOuter = THUMBNAIL_STRIP_HEIGHT_PX + THUMBNAIL_STRIP_ACTIVE_BORDER_PX * 2;
   const totalWidth = entries.length * stride - (entries.length > 0 ? THUMBNAIL_STRIP_GAP_PX : 0);
-  const useVirtual = shouldVirtualizeThumbnailStrip(entries.length, viewportW);
+  const useVirtual = shouldVirtualizeThumbnailStrip(entries.length, viewportW || 1);
 
+  const activePos = entries.findIndex((entry) => entry.flatIndex === activeFlatIndex);
   const virtualRange = useMemo(() => {
     if (!useVirtual) return { start: 0, end: entries.length };
-    const start = Math.max(0, Math.floor(scrollLeft / stride) - THUMBNAIL_STRIP_VIRTUAL_OVERSCAN);
+    const first = viewportW > 0 ? Math.floor(scrollLeft / stride) : Math.max(0, activePos);
+    const start = Math.max(0, first - THUMBNAIL_STRIP_VIRTUAL_OVERSCAN);
     const visibleCapacity = Math.max(1, Math.floor((viewportW || 1) / stride));
     const end = Math.min(
       entries.length,
       start + visibleCapacity + THUMBNAIL_STRIP_VIRTUAL_OVERSCAN * 2,
     );
     return { start, end };
-  }, [useVirtual, scrollLeft, stride, viewportW, entries.length]);
+  }, [useVirtual, scrollLeft, stride, viewportW, entries.length, activePos]);
+
+  useEffect(() => {
+    onVisibleIndexesChange?.(entries.length > 1
+      ? entries.slice(virtualRange.start, virtualRange.end).map((entry) => entry.flatIndex) : []);
+  }, [entries, virtualRange.start, virtualRange.end, onVisibleIndexesChange]);
 
   useLayoutEffect(() => {
     const glass = glassRef.current;
@@ -134,7 +155,7 @@ export function ThumbnailsStrip({
     ro.observe(glass);
     ro.observe(scroller);
     return () => ro.disconnect();
-  }, [entries, useVirtual]);
+  }, [entries.length, useVirtual]);
 
   useEffect(() => {
     const el = activeRef.current;
@@ -142,12 +163,14 @@ export function ThumbnailsStrip({
     if (!scroller || entries.length === 0) return;
 
     if (useVirtual) {
-      const activePos = entries.findIndex((e) => e.flatIndex === activeFlatIndex);
       if (activePos < 0) return;
       const target = activePos * stride - scroller.clientWidth / 2 + tileOuter / 2;
       // Instant scroll so the active border and strip position update with navigation
       // (same beat as currentIndex), not after a smooth pan that lags the main stage.
-      scroller.scrollTo({ left: Math.max(0, target), behavior: 'auto' });
+      const left = Math.max(0, target);
+      if (typeof scroller.scrollTo === 'function') scroller.scrollTo({ left, behavior: 'auto' });
+      else scroller.scrollLeft = left;
+      setScrollLeft(left);
       return;
     }
 
@@ -157,7 +180,7 @@ export function ThumbnailsStrip({
       inline: 'center',
       behavior: 'auto',
     });
-  }, [activeFlatIndex, useVirtual, entries, stride, tileOuter]);
+  }, [activeFlatIndex, activePos, useVirtual, entries.length, stride, tileOuter]);
 
   if (entries.length <= 1) return null;
 
@@ -194,25 +217,10 @@ export function ThumbnailsStrip({
           borderRadius: 4,
           background: 'rgba(0, 0, 0, 0.35)',
           cursor: 'pointer',
-          opacity: active ? 1 : THUMBNAIL_STRIP_INACTIVE_OPACITY,
-          transition: 'opacity 0.15s ease',
           overflow: 'hidden',
         }}
       >
-        <img
-          src={thumbSrc(item)}
-          alt=""
-          draggable={false}
-          loading="lazy"
-          decoding="async"
-          style={{
-            display: 'block',
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            pointerEvents: 'none',
-          }}
-        />
+        <ThumbnailVisual item={item} loadingLabel={loadingLabel} errorLabel={errorLabel} />
         {fill != null && (
           <span
             aria-hidden

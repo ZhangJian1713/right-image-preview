@@ -33,6 +33,10 @@ export interface LocaleStrings {
   minimapNav: string;
   /** Classic thumbnail strip landmark (aria). */
   thumbnailsNav: string;
+  showThumbnails: string;
+  hideThumbnails: string;
+  thumbnailLoading: string;
+  thumbnailFailed: string;
   /** Per-tile label in the classic strip — 1-based index within the visible set. */
   thumbStripItem(index: number, total: number): string;
 
@@ -73,6 +77,7 @@ export interface LocaleStrings {
   exifBoolNo: string;
   deleteImage: string;
   tipDeleteImage: string;
+  toggleFullscreen: string;
   enterFullscreen: string;
   exitFullscreen: string;
   tipEnterFullscreen: string;

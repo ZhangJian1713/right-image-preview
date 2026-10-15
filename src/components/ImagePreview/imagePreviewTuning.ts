@@ -192,9 +192,6 @@ export const THUMBNAIL_STRIP_RADIUS_PX = 10;
 /** Active tile border width (px). */
 export const THUMBNAIL_STRIP_ACTIVE_BORDER_PX = 2;
 
-/** Opacity for non-active tiles in the strip. */
-export const THUMBNAIL_STRIP_INACTIVE_OPACITY = 0.55;
-
 /**
  * Windowed virtualization kicks in when `entryCount > visibleCapacity * multiplier`.
  * `visibleCapacity = max(1, floor(viewportWidth / tileStride))` where tileStride includes

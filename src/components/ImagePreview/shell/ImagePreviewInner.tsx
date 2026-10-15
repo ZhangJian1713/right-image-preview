@@ -61,6 +61,7 @@ import { useZoomState } from '../useZoomState';
 import { useAdaptiveZoom } from '../useAdaptiveZoom';
 import { nextAdaptiveZoom } from '../adaptiveZoom';
 import { useClickZoomGesture } from '../useClickZoomGesture';
+import { usePreviewFullscreen } from './usePreviewFullscreen';
 
 const DEFAULT_STOPS: NativePercent[] = [10, 25, 50, 75, 100, 125, 150, 175, 200];
 
@@ -93,8 +94,13 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       initialZoomLocked = false,
       showMinimap = true,
       showThumbnails = false,
+      showThumbnailToggle = false,
+      onThumbnailsVisibleChange,
+      onThumbnailVisibleIndexesChange,
       thumbnailsScope = 'group',
       presentation = 'overlay',
+      fullscreen,
+      onFullscreenError,
       preloadRadius = 1,
       preloadDisplaySlots = 0,
       preloadDisplaySettleMs = PRELOAD_DISPLAY_SETTLE_MS,
@@ -765,49 +771,10 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     });
 
     const [keyboardActive, setKeyboardActive] = useState(!isContained);
-    const [isFs, setIsFs] = useState(false);
-
-    const syncFullscreenState = useCallback(() => {
-      const root = overlayRef.current;
-      setIsFs(!!root && document.fullscreenElement === root);
-    }, []);
-
-    useEffect(() => {
-      document.addEventListener('fullscreenchange', syncFullscreenState);
-      return () => document.removeEventListener('fullscreenchange', syncFullscreenState);
-    }, [syncFullscreenState]);
-
-    const isFullscreen = useCallback(() => {
-      const root = overlayRef.current;
-      return !!root && document.fullscreenElement === root;
-    }, []);
-
-    const requestFullscreen = useCallback(async (): Promise<boolean> => {
-      const root = overlayRef.current;
-      if (!root || typeof root.requestFullscreen !== 'function') return false;
-      try {
-        await root.requestFullscreen();
-        syncFullscreenState();
-        return true;
-      } catch {
-        return false;
-      }
-    }, [syncFullscreenState]);
-
-    const exitFullscreen = useCallback(async (): Promise<void> => {
-      if (!document.fullscreenElement || typeof document.exitFullscreen !== 'function') return;
-      try {
-        await document.exitFullscreen();
-      } catch {
-        /* quiet degrade */
-      }
-      syncFullscreenState();
-    }, [syncFullscreenState]);
-
-    const toggleFullscreen = useCallback(() => {
-      if (isFullscreen()) void exitFullscreen();
-      else void requestFullscreen();
-    }, [isFullscreen, exitFullscreen, requestFullscreen]);
+    const { isFullscreen, requestFullscreen, exitFullscreen, toggleFullscreen,
+      fullscreenActive, toggleOnly } = usePreviewFullscreen({
+      rootRef: overlayRef, adapter: fullscreen, onError: onFullscreenError,
+    });
 
     const navArrowPointerRef = useRef(false);
 
@@ -1181,6 +1148,9 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       return out;
     }, [showStrip, images, stripStart, stripEnd]);
     const stripLiftPx = thumbnailStripTotalHeightPx(stripEntries.length);
+    useEffect(() => {
+      if (stripEntries.length <= 1) onThumbnailVisibleIndexesChange?.([]);
+    }, [stripEntries.length, onThumbnailVisibleIndexesChange]);
 
     return (
       <div
@@ -1219,7 +1189,6 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
         {/* NOTE: This div is 100 % × 100 % and covers the whole overlay, so mask
             clicks land here (not on the overlay root). We mirror the same check. */}
         <div
-          ref={setMediaViewport}
           onClickCapture={clickGesture.onClickCapture}
           onClick={(e) => { if (closeOnMaskClick && e.target === e.currentTarget) onClose?.(); }}
           style={{
@@ -1229,6 +1198,8 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
             overflow: 'hidden',
           }}
         >
+          <div ref={setMediaViewport} data-rip-media-viewport
+            style={{ position: 'absolute', inset: `0 0 ${stripLiftPx}px 0` }}>
           {/* L1 — main + neighbor image layers (isolated so inner z-index cannot cover L4) */}
           <div
             data-rip-floor="content"
@@ -1314,6 +1285,8 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
               if (closeOnMaskClick && !isImagePoint(event.clientX, event.clientY)) onClose?.();
             }}
           />
+
+          </div>
 
           {hintTarget && hintNext && (
             <div role="status" style={{ position: 'absolute', bottom: 100, left: '50%',
@@ -1438,6 +1411,9 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
                 preloadStatus={showThumbnailPreloadStatus ? neighborPreloadStatus : undefined}
                 ariaLabel={t.thumbnailsNav}
                 thumbAria={t.thumbStripItem}
+                loadingLabel={t.thumbnailLoading}
+                errorLabel={t.thumbnailFailed}
+                onVisibleIndexesChange={onThumbnailVisibleIndexesChange}
                 onSelect={goTo}
                 onUserActivity={resetHideTimer}
               />
@@ -1470,8 +1446,12 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
               showExif={showExif}
               exifOpen={exifOpen}
               showDelete={showDelete}
+              showThumbnailToggle={showThumbnailToggle}
+              thumbnailsVisible={showThumbnails}
+              onToggleThumbnails={() => onThumbnailsVisibleChange?.(!showThumbnails)}
               showFullscreen
-              isFullscreen={isFs}
+              isFullscreen={fullscreenActive}
+              fullscreenToggleOnly={toggleOnly}
               toolbarExtra={toolbarExtra}
               showToolbarArrows={showToolbarArrows}
               zoomLocked={zoomLocked}

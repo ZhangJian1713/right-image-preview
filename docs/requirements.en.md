@@ -282,3 +282,28 @@
 - [x] Keep DOM `<img>` and `src`/`minimapSrc`; exclude WebGL/OpenGL.
 - [x] Stop immediate retries of failed neighbors; scope presentation and reveal timers to a visit. Neighbor decode retention remains best effort.
 - [x] React 19 source regressions and React 17 host tests against the packed npm build, replacing the host source snapshot with pinned 0.8.0.
+
+## Local / unreleased — host fullscreen
+
+- [x] Port the 0.7.1 controlled host fullscreen pattern independently of WebGL.
+- [x] Support toggle-only hosts without fabricating fullscreen state.
+- [x] Share toolbar/keyboard/ref routing; bound browser confirmation and clean up on unmount.
+- [x] VS Code host executes a fixed fullscreen command through local linked builds; no release.
+
+### Controlled filmstrip (local, unreleased)
+
+`showThumbnailToggle?: boolean` exposes a toolbar switch (default false). The host owns
+`showThumbnails` and handles `onThumbnailsVisibleChange(visible)`; the component stores no preference.
+`onThumbnailVisibleIndexesChange(indexes)` reports mounted flat indexes including overscan, and []
+when the strip is hidden or has fewer than two items. Hosts can generate only this bounded window.
+
+`ImageItem.thumbnailSrc?: string | null` is independent of main/minimap sources. Omitted preserves
+legacy minimap/original fallback; explicit null shows a placeholder and never fetches the original.
+`thumbnailError?: boolean` marks generation failure. An image load failure also becomes a placeholder;
+tiles remain navigable. No resizing/generation or host filesystem access is performed by the component.
+The main viewport reserves strip height while visible; Fit follows measured space, Native zoom and
+orientation are retained. Thumbnail URL completion does not recenter a manually scrolled strip.
+
+Size budget: the controlled strip and placeholders measure about 36.19 kB gzipped (size-limit), roughly 0.57 kB above the previous local fullscreen build. The budget is 37 kB, with no new dependency.
+
+Filmstrip selection uses a border only; inactive images retain the same brightness and opacity as the active image.

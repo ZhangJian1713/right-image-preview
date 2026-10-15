@@ -51,3 +51,5 @@ With **`presentation="contained"`**, shortcuts are handled only while focus is i
 ## Adaptive Space
 
 With `clickZoomEnabled`, Space advances the same observation cycle as a primary mouse click. It preserves the viewport-center image point, ignores held repeats and Ctrl/Meta/Alt modifiers, and leaves controls to their normal keyboard behavior. Existing contained focus rules remain.
+
+Host fullscreen adapters: Escape exits only when a controlled adapter reports active fullscreen. Toggle-only hosts (for example VS Code) retain preview-close behavior; use the host fullscreen button or native shortcut to toggle the window.

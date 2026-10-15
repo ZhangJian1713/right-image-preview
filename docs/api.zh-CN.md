@@ -212,3 +212,23 @@ interface ImagePreviewRef {
 - Fit 可用滚轮和工具栏直接缩小；最高档放大保持有界且不反向跳变。`setNative` 忽略非正数与非有限值。
 - `language` 支持英文、简中、繁中及 script/region 别名，显式 script 优先；热切换保留浏览状态。`strings.zoomHint` 与 `strings.dragToPan` 可覆盖提示。
 - 邻图完成过解码不代表位图持续驻留；`preloadRadius={0}` 可关闭邻图工作。
+
+## 本地未发布：宿主全屏适配
+
+`fullscreen?: FullscreenAdapter` 将全屏操作交给宿主，适配器存在时不读写 DOM Fullscreen API。支持：
+
+- 受控模式 `{ isFullscreen, enter, exit }`：宿主 Props 是唯一状态来源；Esc 先退出全屏，再次按才关闭预览。
+- 纯切换模式 `{ toggle }`：适用于 VS Code 这类提供 toggle 命令、却没有可靠公开状态订阅的宿主。按钮始终标注“切换全屏”，可用 `strings.toggleFullscreen` 覆盖；不猜测状态，`isFullscreen()` 返回 false，ref 显式进入/退出报告不支持，Esc 保留关闭预览行为。
+
+`onFullscreenError?: (error: unknown) => void` 报告宿主失败、浏览器能力缺失/拒绝及状态确认超时。进行中的请求去重；浏览器路径等待 API 成功与 `fullscreenchange` 双重确认，整体 2s 超时覆盖 API Promise 永不结束的情况；卸载清理浏览器监听与计时器。以上为本地未发布能力，已发布 0.8.0 尚不包含。
+
+### 受控底片条（本地未发布）
+
+`showThumbnailToggle?: boolean` 显示工具栏开关，默认 false。宿主控制 `showThumbnails`，通过
+`onThumbnailsVisibleChange(visible)` 接收切换意图，自行保存偏好。`onThumbnailVisibleIndexesChange(indexes)`
+报告已挂载底片的扁平索引（含 overscan）；关闭或不足两项时报告 []，用于有界的按需小图生成。
+
+`ImageItem.thumbnailSrc?: string | null` 专用于底片。省略时保留旧的 minimap/原图回退；明确传 null
+显示占位，绝不请求原图。`thumbnailError?: boolean` 表示宿主生成失败，图片加载失败同样变成占位，
+仍可点击切换主图。组件不负责生成、文件系统或缓存。开启时从主图视口预留底片高度，Fit 随测量适配，
+主动缩放比例和旋转保持；小图 URL 完成不会让用户手动滚动的底片条重复居中。

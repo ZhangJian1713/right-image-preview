@@ -9,6 +9,13 @@ Versioning follows [Semantic Versioning](https://semver.org/) (see `README.md` f
 
 ## [Unreleased]
 
+### Added
+
+- Controlled filmstrip toolbar switches, bounded visible-index reporting, dedicated thumbnail URLs with explicit no-original placeholders, and failure states. Reserve main viewport space while retaining Native zoom and orientation.
+
+- Host-owned fullscreen adapters: controlled `isFullscreen/enter/exit`, or toggle-only hosts with truthful fixed button labels. DOM fullscreen is bypassed in host mode.
+- Fullscreen failure callbacks, request deduplication, browser API/event confirmation with a bounded timeout, and unmount cleanup.
+
 ---
 
 ## [0.8.0] — 2026-10-16
