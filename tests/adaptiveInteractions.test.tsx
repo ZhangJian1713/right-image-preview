@@ -59,6 +59,33 @@ describe('DOM adaptive interactions', () => {
     fireEvent.keyDown(root, { key: ' ' });
     expect(ref.current!.getState().mode).toBe('fit');
   });
+  it.each([[false, false], [false, true], [true, false], [true, true]])('keeps the last painted frame across skipped selections (controlled: %s, bitmap loaded: %s)', async (controlled, bitmapLoaded) => {
+    const items = [...images, { src: 'test:c', name: 'c.png' }];
+    const { ref, image, container, rerender, base } = await open(3200, 2400, { images: items, index: controlled ? 0 : undefined });
+    const navigate = (index: number) => {
+      if (controlled) rerender(<ImagePreview {...base} ref={ref} index={index} />);
+      else act(() => { ref.current!.goTo(index); });
+    };
+    act(() => { ref.current!.setNative(100); ref.current!.rotateCW(); });
+    const leavingPose = image.parentElement!.style.transform;
+    navigate(1);
+    expect(image.closest('[data-rip-stage-layer]')!.getAttribute('data-rip-stage-layer')).toBe('outgoing');
+    expect(image.parentElement!.style.transform).toBe(leavingPose);
+    // b never reached the visible stage. Even a completed bitmap must not evict the held frame early.
+    if (bitmapLoaded) {
+      const intermediate = container.querySelector('img[src="test:b"]')!;
+      Object.defineProperties(intermediate, { complete: { value: true }, naturalWidth: { value: 1600 }, naturalHeight: { value: 1200 } });
+    }
+    navigate(2);
+    expect(container.querySelector('img[src="test:a"]')).toBe(image);
+    expect(image.closest('[data-rip-stage-layer]')!.getAttribute('data-rip-stage-layer')).toBe('outgoing');
+    expect(image.parentElement!.style.transform).toBe(leavingPose);
+    const incoming = container.querySelector('img[src="test:c"]')!;
+    Object.defineProperties(incoming, { complete: { value: true }, naturalWidth: { value: 2000 }, naturalHeight: { value: 1000 } });
+    await act(async () => { fireEvent.load(incoming); await vi.advanceTimersByTimeAsync(100); });
+    expect(container.querySelector('[data-rip-stage-layer="outgoing"]')).toBeNull();
+    expect(incoming.closest('[data-rip-stage-layer]')!.getAttribute('data-rip-stage-layer')).toBe('current');
+  });
   it('caps small-image Fit independently and cycles to 200 percent', async () => {
     const { ref } = await open(100, 100);
     expect(ref.current!.getState().fitEquivalentNativePercent).toBe(100);

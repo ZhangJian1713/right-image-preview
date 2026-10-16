@@ -232,3 +232,8 @@ export function thumbnailStripTotalHeightPx(entryCount: number): number {
 
 /** Step (container px) for ∂m/∂tx, ∂m/∂ty finite differences. */
 export const MINIMAP_JACOBIAN_EPS = 0.25;
+
+/** Idle time before preview chrome fades; independent of navigation pacing. */
+export const PREVIEW_CONTROLS_IDLE_MS = 3000;
+/** Avoid flashing a spinner while a local image loads quickly. */
+export const PREVIEW_LOADER_DELAY_MS = 300;

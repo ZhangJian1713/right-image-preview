@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createRef, useState, type ComponentProps } from 'react';
+import { createRef, useLayoutEffect, useRef, useState, type ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { ImagePreview } from '../src/components/ImagePreview';
 import type { ImagePreviewRef } from '../src/components/ImagePreview/types';
@@ -525,6 +525,19 @@ describe('ImagePreview component', () => {
       expect(screen.getByRole('toolbar').textContent).toMatch(/1\s*\/\s*3/);
       await userEvent.click(screen.getByRole('button', { name: '跳到 2' }));
       expect(screen.getByRole('toolbar').textContent).toMatch(/3\s*\/\s*3/);
+    });
+
+    it('uses the controlled index in the same commit, before parent layout effects', () => {
+      const observed: string[] = [];
+      function Host({ index }: { index: number }) {
+        const root = useRef<HTMLDivElement>(null);
+        useLayoutEffect(() => { observed.push(root.current!.querySelector('[role="toolbar"]')!.textContent!); }, [index]);
+        return <div ref={root}><ImagePreview images={IMAGES} visible index={index} preloadRadius={0} {...ZH} /></div>;
+      }
+      const { rerender } = render(<Host index={0} />);
+      rerender(<Host index={2} />);
+      expect(observed[0]).toMatch(/1\s*\/\s*3/);
+      expect(observed[1]).toMatch(/3\s*\/\s*3/);
     });
 
     it('exposes goTo on the ref', async () => {

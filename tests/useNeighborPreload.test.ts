@@ -27,6 +27,43 @@ describe('useNeighborPreload', () => {
     globalThis.Image = OriginalImage;
   });
 
+  it('keeps byte loads and the settle deadline when only filmstrip metadata changes', () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender, unmount } = renderHook(({ items }) => useNeighborPreload({
+        images: items, currentIndex: 1, radius: 1, settleMs: 600,
+      }), { initialProps: { items: images } });
+      act(() => { vi.advanceTimersByTime(400); });
+      rerender({ items: images.map((item) => ({ ...item, thumbnailSrc: 'cache:first' })) });
+      act(() => { vi.advanceTimersByTime(200); });
+      expect(created).toHaveLength(2);
+      const pending = [...created];
+      rerender({ items: images.map((item) => ({ ...item, thumbnailSrc: 'cache:second' })) });
+      expect(pending.every((image) => image.onload !== null && image.src !== '')).toBe(true);
+      act(() => { vi.advanceTimersByTime(600); });
+      expect(created).toHaveLength(2);
+      act(() => { pending.forEach((image) => image.onload?.(new Event('load') as never)); });
+      unmount();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('retries a replaced URL even if the old resource at that index failed', () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender, unmount } = renderHook(({ items }) => useNeighborPreload({
+        images: items, currentIndex: 1, radius: 1, settleMs: 600,
+      }), { initialProps: { items: images } });
+      act(() => { vi.advanceTimersByTime(600); });
+      act(() => { created[0].onerror?.(new Event('error') as never); });
+      const replacement = images.map((item, index) => index === 0 ? { src: 'https://example.com/new.jpg' } : item);
+      rerender({ items: replacement });
+      act(() => { vi.advanceTimersByTime(600); });
+      expect(created.some((image) => image.src === replacement[0].src)).toBe(true);
+      unmount();
+    } finally { vi.useRealTimers(); }
+  });
+
   it('reports empty indexes when radius is 0', async () => {
     const onPreloadIndexesChange = vi.fn();
     renderHook(() =>

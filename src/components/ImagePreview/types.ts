@@ -363,6 +363,9 @@ export interface ImagePreviewProps {
    */
   showFlip?: boolean;
 
+  /** Show the counter-clockwise toolbar button. Default true; Shift+R remains available when hidden. */
+  showRotateCCW?: boolean;
+
   /**
    * Show the EXIF / metadata toggle in the toolbar.
    * When on, the user can open a draggable edge-snapped panel fed by {@link ImageItem.exif}
@@ -625,7 +628,7 @@ export interface ImagePreviewProps {
    * @example
    * ```tsx
    * // Just change the close button label in an English UI
-   * strings={{ close: 'Dismiss', tipClose: 'Dismiss the preview' }}
+   * strings={{ close: 'Dismiss' }}
    * ```
    */
   strings?: Partial<import('./localeTypes').LocaleStrings>;

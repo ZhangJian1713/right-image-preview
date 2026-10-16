@@ -51,6 +51,7 @@
 |------|------|--------|------|
 | `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | 仅控制**图片两侧**箭头；见下表（非空 `groupedImages` 时工具栏上一张/下一张始终显示） |
 | `showFlip` | `boolean` | `false` | 是否显示水平/垂直翻转按钮 |
+| `showRotateCCW` | `boolean` | `true` | 是否显示逆时针旋转按钮；隐藏后仍可通过 Shift+R 操作 |
 | `showExif` | `boolean` | `false` | 是否在工具栏显示 EXIF / 元数据开关 |
 | `initialExifOpen` | `boolean` | `false` | 开启 `showExif` 时是否默认展开 EXIF 面板 |
 | `showDelete` | `boolean` | `false` | 是否显示删除按钮；宿主须在 `onDeleteImage` 中更新列表 |
@@ -220,7 +221,7 @@ interface ImagePreviewRef {
 - 受控模式 `{ isFullscreen, enter, exit }`：宿主 Props 是唯一状态来源；Esc 先退出全屏，再次按才关闭预览。
 - 纯切换模式 `{ toggle }`：适用于 VS Code 这类提供 toggle 命令、却没有可靠公开状态订阅的宿主。按钮始终标注“切换全屏”，可用 `strings.toggleFullscreen` 覆盖；不猜测状态，`isFullscreen()` 返回 false，ref 显式进入/退出报告不支持，Esc 保留关闭预览行为。
 
-`onFullscreenError?: (error: unknown) => void` 报告宿主失败、浏览器能力缺失/拒绝及状态确认超时。进行中的请求去重；浏览器路径等待 API 成功与 `fullscreenchange` 双重确认，整体 2s 超时覆盖 API Promise 永不结束的情况；卸载清理浏览器监听与计时器。以上为本地未发布能力，已发布 0.8.0 尚不包含。
+`onFullscreenError?: (error: unknown) => void` 报告宿主失败、浏览器能力缺失/拒绝及状态确认超时。进行中的请求去重；已处于本组件的浏览器全屏时，重复进入直接成功，不等待不存在的新事件；真正切换时等待 API 成功与 `fullscreenchange` 双重确认，整体 2s 超时覆盖 API Promise 永不结束的情况；卸载清理浏览器监听与计时器，并阻止被保留的旧方法再启动浏览器或宿主全屏动作。以上为本地未发布能力，已发布 0.8.0 尚不包含。
 
 ### 受控底片条（本地未发布）
 
@@ -233,9 +234,14 @@ interface ImagePreviewRef {
 仍可点击切换主图。组件不负责生成、文件系统或缓存。开启时从主图视口预留底片高度，Fit 随测量适配，
 主动缩放比例和旋转保持；小图 URL 完成不会让用户手动滚动的底片条重复居中。
 
+### 悬停提示
+
+关闭、上一张/下一张、放大/缩小、旋转、删除、全屏等直观操作仅保留无障碍名称，不再弹出悬停文字。翻转方向、组导航、适应视口/100%、缩放输入与档位、缩放锁定、EXIF、底片条和小地图继续保留必要说明。简单操作的旧 `tip*` 语言字段为类型兼容保留，但这些按钮不再渲染它们。
+
 ### 固定快捷键集成（本地未发布）
 
 - `keyboardEnabled?: boolean` 默认 true；false 暂停键盘动作并释放长按切图。
 - `onShowShortcuts?: () => void` 由 ? 调用，宿主提供只读帮助按钮与弹窗。
-- `getPreviewShortcutHelp(capabilities)` 从运行时固定表生成 `{ action, keys }[]`；`navigation`、`groups`、`exif`、`delete`、`shortcuts` 为可选能力标志，仅支持的功能传 true。
+- 平移说明按八个方向各占一行，`direction` 为 up/down/left/right/upLeft/upRight/downLeft/downRight；行标识使用 `direction || action`，`action` 仍为 `pan`。
+- `getPreviewShortcutHelp(capabilities)` 从运行时固定表生成 `{ action, direction?, keys }[]`；`navigation`、`groups`、`exif`、`delete`、`shortcuts` 为可选能力标志，仅支持的功能传 true。
 - 未引入可配置键位或用户设置。完整表见[键盘快捷键](./keyboard.zh-CN.md)。

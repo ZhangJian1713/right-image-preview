@@ -16,9 +16,29 @@ describe('fixed image shortcuts', () => {
       expect(resolvePreviewShortcut(event('f', 'KeyF', extra), all, true)).toBeNull();
       expect(resolvePreviewShortcut(event(' ', 'Space', extra), all, true)).toBeNull();
     }
-    expect(resolvePreviewShortcut(event('ArrowLeft', 'ArrowLeft', { ctrlKey: true }), all, true)?.action).toBe('rotateCCW');
+    expect(resolvePreviewShortcut(event('ArrowLeft', 'ArrowLeft', { ctrlKey: true }), all, true)).toBeNull();
     expect(resolvePreviewShortcut(event('+', 'Equal', { shiftKey: true }), all, true)?.action).toBe('zoomIn');
     expect(resolvePreviewShortcut(event('+', 'Unknown'), all, true)?.action).toBe('zoomIn');
+  });
+  it('leaves every Ctrl/Meta/Shift arrow combination unhandled', () => {
+    for (const arrow of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {
+      for (const modifiers of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true },
+        { ctrlKey: true, shiftKey: true }, { metaKey: true, shiftKey: true }]) {
+        expect(resolvePreviewShortcut(event(arrow, arrow, modifiers), all, true)).toBeNull();
+      }
+    }
+  });
+  it('lists each pan direction separately using its actual runtime bindings', () => {
+    const rows = getPreviewShortcutHelp(all).filter((row) => row.action === 'pan');
+    expect(rows.map(({ direction, keys }) => [direction, keys])).toEqual([
+      ['up', ['W', 'Numpad 8']], ['down', ['S', 'Numpad 2', 'Numpad 5']],
+      ['left', ['A', 'Numpad 4']], ['right', ['D', 'Numpad 6']],
+      ['upLeft', ['Numpad 7']], ['upRight', ['Numpad 9']],
+      ['downLeft', ['Numpad 1']], ['downRight', ['Numpad 3']],
+    ]);
+    for (const code of ['KeyW', 'KeyS', 'KeyA', 'KeyD', 'Numpad7', 'Numpad9', 'Numpad1', 'Numpad3']) {
+      expect(resolvePreviewShortcut(event('', code), all, true)?.action).toBe('pan');
+    }
   });
   it('keeps keypad identity with NumLock off and gates pan on overflow', () => {
     expect(resolvePreviewShortcut(event('End', 'Numpad1'), all, true)?.pan).toEqual([1, -1]);
@@ -62,4 +82,29 @@ it('retains held navigation across renders, ends on blur, and pauses for a host 
   rerender(<Harness value={{ ...value, keyboardActive: false }} />);
   act(() => { window.dispatchEvent(event('f', 'KeyF')); });
   expect(value.toggleFullscreen).not.toHaveBeenCalled();
+});
+
+it('does not prevent host modified-arrow events or run image actions', () => {
+  const value = params();
+  render(<Harness value={value} />);
+  for (const arrow of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {
+    for (const modifiers of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }]) {
+      const input = event(arrow, arrow, { ...modifiers, bubbles: true, cancelable: true });
+      act(() => { window.dispatchEvent(input); });
+      expect(input.defaultPrevented).toBe(false);
+    }
+  }
+  for (const action of [value.rotateCW, value.rotateCCW, value.panByDelta, value.zoomIn, value.zoomOut, value.beginNavHold]) {
+    expect(action).not.toHaveBeenCalled();
+  }
+});
+
+it('releases held keys even when the focused control stops keyup bubbling', () => {
+  const value = params();
+  const { getByLabelText } = render(<Harness value={value} />);
+  fireEvent.keyDown(window, { key: 'ArrowRight', code: 'ArrowRight' });
+  const editing = getByLabelText('editing');
+  editing.addEventListener('keyup', (event) => event.stopPropagation());
+  fireEvent.keyUp(editing, { key: 'ArrowRight', code: 'ArrowRight' });
+  expect(value.endNavHold).toHaveBeenCalledTimes(1);
 });

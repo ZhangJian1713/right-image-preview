@@ -63,7 +63,7 @@ export function usePreviewFullscreen({ rootRef, adapter, onError }: Options) {
   const toggleOnly = typeof adapter?.toggle === 'function';
 
   const perform = useCallback(async (action: 'enter' | 'exit' | 'toggle'): Promise<boolean> => {
-    if (busy.current) return false;
+    if (!mounted.current || busy.current) return false;
     busy.current = true;
     try {
       if (adapter) {
@@ -72,12 +72,15 @@ export function usePreviewFullscreen({ rootRef, adapter, onError }: Options) {
         await invoke.call(adapter);
         return true;
       }
+      const entering = action === 'enter';
+      if (browserState() === entering) {
+        setBrowserIsFullscreen(entering);
+        return true;
+      }
       const root = rootRef.current;
       if (!root || typeof root.requestFullscreen !== 'function' || typeof document.exitFullscreen !== 'function' || document.fullscreenEnabled === false) {
         throw new Error('Browser fullscreen is unavailable or disallowed. Supply a host fullscreen adapter.');
       }
-      const entering = action === 'enter';
-      if (!entering && !browserState()) return true;
       const confirmed = await browserAction(entering, () => entering ? root.requestFullscreen() : document.exitFullscreen());
       if (!mounted.current) return false;
       if (!confirmed) throw new Error('Browser fullscreen did not confirm the requested state within 2 seconds.');

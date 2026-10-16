@@ -72,7 +72,7 @@ Open the interactive demo in your browser (toggle **EN / 中文** in the top-rig
 | **Minimap source per item** | Each **`ImageItem`** (and single-**`src`** mode) can set **`minimapSrc`** / **`minimap`** so the map uses a lighter tile or custom node; defaults to the main **`src`** |
 | **Touch pinch-to-zoom** | Two-finger pinch/spread for continuous zoom; anchor follows the midpoint between fingers; disable with **`pinchEnabled`** |
 | **Localized toolbar** | **`language`** prop with built-in **English** and **Simplified Chinese** (`en`, `zh`, `zh-CN`, …); override individual strings with **`strings`** |
-| **Rich keyboard shortcuts** | Esc · +/- · arrow keys · Space · PageUp/Down · Ctrl+arrow |
+| **Rich keyboard shortcuts** | Esc · +/- · arrow keys · Space · PageUp/Down · R/Shift+R · WASD/numpad |
 | **Accessibility** | Overlay: `role="dialog"` + `aria-modal` with focus management; `presentation="contained"`: `role="region"` (not page-modal), keyboard only while the preview is focused. Controls use `aria-label` |
 | **TypeScript first** | Full type exports, `forwardRef` imperative ref API |
 | **Zero production dependencies** | Only requires React |
@@ -188,6 +188,7 @@ import { ImagePreview } from 'right-image-preview';
 | `switchImageResetTransform` | `boolean` | `true` | Reset flip/rotation when switching images |
 | `fitResetPan` | `boolean` | `true` | Reset pan offset when switching to Fit mode |
 | `showFlip` | `boolean` | `false` | Show horizontal/vertical flip buttons |
+| `showRotateCCW` | `boolean` | `true` | Show the counter-clockwise rotation button; Shift+R remains available when hidden |
 | `showExif` | `boolean` | `false` | Show EXIF / metadata toggle in the toolbar |
 | `initialExifOpen` | `boolean` | `false` | Open the EXIF panel on first mount when `showExif` is true |
 | `showDelete` | `boolean` | `false` | Show delete control; host updates list in `onDeleteImage` |
@@ -281,7 +282,7 @@ interface ImagePreviewRef {
 
 Fixed aliases include Q/E navigation, Home/End, R/Shift+R rotation, F fullscreen, WASD/numpad pan,
 and ? for host-provided help, alongside existing zoom and navigation keys.
-See the [complete keyboard reference](./docs/keyboard.md) for conditions and compatibility bindings.
+See the [complete keyboard reference](./docs/keyboard.md) for conditions and the eight pan directions. Ctrl/⌘/Shift + arrow combinations are left to the host.
 Hosts can use `getPreviewShortcutHelp` for a read-only table; no shortcut customization is provided.
 
 

@@ -2,15 +2,16 @@
 export type PreviewShortcutAction = 'previous' | 'next' | 'first' | 'last' | 'previousGroup' | 'nextGroup'
   | 'zoomIn' | 'zoomOut' | 'fit' | 'actualSize' | 'cycleZoom' | 'rotateCW' | 'rotateCCW'
   | 'pan' | 'fullscreen' | 'shortcuts' | 'exif' | 'delete' | 'close';
+export type PreviewPanDirection = 'up' | 'down' | 'left' | 'right' | 'upLeft' | 'upRight' | 'downLeft' | 'downRight';
 export interface PreviewShortcutCapabilities {
   navigation?: boolean; groups?: boolean; exif?: boolean; delete?: boolean; shortcuts?: boolean;
 }
 interface Binding {
-  code: string; label: string; shift?: boolean | 'any'; mod?: boolean; key?: string; pan?: readonly [number, number];
+  code: string; label: string; shift?: boolean | 'any'; key?: string; pan?: readonly [number, number];
 }
-interface Definition { action: PreviewShortcutAction; bindings: readonly Binding[]; capability?: keyof PreviewShortcutCapabilities; repeat?: boolean }
+interface Definition { action: PreviewShortcutAction; bindings: readonly Binding[]; capability?: keyof PreviewShortcutCapabilities; repeat?: boolean; direction?: PreviewPanDirection }
 const key = (code: string, label: string, extra: Partial<Binding> = {}): Binding => ({ code, label, ...extra });
-const pan = (code: string, label: string, x: number, y: number, shift: boolean | 'any' = 'any') => key(code, label, { pan: [x, y], shift });
+const pan = (code: string, label: string, x: number, y: number) => key(code, label, { pan: [x, y], shift: 'any' });
 const definitions: readonly Definition[] = [
   { action: 'previous', capability: 'navigation', bindings: [key('ArrowLeft', '←'), key('KeyQ', 'Q')] },
   { action: 'next', capability: 'navigation', bindings: [key('ArrowRight', '→'), key('KeyE', 'E')] },
@@ -21,17 +22,16 @@ const definitions: readonly Definition[] = [
   { action: 'cycleZoom', bindings: [key('Space', 'Space'), key('Numpad0', 'Numpad 0', { shift: 'any' })] },
   { action: 'fit', bindings: [key('Digit0', '0')] },
   { action: 'actualSize', bindings: [key('Digit1', '1')] },
-  { action: 'rotateCW', bindings: [key('KeyR', 'R'), key('ArrowRight', 'Ctrl/⌘ + →', { mod: true })] },
-  { action: 'rotateCCW', bindings: [key('KeyR', 'Shift + R', { shift: true }), key('ArrowLeft', 'Ctrl/⌘ + ←', { mod: true })] },
-  { action: 'pan', repeat: true, bindings: [
-    pan('KeyW', 'W', 0, 1), pan('KeyA', 'A', 1, 0), pan('KeyS', 'S', 0, -1), pan('KeyD', 'D', -1, 0),
-    pan('Numpad8', 'Numpad 8', 0, 1), pan('Numpad4', 'Numpad 4', 1, 0), pan('Numpad2', 'Numpad 2', 0, -1),
-    pan('Numpad5', 'Numpad 5', 0, -1), pan('Numpad6', 'Numpad 6', -1, 0),
-    pan('Numpad7', 'Numpad 7', 1, 1), pan('Numpad9', 'Numpad 9', -1, 1),
-    pan('Numpad1', 'Numpad 1', 1, -1), pan('Numpad3', 'Numpad 3', -1, -1),
-    pan('ArrowUp', 'Shift + ↑', 0, 1, true), pan('ArrowDown', 'Shift + ↓', 0, -1, true),
-    pan('ArrowLeft', 'Shift + ←', 1, 0, true), pan('ArrowRight', 'Shift + →', -1, 0, true),
-  ] },
+  { action: 'rotateCW', bindings: [key('KeyR', 'R')] },
+  { action: 'rotateCCW', bindings: [key('KeyR', 'Shift + R', { shift: true })] },
+  { action: 'pan', direction: 'up', repeat: true, bindings: [pan('KeyW', 'W', 0, 1), pan('Numpad8', 'Numpad 8', 0, 1)] },
+  { action: 'pan', direction: 'down', repeat: true, bindings: [pan('KeyS', 'S', 0, -1), pan('Numpad2', 'Numpad 2', 0, -1), pan('Numpad5', 'Numpad 5', 0, -1)] },
+  { action: 'pan', direction: 'left', repeat: true, bindings: [pan('KeyA', 'A', 1, 0), pan('Numpad4', 'Numpad 4', 1, 0)] },
+  { action: 'pan', direction: 'right', repeat: true, bindings: [pan('KeyD', 'D', -1, 0), pan('Numpad6', 'Numpad 6', -1, 0)] },
+  { action: 'pan', direction: 'upLeft', repeat: true, bindings: [pan('Numpad7', 'Numpad 7', 1, 1)] },
+  { action: 'pan', direction: 'upRight', repeat: true, bindings: [pan('Numpad9', 'Numpad 9', -1, 1)] },
+  { action: 'pan', direction: 'downLeft', repeat: true, bindings: [pan('Numpad1', 'Numpad 1', 1, -1)] },
+  { action: 'pan', direction: 'downRight', repeat: true, bindings: [pan('Numpad3', 'Numpad 3', -1, -1)] },
   { action: 'fullscreen', bindings: [key('KeyF', 'F')] },
   { action: 'shortcuts', capability: 'shortcuts', bindings: [key('Slash', '?', { key: '?', shift: 'any' })] },
   { action: 'exif', capability: 'exif', bindings: [key('KeyI', 'I')] },
@@ -52,7 +52,7 @@ function available(definition: Definition, capabilities: PreviewShortcutCapabili
 }
 export function getPreviewShortcutHelp(capabilities: PreviewShortcutCapabilities = {}) {
   return definitions.filter((definition) => available(definition, capabilities)).map((definition) => ({
-    action: definition.action, keys: definition.bindings.map((binding) => binding.label),
+    action: definition.action, direction: definition.direction, keys: definition.bindings.map((binding) => binding.label),
   }));
 }
 export function resolvePreviewShortcut(event: KeyboardEvent, capabilities: PreviewShortcutCapabilities, canPan: boolean) {
@@ -62,7 +62,7 @@ export function resolvePreviewShortcut(event: KeyboardEvent, capabilities: Previ
     if (!available(definition, capabilities) || (definition.action === 'pan' && !canPan)) continue;
     const binding = definition.bindings.find((binding) => binding.code === code
       && (!binding.key || binding.key === event.key)
-      && !event.altKey && (event.ctrlKey || event.metaKey) === (binding.mod === true)
+      && !event.altKey && !event.ctrlKey && !event.metaKey
       && (binding.shift === 'any' || event.shiftKey === (binding.shift === true)));
     if (binding) return { action: definition.action, repeat: definition.repeat === true, pan: binding.pan, physicalKey: code };
   }

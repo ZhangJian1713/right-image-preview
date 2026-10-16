@@ -1,4 +1,4 @@
-import { useLayoutEffect, useCallback, useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PRELOAD_DISPLAY_SETTLE_MS } from './lib/neighborDisplayPreload';
 import type { ImageItem, NeighborPreloadEntry, NeighborPreloadStatusMap } from './types';
 
@@ -111,6 +111,10 @@ export function useNeighborPreload(p: UseNeighborPreloadParams): UseNeighborPrel
   const doneSrcRef = useRef<Set<string>>(new Set());
   const loadingRef = useRef<Set<number>>(new Set());
   const errorRef = useRef<Set<number>>(new Set());
+  // Thumbnail/EXIF updates replace ImageItem objects without changing the resources to fetch.
+  // Compare the exact URL sequence, rather than restarting network work for metadata renders.
+  const sourcesKey = useMemo(() => JSON.stringify(images.map((image) => image.src)), [images]);
+  const previousSourcesKey = useRef(sourcesKey);
   const imagesRef = useRef(images);
   useLayoutEffect(() => { imagesRef.current = images; });
   const wantedRef = useRef<number[]>([]);
@@ -145,7 +149,12 @@ export function useNeighborPreload(p: UseNeighborPreloadParams): UseNeighborPrel
   useEffect(() => {
     const active = activeRef.current;
     const loading = loadingRef.current;
-    const wanted = wantedIndexes(currentIndex, radius, images.length);
+    if (previousSourcesKey.current !== sourcesKey) {
+      // Errors belong to a URL, not permanently to its position in the list.
+      errorRef.current.clear();
+      previousSourcesKey.current = sourcesKey;
+    }
+    const wanted = wantedIndexes(currentIndex, radius, imagesRef.current.length);
     onIndexesRef.current?.(wanted);
     wantedRef.current = wanted;
     const wantedSet = new Set(wanted);
@@ -220,7 +229,7 @@ export function useNeighborPreload(p: UseNeighborPreloadParams): UseNeighborPrel
         loading.delete(idx);
       }
     };
-  }, [images, currentIndex, radius, maxConcurrent, settleMs, publish]);
+  }, [sourcesKey, currentIndex, radius, maxConcurrent, settleMs, publish]);
 
   useEffect(() => {
     const active = activeRef.current;

@@ -124,10 +124,10 @@ export function useImagePreviewKeyboard(p: UseImagePreviewKeyboardParams): void 
       }
     };
     const visibility = () => { if (document.hidden) clear(); };
-    window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('blur', clear);
+    window.addEventListener('keydown', down); window.addEventListener('keyup', up, true); window.addEventListener('blur', clear);
     document.addEventListener('visibilitychange', visibility);
     return () => {
-      window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', clear);
+      window.removeEventListener('keydown', down); window.removeEventListener('keyup', up, true); window.removeEventListener('blur', clear);
       document.removeEventListener('visibilitychange', visibility); clear();
     };
   }, []);

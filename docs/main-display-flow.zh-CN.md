@@ -266,3 +266,30 @@
 3. ←/→：期望 **`path=fast`**，`sharp` 远小于 cold 的 ~1s（成功时常见 ≪200ms，好的时候可到 ~30ms）。
 4. 关掉 slots 强制 cold 做 A/B。
 5. 两张来回切：保活有效时来回也应明显快于冷启动。
+
+### 导航输入释放与底片跳转
+
+长按节拍器只负责呈现后推进；侧边指针输入的 pointerId、全局释放与取消由 `usePointerNavigation` 管理。箭头到达首尾被卸载时不依赖原按钮收到 pointerup；键盘/辅助技术 click 只单步执行，普通指针 click 不重复 pointerdown 的第一步。底片选择先取消旧长按，避免跳转后被残留节拍器再次推进。键盘 keyup 使用捕获监听，保持释放语义。
+
+### 底片元数据与邻图字节预加载
+
+`useNeighborPreload` 按原图 `src` 的完整有序序列识别资源变更，而不是按 `ImageItem[]` 引用识别。底片 URL、EXIF 或名称更新不取消已发出的原图请求，也不重置停稳期限；当前索引、原图序列及预加载参数变化仍按原有策略重启。原图序列变化同时清除旧索引上的失败标记，防止新资源继承旧图片的错误状态。URL 序列仅在图片列表引用改变时重新比较，不引入定时轮询。
+
+### 状态职责整理（2026-10-16）
+
+- `index` 为受控参数时直接参与当前渲染，不再通过 Effect 复制进内部索引 state；内部索引仅用于非受控模式，避免父组件布局阶段仍观察到旧图片。
+- 上一帧的 src、index、dims、cssTransform 合并为一条 `OutgoingFrame` 记录。渲染与布局提交共享 `captureOutgoingFrame` 的选择结果，优先使用最后的实际画面姿态，再回退已冻结姿态和已加载位图。
+- 已有托底画面仍盖住中间选中图时，中间图不得接管托底；A 已显示、B 未呈现、再切 C 时继续保留 A，直到 C 就绪。布局尺寸可来自旧图或 EXIF，不等于当前图已经呈现。
+- Toolbar 保留布局与按钮组合；图标、色板及缩放输入分别放入 `toolbar/icons.tsx`、`toolbar/palette.ts`、`toolbar/ZoomInput.tsx`。缩放输入的 focus rAF 与外部点击监听共享同一个打开生命周期，关闭/卸载一起取消。
+
+维护性边界：`ImagePreviewInner` 仍较长，保留了渲染阶段的画面快照 ref 与解码/rAF 交接，不能据此宣称并发渲染安全已经完成。后续如继续拆分，应先围绕画面交接建立独立控制器和中断/过期回调测试，避免把高度耦合的 Effects 原样搬入一个大 Hook。当前 DOM 渲染、公有 API 和宿主职责不变，不新增状态管理依赖。
+
+参考：[React：You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect)、[React：Reusing Logic with Custom Hooks](https://react.dev/learn/reusing-logic-with-custom-hooks)。
+
+### 控件与加载提示的计时职责
+
+`shell/usePreviewControls` 独立管理 3s 闲置渐隐，只在用户活动时显示控件、重置唯一计时器；初始显示由 state 默认值决定，挂载 Effect 只启动计时，不再同步设置一次相同 state。卸载取消计时，遗留的活动回调不再启动新任务；不调用邻图预加载的交互暂停逻辑。
+
+两处 300ms Loading 延迟共用 `shell/useDelayedIndicator`：当前连续加载阶段拥有自己的期限，加载停止时在当前渲染直接隐藏，清理旧计时器；重新加载从新的期限开始，不继承上次已到期的标记。无需再用 Effect 同步把显示 state 重置为 false。延迟数值分别由 PREVIEW_CONTROLS_IDLE_MS / PREVIEW_LOADER_DELAY_MS 管理，不与长按切图的 300ms 节拍共用同一常量。
+
+全屏操作入口在卸载后拒绝新动作：已保留的浏览器方法返回 false，宿主适配入口不再调用宿主；扩展的旧 toggle 回调也不会继续向 VS Code 发命令。此前已经发送的宿主操作不被撤销。

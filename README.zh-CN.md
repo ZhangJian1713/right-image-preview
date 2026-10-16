@@ -68,7 +68,7 @@ display-ready 记录不能保证浏览器仍保留解码位图。宿主未验证
 | **小地图独立图源** | 每条 **`ImageItem`**（及单图 **`src`** 模式）可设 **`minimapSrc`** / **`minimap`**，用小缩略图或自定义节点；默认仍用主图 **`src`** |
 | **触控双指捏合缩放** | 双指捏合/展开实现连续缩放；缩放锚点跟随双指中点；可用 **`pinchEnabled`** 关闭 |
 | **界面语言** | **`language`** 内置 **英文**与**简体中文**（`en`、`zh`、`zh-CN` 等）；可用 **`strings`** 覆盖任意文案 |
-| **丰富的键盘快捷键** | Esc / ±方向键 / Space / PageUp-Down / Ctrl+方向键 |
+| **丰富的键盘快捷键** | Esc / ±方向键 / Space / PageUp-Down / R、Shift+R / WASD、小键盘 |
 | **可访问性** | Overlay：`role="dialog"` + `aria-modal` 与焦点管理；`presentation="contained"`：`role="region"`（非整页模态），仅预览聚焦时响应键盘。控件带 `aria-label` |
 | **TypeScript 一等类型** | 完整类型导出，`forwardRef` 支持命令式 ref API |
 | **零生产依赖** | 仅依赖 React，无任何第三方 UI 库 |
@@ -184,6 +184,7 @@ import { ImagePreview } from 'right-image-preview';
 | `switchImageResetTransform` | `boolean` | `true` | 切图时是否重置翻转/旋转 |
 | `fitResetPan` | `boolean` | `true` | 切回 Fit 时是否归零平移 |
 | `showFlip` | `boolean` | `false` | 是否显示翻转按钮 |
+| `showRotateCCW` | `boolean` | `true` | 是否显示逆时针旋转按钮；隐藏后仍可通过 Shift+R 操作 |
 | `showExif` | `boolean` | `false` | 是否在工具栏显示 EXIF / 元数据开关 |
 | `initialExifOpen` | `boolean` | `false` | 开启 `showExif` 时是否默认展开 EXIF 面板 |
 | `showDelete` | `boolean` | `false` | 是否显示删除按钮；宿主在 `onDeleteImage` 中更新列表 |
@@ -276,7 +277,7 @@ interface ImagePreviewRef {
 ## 键盘快捷键
 
 新增 Q/E 切图、Home/End、R/Shift+R 旋转、F 全屏、WASD/数字小键盘平移以及 ? 打开宿主帮助，
-保留现有缩放与导航绑定。完整键位与生效条件见[键盘快捷键说明](./docs/keyboard.zh-CN.md)。
+保留现有缩放与导航绑定，取消 Ctrl/⌘/Shift + 方向键组合。平移按八个方向分别说明。完整键位与生效条件见[键盘快捷键说明](./docs/keyboard.zh-CN.md)。
 宿主可用 `getPreviewShortcutHelp` 生成只读说明；不提供自定义快捷键设置。
 
 

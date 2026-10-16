@@ -51,6 +51,7 @@
 |------|------|---------|-------------|
 | `arrows` | `'both' \| 'side' \| 'toolbar' \| 'none'` | `'both'` | **Side** arrows only; see table (non-empty `groupedImages` forces toolbar prev/next on) |
 | `showFlip` | `boolean` | `false` | Show horizontal/vertical flip buttons in the toolbar |
+| `showRotateCCW` | `boolean` | `true` | Show the counter-clockwise rotation button; Shift+R remains available when hidden |
 | `showExif` | `boolean` | `false` | Show the EXIF / metadata toggle in the toolbar |
 | `initialExifOpen` | `boolean` | `false` | When `showExif` is true, open the EXIF panel on first mount |
 | `showDelete` | `boolean` | `false` | Show the delete control (host must update the list in `onDeleteImage`) |
@@ -220,7 +221,7 @@ interface ImagePreviewRef {
 - Controlled: `{ isFullscreen, enter, exit }`; host props are the sole state source. Escape exits before closing the preview.
 - Toggle-only: `{ toggle }` for hosts such as VS Code that expose a toggle action without a reliable public state subscription. The button always says “Toggle fullscreen” (`strings.toggleFullscreen` override). No fullscreen state is inferred; `isFullscreen()` is false, explicit ref enter/exit report unsupported, and Escape retains preview-close behavior.
 
-`onFullscreenError?: (error: unknown) => void` reports host errors, unavailable/denied browser capability, or missing browser confirmation. Pending requests are deduplicated. Browser fallback requires API resolution and `fullscreenchange`; a 2s deadline also bounds API promises that never settle. Unmount cancels the browser handshake. These additions are local/unreleased and are not in the published 0.8.0 package.
+`onFullscreenError?: (error: unknown) => void` reports host errors, unavailable/denied browser capability, or missing browser confirmation. Pending requests are deduplicated. Already-owned browser fullscreen makes repeated explicit enter a successful no-op. A real browser transition requires API resolution and `fullscreenchange`; a 2s deadline also bounds API promises that never settle. Unmount cancels the browser handshake and prevents retained methods from starting new browser or host fullscreen actions. These additions are local/unreleased and are not in the published 0.8.0 package.
 
 ### Controlled filmstrip (local, unreleased)
 
@@ -236,9 +237,14 @@ tiles remain navigable. No resizing/generation or host filesystem access is perf
 The main viewport reserves strip height while visible; Fit follows measured space, Native zoom and
 orientation are retained. Thumbnail URL completion does not recenter a manually scrolled strip.
 
+### Hover hints
+
+Obvious actions (close, previous/next image, zoom in/out, rotate, delete, fullscreen) keep accessible button names without hover tooltips. Hints remain for flip direction, group navigation, Fit/100%, zoom input/presets, zoom lock, EXIF, filmstrip and minimap interactions. Legacy simple-action `tip*` locale fields remain in the string type for compatibility but are no longer rendered by these buttons.
+
 ### Fixed shortcut integration (local, unreleased)
 
 - `keyboardEnabled?: boolean` defaults true and suspends keyboard actions/held navigation when false.
 - `onShowShortcuts?: () => void` is called by ?; the host owns the read-only dialog/button.
-- `getPreviewShortcutHelp(capabilities)` returns `{ action, keys }[]` from fixed runtime bindings. Optional flags `navigation`, `groups`, `exif`, `delete`, `shortcuts` select available rows; pass true only for supported host features.
+- Pan help has one row per direction: up/down/left/right/upLeft/upRight/downLeft/downRight. Use `direction || action` as the row key; the action remains `pan`.
+- `getPreviewShortcutHelp(capabilities)` returns `{ action, direction?, keys }[]` from fixed runtime bindings. Optional flags `navigation`, `groups`, `exif`, `delete`, `shortcuts` select available rows; pass true only for supported host features.
 - No customizable key mapping or user settings are added. See [Keyboard shortcuts](./keyboard.md).

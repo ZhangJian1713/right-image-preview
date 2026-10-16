@@ -49,4 +49,4 @@ export { NAV_HOLD_MIN_VISIBLE_MS } from './imagePreviewTuning';
 export type { Rotation } from './useImageTransform';
 
 export { getPreviewShortcutHelp } from './previewShortcuts';
-export type { PreviewShortcutAction, PreviewShortcutCapabilities } from './previewShortcuts';
+export type { PreviewShortcutAction, PreviewShortcutCapabilities, PreviewPanDirection } from './previewShortcuts';

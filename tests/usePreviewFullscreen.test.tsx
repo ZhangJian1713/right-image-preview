@@ -80,6 +80,31 @@ describe('browser fullscreen fallback', () => {
     expect(result.current.fullscreenActive).toBe(false);
     delete (document as { exitFullscreen?: unknown }).exitFullscreen;
   });
+  it('re-entering owned fullscreen succeeds without another browser request or event', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { root, result, onError } = open();
+    active = root;
+    fireEvent(document, new Event('fullscreenchange'));
+    root.requestFullscreen = vi.fn(async () => {});
+    document.exitFullscreen = vi.fn();
+    let pending!: Promise<boolean>;
+    act(() => { pending = result.current.requestFullscreen(); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); expect(await pending).toBe(true); });
+    expect(root.requestFullscreen).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+    delete (document as { exitFullscreen?: unknown }).exitFullscreen;
+  });
+  it('does not invoke the browser from an API retained after unmount', async () => {
+    const { root, result, unmount, onError } = open();
+    root.requestFullscreen = vi.fn(async () => { active = root; fireEvent(document, new Event('fullscreenchange')); });
+    document.exitFullscreen = vi.fn();
+    const retained = result.current.requestFullscreen;
+    unmount();
+    expect(await retained()).toBe(false);
+    expect(root.requestFullscreen).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+    delete (document as { exitFullscreen?: unknown }).exitFullscreen;
+  });
   it('reports denied policy without calling the browser API', async () => {
     const { root, result, onError } = open();
     root.requestFullscreen = vi.fn(); document.exitFullscreen = vi.fn();

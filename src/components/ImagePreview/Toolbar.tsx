@@ -1,24 +1,16 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { DelayedTooltip } from './DelayedTooltip';
 import type { LocaleStrings } from './locale';
 import {
   TOOLBAR_NAV_COUNTER_MIN_WIDTH_PX,
-  ZOOM_DROPDOWN_MAX_WIDTH_PX,
 } from './imagePreviewTuning';
 import type { NativePercent, ZoomMode } from './types';
-
-// ── Design tokens ──────────────────────────────────────────────────────────
-// Soft blue-grey palette — readable on dark bg without harsh white contrast.
-const C = {
-  text:        '#cdd5e0',       // primary icon/text
-  textMuted:   'rgba(175,190,210,0.65)', // secondary / counter
-  textDisabled:'rgba(130,148,168,0.35)',
-  active:      '#cdd5e0',       // same as text when active bg is set
-  activeBg:    'rgba(255,255,255,0.16)',
-  hoverBg:     'rgba(255,255,255,0.09)',
-  divider:     'rgba(140,162,188,0.22)',
-  lockActive:  '#7daaff',       // locked state accent colour
-} as const;
+import { C } from './toolbar/palette';
+import { ZoomInput } from './toolbar/ZoomInput';
+import {
+  Icon, IconZoomIn, IconZoomOut, IconLeft, IconRight, IconPrevGroup, IconNextGroup, IconRotateCW, IconRotateCCW,
+  IconFlipH, IconFlipV, IconFit, IconOneToOne, IconLockOpen, IconLockClosed, IconExif, IconDelete, IconEnterFullscreen, IconExitFullscreen,
+} from './toolbar/icons';
 
 interface ToolbarProps {
   mode: ZoomMode;
@@ -53,6 +45,7 @@ interface ToolbarProps {
 
   // ── Feature flags ─────────────────────────────────────────────────────────
   showFlip?: boolean;
+  showRotateCCW?: boolean;
   /** When true, show the EXIF toggle button. */
   showExif?: boolean;
   /** Whether the EXIF panel is currently open (controls active state). */
@@ -101,119 +94,11 @@ interface ToolbarProps {
   zoomDropdownWidthPx: number;
 }
 
-// ── SVG icon helpers ───────────────────────────────────────────────────────
-
-const Icon = ({ children, size = 18, strokeWidth = 2 }: {
-  children: React.ReactNode; size?: number; strokeWidth?: number;
-}) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth}
-    strokeLinecap="round" strokeLinejoin="round"
-    width={size} height={size} aria-hidden="true">
-    {children}
-  </svg>
-);
-
-const IconZoomIn    = () => <Icon><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></Icon>;
-const IconZoomOut   = () => <Icon><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></Icon>;
-const IconLeft      = () => <Icon strokeWidth={2.5}><polyline points="15,18 9,12 15,6"/></Icon>;
-const IconRight     = () => <Icon strokeWidth={2.5}><polyline points="9,18 15,12 9,6"/></Icon>;
-const IconPrevGroup = () => <Icon strokeWidth={2.5}><polyline points="19,18 13,12 19,6"/><polyline points="11,18 5,12 11,6"/></Icon>;
-const IconNextGroup = () => <Icon strokeWidth={2.5}><polyline points="5,18 11,12 5,6"/><polyline points="13,18 19,12 13,6"/></Icon>;
-const IconRotateCW  = () => <Icon><path d="M21 2v6h-6"/><path d="M21 13a9 9 0 1 1-3-7.7L21 8"/></Icon>;
-const IconRotateCCW = () => <Icon><path d="M3 2v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></Icon>;
-const IconFlipH     = () => <Icon><path d="M12 3v18" strokeDasharray="2 2"/><path d="M5 8l-3 4 3 4"/><path d="M19 8l3 4-3 4"/></Icon>;
-const IconFlipV     = () => <Icon><path d="M3 12h18" strokeDasharray="2 2"/><path d="M8 5l4-3 4 3"/><path d="M8 19l4 3 4-3"/></Icon>;
-
-// 4 outward L-shaped corner brackets
-const IconFit = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-    strokeLinecap="round" strokeLinejoin="round" width={18} height={18} aria-hidden="true">
-    <path d="M3 9V3h6 M21 9V3h-6 M3 15v6h6 M21 15v6h-6"/>
-  </svg>
-);
-
-// "1:1" text-style SVG — two seriffed "1"s with a colon, clearly communicates
-// the native 1-to-1 pixel ratio without ambiguity.
-const IconOneToOne = () => (
-  <svg viewBox="0 0 28 18" width={28} height={18} fill="none"
-    stroke="currentColor" strokeWidth={1.8} strokeLinecap="round"
-    strokeLinejoin="round" aria-hidden="true">
-    {/* left "1" */}
-    <line x1="7"  y1="3"  x2="7"  y2="15"/>
-    <line x1="4"  y1="6"  x2="7"  y2="3"/>
-    {/* colon */}
-    <circle cx="14" cy="7"  r={1.1} fill="currentColor" stroke="none"/>
-    <circle cx="14" cy="11" r={1.1} fill="currentColor" stroke="none"/>
-    {/* right "1" */}
-    <line x1="21" y1="3"  x2="21" y2="15"/>
-    <line x1="18" y1="6"  x2="21" y2="3"/>
-  </svg>
-);
-
-// Open padlock — zoom unlocked (changes on image switch)
-const IconLockOpen = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-    strokeLinecap="round" strokeLinejoin="round" width={16} height={16} aria-hidden="true">
-    <rect x="3" y="11" width="18" height="11" rx="2"/>
-    <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
-  </svg>
-);
-
-// Closed padlock — zoom locked (preserved on image switch)
-const IconLockClosed = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-    strokeLinecap="round" strokeLinejoin="round" width={16} height={16} aria-hidden="true">
-    <rect x="3" y="11" width="18" height="11" rx="2"/>
-    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-  </svg>
-);
-
-// Info / metadata — EXIF panel toggle
-const IconExif = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-    strokeLinecap="round" strokeLinejoin="round" width={17} height={17} aria-hidden="true">
-    <circle cx="12" cy="12" r="9"/>
-    <line x1="12" y1="10" x2="12" y2="16"/>
-    <circle cx="12" cy="7" r="0.9" fill="currentColor" stroke="none"/>
-  </svg>
-);
-
-const IconDelete = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-    strokeLinecap="round" strokeLinejoin="round" width={17} height={17} aria-hidden="true">
-    <polyline points="3 6 5 6 21 6"/>
-    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-    <path d="M10 11v6"/>
-    <path d="M14 11v6"/>
-    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-  </svg>
-);
-
-const IconEnterFullscreen = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-    strokeLinecap="round" strokeLinejoin="round" width={17} height={17} aria-hidden="true">
-    <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
-    <path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
-    <path d="M3 16v3a2 2 0 0 0 2 2h3"/>
-    <path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
-  </svg>
-);
-
-const IconExitFullscreen = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
-    strokeLinecap="round" strokeLinejoin="round" width={17} height={17} aria-hidden="true">
-    <path d="M8 3v3a2 2 0 0 1-2 2H3"/>
-    <path d="M21 8h-3a2 2 0 0 1-2-2V3"/>
-    <path d="M3 16h3a2 2 0 0 1 2 2v3"/>
-    <path d="M16 21v-3a2 2 0 0 1 2-2h3"/>
-  </svg>
-);
-
 // ── Toolbar button ─────────────────────────────────────────────────────────
 
 interface TBtnProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   label: string;
-  tip: string;
+  tip?: string;
   active?: boolean;
   accent?: string; // override active/text colour
 }
@@ -226,32 +111,31 @@ function TBtn({ label, tip, active, accent, children, ...rest }: TBtnProps) {
       : C.text;
   const bgColor = active ? C.activeBg : 'transparent';
 
-  return (
-    <DelayedTooltip content={tip}>
-      <button
-        type="button"
-        aria-label={label}
-        style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          width: 34, height: 34, borderRadius: 6, border: 'none',
-          cursor: rest.disabled ? 'not-allowed' : 'pointer',
-          background: bgColor,
-          color: textColor,
-          transition: 'background 0.15s, color 0.15s',
-          flexShrink: 0,
-        }}
-        onMouseEnter={(e) => {
-          if (!rest.disabled) (e.currentTarget as HTMLButtonElement).style.background = active ? C.activeBg : C.hoverBg;
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.background = bgColor;
-        }}
-        {...rest}
-      >
-        {children}
-      </button>
-    </DelayedTooltip>
+  const button = (
+    <button
+      type="button"
+      aria-label={label}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: 34, height: 34, borderRadius: 6, border: 'none',
+        cursor: rest.disabled ? 'not-allowed' : 'pointer',
+        background: bgColor,
+        color: textColor,
+        transition: 'background 0.15s, color 0.15s',
+        flexShrink: 0,
+      }}
+      onMouseEnter={(e) => {
+        if (!rest.disabled) (e.currentTarget as HTMLButtonElement).style.background = active ? C.activeBg : C.hoverBg;
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.background = bgColor;
+      }}
+      {...rest}
+    >
+      {children}
+    </button>
   );
+  return tip ? <DelayedTooltip content={tip}>{button}</DelayedTooltip> : button;
 }
 
 const Divider = () => (
@@ -315,255 +199,6 @@ function MiddleEllipsisName({ name, style }: MiddleEllipsisNameProps) {
   );
 }
 
-// ── ZoomInput ──────────────────────────────────────────────────────────────
-
-interface ZoomInputProps {
-  mode: ZoomMode;
-  nativePercent: NativePercent;
-  fitEquivalentNativePercent?: number;
-  stops: NativePercent[];
-  onFit(): void;
-  onSetNative(percent: NativePercent): void;
-  strings: LocaleStrings;
-  zoomLabelSlotPx: number;
-  zoomDropdownWidthPx: number;
-}
-
-function ZoomInput({
-  mode,
-  nativePercent,
-  fitEquivalentNativePercent,
-  stops,
-  onFit,
-  onSetNative,
-  strings,
-  zoomLabelSlotPx,
-  zoomDropdownWidthPx,
-}: ZoomInputProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState('');
-  const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const displayLabel = mode === 'fit'
-    ? (fitEquivalentNativePercent !== undefined
-        ? `${Math.round(fitEquivalentNativePercent)}%`
-        : '—')
-    : `${Math.round(nativePercent)}%`;
-  const currentStopMatch = mode === 'native' ? Math.round(nativePercent) : null;
-
-  const open = useCallback(() => {
-    setInputValue(
-      mode === 'fit'
-        ? (fitEquivalentNativePercent !== undefined
-            ? String(Math.round(fitEquivalentNativePercent))
-            : '')
-        : String(Math.round(nativePercent)),
-    );
-    setIsOpen(true);
-    requestAnimationFrame(() => {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    });
-  }, [mode, nativePercent, fitEquivalentNativePercent]);
-
-  const maxStop = useMemo(() => Math.max(...stops), [stops]);
-
-  const commit = useCallback((raw: string) => {
-    const trimmed = raw.trim().replace('%', '');
-    const num = parseInt(trimmed, 10);
-    if (!isNaN(num) && num > 0) onSetNative(Math.min(num, maxStop));
-    setIsOpen(false);
-  }, [maxStop, onSetNative]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setIsOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [isOpen]);
-
-  const sortedDesc = [...stops].sort((a, b) => b - a);
-
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        position: 'relative',
-        flexShrink: 0,
-        width: zoomLabelSlotPx,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}
-    >
-      {isOpen ? (
-        <input
-          ref={inputRef}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') commit(inputValue);
-            if (e.key === 'Escape') setIsOpen(false);
-            e.stopPropagation();
-          }}
-          style={{
-            width: '100%',
-            textAlign: 'center',
-            background: 'rgba(255,255,255,0.08)',
-            border: '1px solid rgba(180,200,225,0.3)',
-            borderRadius: 5, color: C.text, fontSize: 13,
-            padding: '3px 4px', outline: 'none', boxSizing: 'border-box',
-          }}
-        />
-      ) : (
-        <DelayedTooltip content={strings.tipZoomLevel}>
-          <span
-            onClick={open}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') open(); }}
-            style={{
-              display: 'block',
-              width: '100%',
-              boxSizing: 'border-box',
-              textAlign: 'center',
-              fontSize: 13, color: C.text, cursor: 'pointer',
-              padding: '3px 5px', borderRadius: 5,
-              border: '1px solid transparent',
-              fontVariantNumeric: 'tabular-nums',
-              transition: 'border-color 0.15s',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLSpanElement).style.borderColor = 'rgba(180,200,225,0.28)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLSpanElement).style.borderColor = 'transparent'; }}
-          >
-            {displayLabel}
-          </span>
-        </DelayedTooltip>
-      )}
-
-      {isOpen && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 'calc(100% + 8px)',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            /* Wider than the narrow % trigger so “Fit (n%)” / preset rows fit; clamp on small viewports. */
-            width: zoomDropdownWidthPx,
-            minWidth: 0,
-            maxWidth: `min(92vw, ${ZOOM_DROPDOWN_MAX_WIDTH_PX}px)`,
-            background: 'rgba(12,16,26,0.97)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: '1px solid rgba(140,162,188,0.18)',
-            borderRadius: 9,
-            padding: '4px 0',
-            boxShadow: '0 -6px 24px rgba(0,0,0,0.55)',
-            zIndex: 200,
-            boxSizing: 'border-box',
-          }}
-        >
-          {sortedDesc.map((stop) => (
-            <DropdownRow
-              key={stop}
-              label={`${stop}%`}
-              tip={strings.tipZoomRowPercent(stop)}
-              active={currentStopMatch === stop}
-              onMouseDown={() => { onSetNative(stop); setIsOpen(false); }}
-            />
-          ))}
-          <div style={{ height: 1, background: C.divider, margin: '3px 0' }} />
-          <DropdownRow
-            label={
-              fitEquivalentNativePercent !== undefined
-                ? strings.fitApprox(Math.round(fitEquivalentNativePercent))
-                : strings.fit
-            }
-            tip={
-              fitEquivalentNativePercent !== undefined
-                ? strings.tipZoomRowFitApprox(Math.round(fitEquivalentNativePercent))
-                : strings.tipZoomRowFit
-            }
-            active={mode === 'fit'}
-            onMouseDown={() => { onFit(); setIsOpen(false); }}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface DropdownRowProps {
-  label: string;
-  tip: string;
-  active: boolean;
-  onMouseDown(): void;
-}
-
-function DropdownRow({ label, tip, active, onMouseDown }: DropdownRowProps) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <DelayedTooltip content={tip}>
-      <div
-        onMouseDown={(e) => { e.preventDefault(); onMouseDown(); }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          columnGap: 8,
-          padding: '5px 8px',
-          cursor: 'pointer',
-          background: active ? 'rgba(88,101,242,0.18)' : hovered ? 'rgba(255,255,255,0.06)' : 'transparent',
-          transition: 'background 0.1s',
-          boxSizing: 'border-box',
-          width: '100%',
-          minWidth: 0,
-        }}
-      >
-      <span
-        style={{
-          flex: '1 1 auto',
-          minWidth: 0,
-          fontSize: 13,
-          color: active ? '#8fa8ff' : C.text,
-          fontWeight: active ? 600 : 400,
-          whiteSpace: 'nowrap',
-          fontVariantNumeric: 'tabular-nums',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        }}
-      >
-        {label}
-      </span>
-      <span
-        style={{
-          width: 14,
-          flex: '0 0 14px',
-          display: 'flex',
-          justifyContent: 'center',
-        }}
-      >
-        {active && (
-          <svg viewBox="0 0 16 16" fill="currentColor" width={12} height={12}
-            style={{ color: '#8fa8ff' }} aria-hidden="true">
-            <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"/>
-          </svg>
-        )}
-      </span>
-    </div>
-    </DelayedTooltip>
-  );
-}
-
 // ── Toolbar ────────────────────────────────────────────────────────────────
 
 export function Toolbar({
@@ -576,6 +211,7 @@ export function Toolbar({
   showToolbarArrows = true,
   imageName, groupName, groupOrdinal, groupCount,
   showFlip = false,
+  showRotateCCW = true,
   showExif = false,
   exifOpen = false,
   showDelete = false,
@@ -747,7 +383,6 @@ export function Toolbar({
             {showToolbarArrows && (
               <TBtn
                 label={strings.prev}
-                tip={strings.tipPrev}
                 onClick={onPrev}
                 disabled={currentIndex === 0}
               >
@@ -775,7 +410,6 @@ export function Toolbar({
             {showToolbarArrows && (
               <TBtn
                 label={strings.next}
-                tip={strings.tipNext}
                 onClick={onNext}
                 disabled={currentIndex === totalImages - 1}
               >
@@ -808,8 +442,8 @@ export function Toolbar({
         )}
 
         {/* ── Rotate ── */}
-        <TBtn label={strings.rotateCCW} tip={strings.tipRotateCCW} onClick={onRotateCCW}><IconRotateCCW /></TBtn>
-        <TBtn label={strings.rotateCW} tip={strings.tipRotateCW} onClick={onRotateCW}><IconRotateCW /></TBtn>
+        {showRotateCCW && <TBtn label={strings.rotateCCW} onClick={onRotateCCW}><IconRotateCCW /></TBtn>}
+        <TBtn label={strings.rotateCW} onClick={onRotateCW}><IconRotateCW /></TBtn>
 
         <Divider />
 
@@ -820,7 +454,7 @@ export function Toolbar({
         <Divider />
 
         {/* ── Precise zoom control: [-] [value] [+] [lock] ── */}
-        <TBtn label={strings.zoomOut} tip={strings.tipZoomOut} onClick={onZoomOut} disabled={!canZoomOut}><IconZoomOut /></TBtn>
+        <TBtn label={strings.zoomOut} onClick={onZoomOut} disabled={!canZoomOut}><IconZoomOut /></TBtn>
 
         <ZoomInput
           mode={mode}
@@ -834,7 +468,7 @@ export function Toolbar({
           zoomDropdownWidthPx={zoomDropdownWidthPx}
         />
 
-        <TBtn label={strings.zoomIn} tip={strings.tipZoomIn} onClick={onZoomIn} disabled={!canZoomIn}><IconZoomIn /></TBtn>
+        <TBtn label={strings.zoomIn} onClick={onZoomIn} disabled={!canZoomIn}><IconZoomIn /></TBtn>
 
         {/* Lock: sits at the end of the zoom cluster — toggles whether zoom is
             preserved when switching images */}
@@ -867,7 +501,6 @@ export function Toolbar({
             <Divider />
             <TBtn
               label={strings.deleteImage}
-              tip={strings.tipDeleteImage}
               onClick={onDeleteImage}
             >
               <IconDelete />
@@ -895,7 +528,6 @@ export function Toolbar({
             <Divider />
             <TBtn
               label={fullscreenToggleOnly ? strings.toggleFullscreen : isFullscreen ? strings.exitFullscreen : strings.enterFullscreen}
-              tip={fullscreenToggleOnly ? strings.toggleFullscreen : isFullscreen ? strings.tipExitFullscreen : strings.tipEnterFullscreen}
               active={isFullscreen}
               onClick={onToggleFullscreen}
             >
