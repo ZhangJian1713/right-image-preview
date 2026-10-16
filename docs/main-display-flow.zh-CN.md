@@ -50,7 +50,7 @@
 6. **Hold 节流「已呈现」只认 incoming**（缩略 underlay 或新主图），不认仍在托底的上一张，以免切太快。
 7. **图层隔离**：上一张与下一张是视口内互不干扰的绝对定位层；离开时**冻结**该层的尺寸与 transform，切图不得改动上一层的位置/缩放。就绪后上一层降为保活（仍挂载、肉眼不可见），← 可瞬间拉回。
 
-相关实现入口：`useProgressiveMainImage`、`DisplayStageLayers`（独立层 + `frozenBySrc`）、`ImagePreviewInner` outgoing 状态机、`lib/imagePreviewDecode.ts`。
+相关实现入口：`useProgressiveMainImage`、`DisplayStageLayers`（独立层 + `frozenBySrc`）、`stage/stageHandoff.ts` 与 `stage/useStageHandoff.ts`、`stage/imagePreviewDecode.ts`。
 
 ### 2.1 舞台楼层（DOM 顺序，少用 z-index）
 
@@ -174,13 +174,13 @@
 
 | 主题 | 位置 |
 |------|------|
-| 渐进占位 → 原图 / 快开竞态 | `useProgressiveMainImage.ts` |
-| 整图可绘制 / 原子揭开 / WeakSet 快路径 | `lib/imagePreviewDecode.ts`、`ImagePreviewInner` |
-| 邻居层复用 + 1×1 保活 | `parts/DisplayStageLayers.tsx` |
+| 渐进占位 → 原图 / 快开竞态 | `stage/useProgressiveMainImage.ts` |
+| 整图可绘制 / 原子揭开 / 按元素及 src 校验的解码快路径 | `stage/imagePreviewDecode.ts`、`stage/useStageReveal.ts` |
+| 邻居层复用 + 1×1 保活 | `stage/DisplayStageLayers.tsx` |
 | 保活策略 | 非 sharp：`1×1` + `opacity: 1`；outgoing / 已揭开当前：全尺寸（`DISPLAY_LAYER_KEEPALIVE_OPACITY` 已弃用） |
-| Display-ready 挑选、settle、panIdle、粘性 src | `lib/neighborDisplayPreload.ts`、`useNeighborDisplayPreload.ts` |
-| 字节预热 settle | `useNeighborPreload.ts` |
-| 短按 / 长按节奏 | `useThumbPacedNavigation.ts`、`useImagePreviewKeyboard.ts` |
+| Display-ready 挑选、settle、panIdle、粘性 src | `preload/neighborDisplayPreload.ts`、`preload/useNeighborDisplayPreload.ts` |
+| 字节预热 settle | `preload/useNeighborPreload.ts` |
+| 短按 / 长按节奏 | `interaction/useThumbPacedNavigation.ts`、`interaction/useImagePreviewKeyboard.ts` |
 | 本地大图计时验收（dev） | `demos/Demo6LocalLarge.tsx`（侧栏 `path` / `next` 相位 / sharp ms） |
 
 ---
@@ -202,7 +202,7 @@
   → outgoing 全尺寸托底；N+1 先全尺寸铺在下层（可 1×1→全尺寸）
   → 双 rAF 重叠后再把上一张缩成 1×1 保活
   → preferFastReveal：跳过二次 new Image() 探针；排空 layout 竞态 pending
-  → scheduleRevealAfterDecode 命中 decodeSettled WeakSet → 微任务揭开
+  → scheduleRevealAfterDecode 命中 decodeSettled WeakMap → 微任务揭开
   → underlay 撤掉，sharp 接近瞬时
 ```
 
@@ -255,7 +255,7 @@
 - **计时起点（重要）**：以「用户能看见的一帧」为准，而不是 onLoad / 已知宽高。
   - 候选：舞台可见（`imageShowReady`）且缩略 underlay 或原图主层位图已 load。
   - 确认：对该层 `decode()`（缩略很轻）+ **两帧 rAF** 后才开始 `holdMinVisibleMs`；本张 visit 内确认后不再因 underlay→原图揭开而清零。
-  - 切 `src` 时强制舞台先 opacity:0（即使 meta 尺寸一直在），避免黑闪期间误开计时。
+  - 没有旧帧托底时，新访问先隐藏当前层，待尺寸稳定后显示；旧帧托底全程保持可见，不能把整个舞台一并隐藏。
   - 仍在黑屏 / Loading：不计时、不切。
 - 无缩略、原图未就绪时：停在当前 index，中央转圈，绝不提前切。
 
@@ -278,11 +278,11 @@
 ### 状态职责整理（2026-10-16）
 
 - `index` 为受控参数时直接参与当前渲染，不再通过 Effect 复制进内部索引 state；内部索引仅用于非受控模式，避免父组件布局阶段仍观察到旧图片。
-- 上一帧的 src、index、dims、cssTransform 合并为一条 `OutgoingFrame` 记录。渲染与布局提交共享 `captureOutgoingFrame` 的选择结果，优先使用最后的实际画面姿态，再回退已冻结姿态和已加载位图。
+- 上一帧的 src、index、dims、cssTransform 合并为一条 `OutgoingFrame` 记录。托底状态通过 `stageHandoff` 纯转换产生，使用最后提交的画面快照；导航事件在重置姿态前额外冻结。
 - 已有托底画面仍盖住中间选中图时，中间图不得接管托底；A 已显示、B 未呈现、再切 C 时继续保留 A，直到 C 就绪。布局尺寸可来自旧图或 EXIF，不等于当前图已经呈现。
-- Toolbar 保留布局与按钮组合；图标、色板及缩放输入分别放入 `toolbar/icons.tsx`、`toolbar/palette.ts`、`toolbar/ZoomInput.tsx`。缩放输入的 focus rAF 与外部点击监听共享同一个打开生命周期，关闭/卸载一起取消。
+- Toolbar 保留布局与按钮组合；图标、色板及缩放输入分别放入 `controls/toolbar/icons.tsx`、`controls/toolbar/palette.ts`、`controls/toolbar/ZoomInput.tsx`。缩放输入的 focus rAF 与外部点击监听共享同一个打开生命周期，关闭/卸载一起取消。
 
-维护性边界：`ImagePreviewInner` 仍较长，保留了渲染阶段的画面快照 ref 与解码/rAF 交接，不能据此宣称并发渲染安全已经完成。后续如继续拆分，应先围绕画面交接建立独立控制器和中断/过期回调测试，避免把高度耦合的 Effects 原样搬入一个大 Hook。当前 DOM 渲染、公有 API 和宿主职责不变，不新增状态管理依赖。
+维护性边界：`ImagePreviewInner` 仍较长，主要负责功能组合与 UI 布局。画面交接已抽出纯状态转换、解码订阅和揭开控制器，不再在渲染中写快照 ref。过期访问已有回归测试，但不能据此宣称所有并发渲染或浏览器合成时序均已验证。DOM 渲染、公有 API 和宿主职责不变，不新增状态管理依赖。
 
 参考：[React：You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect)、[React：Reusing Logic with Custom Hooks](https://react.dev/learn/reusing-logic-with-custom-hooks)。
 
@@ -290,6 +290,8 @@
 
 `shell/usePreviewControls` 独立管理 3s 闲置渐隐，只在用户活动时显示控件、重置唯一计时器；初始显示由 state 默认值决定，挂载 Effect 只启动计时，不再同步设置一次相同 state。卸载取消计时，遗留的活动回调不再启动新任务；不调用邻图预加载的交互暂停逻辑。
 
-两处 300ms Loading 延迟共用 `shell/useDelayedIndicator`：当前连续加载阶段拥有自己的期限，加载停止时在当前渲染直接隐藏，清理旧计时器；重新加载从新的期限开始，不继承上次已到期的标记。无需再用 Effect 同步把显示 state 重置为 false。延迟数值分别由 PREVIEW_CONTROLS_IDLE_MS / PREVIEW_LOADER_DELAY_MS 管理，不与长按切图的 300ms 节拍共用同一常量。
+冷打开的 300ms Loading 延迟由 `shell/useDelayedIndicator` 管理：加载结束立即隐藏，重新加载拥有新的期限。渐进加载和旧帧托底期间已经由“等待主图揭开”条件显示转圈，不再保留被这个条件完全覆盖的第二个预加载 spinner 计时器。控件闲置 3s 和 Loading 延迟分别由 PREVIEW_CONTROLS_IDLE_MS / PREVIEW_LOADER_DELAY_MS 管理，不与长按切图的 300ms 节拍共用同一常量。
 
 全屏操作入口在卸载后拒绝新动作：已保留的浏览器方法返回 false，宿主适配入口不再调用宿主；扩展的旧 toggle 回调也不会继续向 VS Code 发命令。此前已经发送的宿主操作不被撤销。
+
+目录分类和异步所有权详见 [组件内部结构与状态职责](./component-architecture.zh-CN.md)。

@@ -8,7 +8,7 @@ import {
   resolvePreloadDisplaySlotCeiling,
   rgbaDecodedBytes,
   suggestPreloadMemoryBudgetBytes,
-} from '../src/components/ImagePreview/lib/neighborDisplayPreload';
+} from '../src/components/ImagePreview/preload/neighborDisplayPreload';
 import type { ImageItem } from '../src/components/ImagePreview/types';
 
 describe('neighborDisplayPreload helpers', () => {

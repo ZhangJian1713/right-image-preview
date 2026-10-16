@@ -1,6 +1,6 @@
 # Minimap viewport drag (design notes)
 
-This document explains why the navigation minimap behaves the way it does in embedded browsers (e.g. VS Code / Cursor WebView) and after rotation. It is meant for maintainers changing `Minimap.tsx` or `minimapMath.ts`.
+This document explains why the navigation minimap behaves the way it does in embedded browsers (e.g. VS Code / Cursor WebView) and after rotation. It is meant for maintainers changing `controls/Minimap.tsx` or `transform/minimapMath.ts`.
 
 ## Goals
 
@@ -38,7 +38,7 @@ J = \begin{bmatrix} \partial m_x/\partial tx & \partial m_x/\partial ty \\ \part
 
 We approximate \(J\) with small finite differences on **`tx`** and **`ty`**, then apply **`[dtx, dty]^T = J^{-1} [dm_x, dm_y]^T`** to match the pointer delta **`(dm_x, dm_y)`** (same as client delta when the minimap is not independently scaled). The centre is mapped **without clamping** to natural bounds so derivatives stay stable near image edges.
 
-See **`panDeltaFromMinimapPointerDelta`** in `minimapMath.ts`.
+See **`panDeltaFromMinimapPointerDelta`** in `transform/minimapMath.ts`.
 
 ## If 1:1 breaks again
 
@@ -70,5 +70,5 @@ Dragging the **main** picture uses **`MAIN_DRAG_MIN_VIEWPORT_COVERAGE`** (defaul
 
 ## Related files
 
-- `src/components/ImagePreview/Minimap.tsx` — UI, pointer session lifecycle.
-- `src/components/ImagePreview/minimapMath.ts` — coordinate transforms and Jacobian-based pan delta.
+- `src/components/ImagePreview/controls/Minimap.tsx` — UI, pointer session lifecycle.
+- `src/components/ImagePreview/transform/minimapMath.ts` — coordinate transforms and Jacobian-based pan delta.

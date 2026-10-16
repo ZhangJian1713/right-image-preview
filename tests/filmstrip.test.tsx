@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { ImagePreview } from '../src/components/ImagePreview';
-import { ThumbnailsStrip } from '../src/components/ImagePreview/parts/ThumbnailsStrip';
+import { ThumbnailsStrip } from '../src/components/ImagePreview/controls/ThumbnailsStrip';
 
 const images = [{ id: 'a', src: 'original:a', thumbnailSrc: null }, { id: 'b', src: 'original:b', thumbnailSrc: 'thumb:200' }];
 

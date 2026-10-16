@@ -3,7 +3,7 @@
  * This file is not part of the published library bundle.
  *
  * ImagePreview component UI (toolbar, aria-labels, …) lives in
- * `src/components/ImagePreview/locale.ts` and is controlled via the `language` prop.
+ * `src/components/ImagePreview/i18n/locale.ts` and is controlled via the `language` prop.
  */
 
 export type DemoLocale = 'en' | 'zh';

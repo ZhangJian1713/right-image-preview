@@ -23,7 +23,7 @@ WebGL 与 0.7 图源模型保留在独立分支。使用 0.7 `MediaSource` API �
 `clickZoomEnabled` 默认关闭；开启后单击和 Space 共用 Fit → 有意义的 Detail
 中间档 → 100% → Fit 循环。Fit 上限为 100% 的小图使用 Fit/100% → 200% → Fit。
 鼠标缩放保持光标锚点，Space 保持视口中心。拖动与双击序列不会额外推进倍率。
-Fit 上限是独立配置，省略或传入非法值时保持原来的无上限行为。
+Fit 上限是独立配置，省略或传入非法值时，使用当前有效最高档位作为上限。
 滚轮及工具栏继续使用各自的固定档位。
 
 内置英文、简体中文和繁体中文。更新 `language` 或 `strings` 保留当前图片及浏览状态，
@@ -173,6 +173,7 @@ import { ImagePreview } from 'right-image-preview';
 | `defaultGroupedSelection` | `{ defaultGroupIndex, defaultIndexInGroup }` | — | `groupedImages` 模式下的初始图（组下标只计非空组）；优先于 `defaultIndex` |
 | `defaultIndex` | `number` | `0` | 扁平列表中的初始下标；与分组同时传入 `defaultGroupedSelection` 时忽略 |
 | `stops` | `number[]` | `[10,25,50,75,100,125,150,175,200]` | Native zoom 档位（%，升序）；需要更高上限请传入更长列表 |
+| `smallImageZoom` | `SmallImageZoomOptions` | 不启用 | 主图实际长边 ≤ `maxEdge` 时，仅增加 `maxNativePercent` 这一档；例如 `{ maxEdge: 64, maxNativePercent: 1600 }` |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | 初始缩放模式 |
 | `initialNativePercent` | `number` | 第一档 | `initialMode='native'` 时的初始比例 |
 | `firstZoomInStrategy` | `'above-fit' \| 'first-stop' \| 'hundred'` | `'above-fit'` | 从 Fit 首次放大时的入档策略 |
@@ -253,7 +254,7 @@ interface ImagePreviewRef {
   zoomIn(): void;
   zoomOut(): void;
   fit(): void;
-  setNative(percent: number): void; // 任意正数（不截断；工具栏输入会限制在最大档位）
+  setNative(percent: number): void; // 有限正数，统一限制在当前图片的最高档位
 
   // 变换
   rotateCW(): void;
@@ -285,27 +286,22 @@ interface ImagePreviewRef {
 
 ## 项目结构
 
+[内部结构与状态职责](docs/component-architecture.zh-CN.md)。
+
 ```
 src/
   components/ImagePreview/
-    types.ts                   # TypeScript 类型定义
-    flattenGroupedImages.ts    # resolvePreviewImages / flattenGroupedImages 辅助函数
-    useZoomState.ts            # 缩放状态机 Hook（纯逻辑，无 DOM）
-    useImageTransform.ts       # 尺寸测量 + CSS transform 计算 + 拖拽平移
-    useWheelZoom.ts            # 滚轮缩放 Hook
-    usePinchZoom.ts            # 触控双指捏合缩放 Hook
-    injectGlobalStyle.ts       # 单例 CSS 注入工具（SSR 安全）
-    locale.ts / localeTypes.ts / locales/  # 国际化字符串
-    Toolbar.tsx                # 底部工具栏
-    Minimap.tsx                # 导航小地图
-    shell/
-      ImagePreview.tsx         # 外层 shell（trigger 模式分发）
-      ImagePreviewInner.tsx    # 对话框实现
-      ImagePreviewTriggerShell.tsx
-    parts/
-      ImagePreviewCloseButton.tsx
-      ImagePreviewNavArrow.tsx
-    index.ts                   # 公开导出
+    index.ts / types.ts        # Public exports and props/ref contract
+    model/                     # Geometry and stage model types
+    shell/                     # Entry, composition, fullscreen and chrome timing
+    stage/                     # Main decode, progressive display and frame handoff
+    preload/                   # Neighbor bytes, slots and memory budget
+    interaction/               # Keyboard, pointer, wheel, pinch and hold navigation
+    transform/                 # Zoom, pan, orientation and coordinate math
+    controls/                  # Toolbar, filmstrip, minimap, EXIF and buttons
+    i18n/                      # Locale contracts and built-in strings
+    lib/                       # Data helpers and small shared utilities
+    imagePreviewTuning.ts      # Existing timing and layout constants
   App.tsx                      # 演示页外壳
   demos/                       # 各 Demo 与演示站文案（不打进 npm 包）
 docs/
@@ -340,6 +336,12 @@ fitEquivalentNativePercent    = fitScale × 100（供 UI 显示"适应 ≈ xx%"�
 ```
 
 ---
+
+## 有限缩放边界
+
+最高有效档位现在统一约束滚轮、键盘、工具栏、输入框、双指和 `setNative`，不再对双指额外乘以 4。Fit 也不会超过该上限；`fitMaxNativePercent` 可继续设置更低的 Fit 上限。双指仍连续变化，手动输入仍接受档位间的有限倍率；“档位”指步进和菜单预设。
+
+`smallImageZoom` 默认关闭。启用后只信任当前主图的实际固有尺寸，尺寸未知、EXIF、缩略占位或上一张图片均不触发例外。切图或参数变化导致上限降低时立即夹紧倍率，缩放锁不能绕过上限；回到较高上限时不自动恢复被夹紧的旧倍率。这也将此前允许超过最高档位的 `setNative` 调用改为夹紧，其他宿主需要更高倍率时应显式配置档位或小图例外。
 
 ## 后续迭代方向
 

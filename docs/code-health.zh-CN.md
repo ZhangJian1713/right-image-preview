@@ -1,68 +1,22 @@
 # 代码健康与可维护性说明
 
-本文记录对 `right-image-preview` 代码库的审阅结论、已落地的改进与仍建议后续考虑的事项（不定期更新）。
+当前目录边界、状态归属与清理规则见 [组件内部结构](./component-architecture.zh-CN.md)。本文记录本轮处理范围和仍需关注的问题。
 
----
+## 已处理
 
-## 1. 曾发现的问题（审阅摘要）
+- 工具栏的图标、色板、缩放输入分开；交互、预加载、坐标变换、舞台与控件按职责分类。
+- 共享尺寸与图层模型移入 `model/`，不再由 UI 和 Hook 互相提供领域类型；公开包入口保持兼容。
+- 主图切换由纯转换函数和专用 Hook 管理。当前选择、上次提交画面与旧帧托底分别记录，不再在渲染时改写旧帧 ref 或冻结 Map。
+- 主图解码、渐进探针和动画帧有各自明确的访问身份及清理边界；较早访问的回调不能完成后一次访问。
+- 超时回退不再缓存为真正解码成功；共享解码可取消单个订阅，最后一个订阅离开时清理超时器。
+- 侧边长按输入使用全局释放与 pointerId；底片跳转取消旧长按。快捷键、工具栏配置、宿主全屏与相关回归测试保留。
 
-### 1.1 结构与体量
+## 仍需关注
 
-- **`ImagePreview.tsx` 体量很大**（主对话框单文件承担数据、分组、滚轮、渐进图、布局、工具栏、小地图、侧箭头等），属于典型的「上帝组件」，新人通读成本高，改动牵一发动全身。
-- **`Toolbar` / `Minimap` / `useImageTransform`** 同样偏长，与领域复杂度相关，但核心状态与事件仍高度集中在 `ImagePreview`。
+- `shell/ImagePreviewInner.tsx` 仍组合较多 UI；可以随具体功能逐步抽取，避免纯粹为了行数制造透传层。
+- `controls/Minimap.tsx`、`transform/useImageTransform.ts` 和 `stage/useProgressiveMainImage.ts` 有较多领域细节。后续修改坐标或异步策略时，应先增加对应边界用例。
+- `DelayedTooltip` 仍使用 cloneElement/ref 转发；更换实现需要单独验证焦点、事件和 React 17，不能只因为文件较长就替换。
+- 演示页与组件的视觉 token 尚未统一；没有当前产品需求时不引入主题框架。
+- DOM 位图驻留仍是浏览器 best effort。程序化测试不能证明实际 GPU 合成、低内存设备驻留或大 JPG 的所有视觉时序。
 
-### 1.2 可维护性
-
-- **多处 `eslint-disable`**（hooks 依赖、ref 合并、effect 内 setState）：表示与默认规则有意的妥协，维护者需理解原因。
-- **`DelayedTooltip` 使用 `cloneElement` + ref 转发**：子节点类型或 ref 形态变化时较脆。
-- **渐进加载（`useProgressiveMainImage`）与主视图 opacity / spinner 分支**：组合状态多，需顺着多条分支阅读。
-
-### 1.3 重复与 API 认知
-
-- **演示站与组件内视觉 token 不共享**（各写一套颜色），主题微调要改两处。
-- **`switchImageResetZoom` 与 `switchImageResetTransform`** 命名接近，依赖文档区分。
-
-### 1.4 行为与边界
-
-- **侧栏箭头 `polyline` 坐标为魔法字符串**：可读性差，难以从代码看出「单箭头 / 双箭头 / 左右」语义。
-- **`PageUp` / `PageDown`**：依赖 `prevGroup` / `nextGroup` 在无分组时内部 no-op；读者若不跟实现易误解。
-- **焦点**：内层在 `visible` 为 false 时卸载，挂载时 `focus` 一次；若未来改为「隐藏但不卸载」，需重审焦点策略。
-
-### 1.5 其它
-
-- **`flattenGroupedImages` 在 dev 下 `console.warn`**：合理，属唯一库内 warn。
-- **Demo 3 资源策略**：大图与渐进用缩略图均走作者提供的 COS（新加坡）；著作权与原件说明仍以 Commons 页面为准。
-- **自动化测试**：对 Minimap、渐进图、滚轮路径覆盖偏薄，大改时防回归压力较大。
-
----
-
-## 2. 已落地的改进（本轮）
-
-| 项目 | 说明 |
-|------|------|
-| **侧箭头 polyline** | 抽取为 `navArrowPolylines.ts` 命名常量，JSX 用括号表达左右/单双，语义自解释。 |
-| **键盘逻辑** | 抽取为 `useImagePreviewKeyboard.ts`，缩短 `ImagePreview.tsx`，依赖数组集中在一处。 |
-| **焦点 effect** | 补充注释：与外层 `visible` 卸载策略的关系。 |
-| **PageUp/PageDown** | 在键盘 hook 内注释说明无分组时由 `prevGroup`/`nextGroup` 内部 guard。 |
-| **CI** | 新增 `.github/workflows/ci.yml`：`lint` + `test` + `build:lib`（push/PR 至 main 等）。 |
-| **API 去包袱** | 自 `types` 与需求文档移除未实现的 `countRender`，仅保留工具栏内置计数展示。 |
-
----
-
-## 3. 建议后续考虑（未强制实施）
-
-- **继续拆分 `ImagePreview`**：例如滚轮、`useImperativeHandle`、侧箭头子组件文件化等，需按发布节奏分步做。
-- **DelayedTooltip**：评估改为「wrapper + portal」或小型 headless 方案，减少对 `cloneElement` 的依赖。
-- **设计 token**：可选 `tokens.ts` 供 Toolbar 与 demo 共用（或明确「demo 不保证与库视觉一致」）。
-- **补充测试**：渐进加载、分组键盘边界、滚轮聚合一类场景。
-- **Demo 资源**：README 已说明 Demo 3 依赖外链大图与本地 thumb；fork 后需联网。
-
----
-
-## 4. 相关文件（本轮）
-
-- `src/components/ImagePreview/navArrowPolylines.ts`
-- `src/components/ImagePreview/useImagePreviewKeyboard.ts`
-- `src/components/ImagePreview/ImagePreview.tsx`（引用上述模块 + 注释）
-- `.github/workflows/ci.yml`
-- `docs/code-health.zh-CN.md`（本文件）
+有限缩放新增主图尺寸判定与统一边界后，size-limit 预算从 38 kB 调整为 39 kB；保持无新增运行时依赖，实际体积由 `npm run size` 验证。

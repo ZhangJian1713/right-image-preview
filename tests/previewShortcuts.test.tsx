@@ -1,7 +1,7 @@
 import { act, fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { getPreviewShortcutHelp, resolvePreviewShortcut } from '../src/components/ImagePreview/previewShortcuts';
-import { useImagePreviewKeyboard, type UseImagePreviewKeyboardParams } from '../src/components/ImagePreview/useImagePreviewKeyboard';
+import { getPreviewShortcutHelp, resolvePreviewShortcut } from '../src/components/ImagePreview/interaction/previewShortcuts';
+import { useImagePreviewKeyboard, type UseImagePreviewKeyboardParams } from '../src/components/ImagePreview/interaction/useImagePreviewKeyboard';
 
 const all = { navigation: true, groups: true, shortcuts: true, exif: true, delete: true };
 const event = (key: string, code = '', extra: KeyboardEventInit = {}) => new KeyboardEvent('keydown', { key, code, ...extra });

@@ -25,6 +25,7 @@
 | Prop | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `stops` | `NativePercent[]` | `[10,25,50,75,100,125,150,175,200]` | 离散档位列表（升序，至少 1 项）；需要更高上限请传入自定义列表 |
+| `smallImageZoom` | `SmallImageZoomOptions` | 不启用 | 主图实际长边 ≤ `maxEdge` 时，仅增加 `maxNativePercent` 这一档；例如 `{ maxEdge: 64, maxNativePercent: 1600 }` |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | 初始缩放模式 |
 | `initialNativePercent` | `number` | 第一档 | `initialMode='native'` 时的初始百分比 |
 | `firstZoomInStrategy` | `'above-fit' \| 'first-stop' \| 'hundred'` | `'above-fit'` | 从 Fit 首次放大时的落档策略 |
@@ -172,7 +173,7 @@ interface ImagePreviewRef {
   zoomIn(): void;
   zoomOut(): void;
   fit(): void;
-  setNative(percent: number): void; // 任意正数（不截断）；工具栏缩放输入框提交时会限制在最大档位
+  setNative(percent: number): void; // 有限正数，统一限制在当前图片的最高档位
 
   // 旋转与翻转
   rotateCW(): void;       // 顺时针 90°
@@ -208,7 +209,7 @@ interface ImagePreviewRef {
 ## 0.8.0 自适应观察
 
 - `clickZoomEnabled?: boolean` 默认 false。单击与 Space 共用自适应循环；忽略控件输入、Space repeat 和修饰键；开启时不再执行旧的双击切档。
-- `fitMaxNativePercent?: number` 独立限制 Fit，100 让小图保持实际尺寸；省略、非正数或非有限值维持无上限。
+- `fitMaxNativePercent?: number` 独立限制 Fit，100 让小图保持实际尺寸；省略、非正数或非有限值使用当前有效最高档位。
 - Detail 为 `sqrt(Fit% × 100)` 取最近 5%，只有与两端均至少相差 1.5 倍才保留。Fit≈100% 时使用 200%；循环外手动倍率下一次回 Fit。
 - Fit 可用滚轮和工具栏直接缩小；最高档放大保持有界且不反向跳变。`setNative` 忽略非正数与非有限值。
 - `language` 支持英文、简中、繁中及 script/region 别名，显式 script 优先；热切换保留浏览状态。`strings.zoomHint` 与 `strings.dragToPan` 可覆盖提示。
@@ -245,3 +246,9 @@ interface ImagePreviewRef {
 - 平移说明按八个方向各占一行，`direction` 为 up/down/left/right/upLeft/upRight/downLeft/downRight；行标识使用 `direction || action`，`action` 仍为 `pan`。
 - `getPreviewShortcutHelp(capabilities)` 从运行时固定表生成 `{ action, direction?, keys }[]`；`navigation`、`groups`、`exif`、`delete`、`shortcuts` 为可选能力标志，仅支持的功能传 true。
 - 未引入可配置键位或用户设置。完整表见[键盘快捷键](./keyboard.zh-CN.md)。
+
+## 有限缩放边界
+
+最高有效档位现在统一约束滚轮、键盘、工具栏、输入框、双指和 `setNative`，不再对双指额外乘以 4。Fit 也不会超过该上限；`fitMaxNativePercent` 可继续设置更低的 Fit 上限。双指仍连续变化，手动输入仍接受档位间的有限倍率；“档位”指步进和菜单预设。
+
+`smallImageZoom` 默认关闭。启用后只信任当前主图的实际固有尺寸，尺寸未知、EXIF、缩略占位或上一张图片均不触发例外。切图或参数变化导致上限降低时立即夹紧倍率，缩放锁不能绕过上限；回到较高上限时不自动恢复被夹紧的旧倍率。这也将此前允许超过最高档位的 `setNative` 调用改为夹紧，其他宿主需要更高倍率时应显式配置档位或小图例外。

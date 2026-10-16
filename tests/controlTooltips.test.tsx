@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ImagePreview } from '../src/components/ImagePreview';
-import { enStrings } from '../src/components/ImagePreview/locales/en';
+import { enStrings } from '../src/components/ImagePreview/i18n/locales/en';
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => { cleanup(); vi.clearAllTimers(); vi.useRealTimers(); vi.restoreAllMocks(); });

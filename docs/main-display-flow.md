@@ -49,7 +49,7 @@ Notes:
 5. Brief overlap with mismatched aspect (a sliver of the previous image) is acceptable; hold-scrubbing especially depends on this contract so half the time is not black.
 6. **Hold pacing “presented” tracks the incoming image only** (thumb underlay or new main), not the held previous frame — otherwise steps would advance too fast.
 
-Code entry points: `useProgressiveMainImage`, `DisplayStageLayers` (`isOutgoing`), `ImagePreviewInner` outgoing state, `lib/imagePreviewDecode.ts`.
+Code entry points: `useProgressiveMainImage`, `DisplayStageLayers` (`isOutgoing`), `stage/stageHandoff.ts` / `stage/useStageHandoff.ts`, `stage/imagePreviewDecode.ts`.
 
 ### 2.1 Stage floors (DOM order; minimize z-index)
 
@@ -173,13 +173,13 @@ Full Tauri memory / props examples: [`media-lens-integration.md`](./media-lens-i
 
 | Topic | Location |
 |-------|----------|
-| Progressive underlay → original / fast-path races | `useProgressiveMainImage.ts` |
-| Fully drawable / atomic reveal / WeakSet fast path | `lib/imagePreviewDecode.ts`, `ImagePreviewInner` |
-| Neighbor layer reuse + 1×1 keep-alive | `parts/DisplayStageLayers.tsx` |
+| Progressive underlay → original / fast-path races | `stage/useProgressiveMainImage.ts` |
+| Fully drawable / atomic reveal / element-and-source decode fast path | `stage/imagePreviewDecode.ts`, `stage/useStageReveal.ts` |
+| Neighbor layer reuse + 1×1 keep-alive | `stage/DisplayStageLayers.tsx` |
 | Keep-alive strategy | Non-sharp: `1×1` + `opacity: 1`; outgoing / sharp current: full size (`DISPLAY_LAYER_KEEPALIVE_OPACITY` deprecated) |
-| Display-ready pick, settle, panIdle, sticky src | `lib/neighborDisplayPreload.ts`, `useNeighborDisplayPreload.ts` |
-| Byte warm settle | `useNeighborPreload.ts` |
-| Short-press / long-press pacing | `useThumbPacedNavigation.ts`, `useImagePreviewKeyboard.ts` |
+| Display-ready pick, settle, panIdle, sticky src | `preload/neighborDisplayPreload.ts`, `preload/useNeighborDisplayPreload.ts` |
+| Byte warm settle | `preload/useNeighborPreload.ts` |
+| Short-press / long-press pacing | `interaction/useThumbPacedNavigation.ts`, `interaction/useImagePreviewKeyboard.ts` |
 | Local large-JPG timing (dev) | `demos/Demo6LocalLarge.tsx` (sidebar `path` / `next` phase / sharp ms) |
 
 ---
@@ -202,7 +202,7 @@ Navigate to N+1
   → outgoing full-size cover; N+1 lays out full-size underneath (may 1×1→full)
   → double rAF overlap, then shrink previous to 1×1 keep-alive
   → preferFastReveal: skip secondary new Image() probe; drain layout pending race
-  → scheduleRevealAfterDecode hits decodeSettled WeakSet → microtask reveal
+  → scheduleRevealAfterDecode hits decodeSettled WeakMap → microtask reveal
   → underlay drops; sharp near-instant
 ```
 

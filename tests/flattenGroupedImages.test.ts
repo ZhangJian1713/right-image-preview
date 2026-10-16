@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   flattenGroupedImages,
   resolveDefaultGroupedFlatIndex,
-} from '../src/components/ImagePreview/flattenGroupedImages';
+} from '../src/components/ImagePreview/lib/flattenGroupedImages';
 
 describe('resolveDefaultGroupedFlatIndex', () => {
   it('maps group + in-group index to flat index', () => {

@@ -1,6 +1,6 @@
 # 小地图视口拖动（设计说明）
 
-本文说明导航小地图在嵌入式浏览器（如 VS Code / Cursor WebView）以及**旋转**后主视图下为何这样实现，供维护 `Minimap.tsx` / `minimapMath.ts` 时查阅。
+本文说明导航小地图在嵌入式浏览器（如 VS Code / Cursor WebView）以及**旋转**后主视图下为何这样实现，供维护 `controls/Minimap.tsx` / `transform/minimapMath.ts` 时查阅。
 
 ## 目标
 
@@ -29,7 +29,7 @@
 
 **正确做法：** 不要用四边形 AABB 当增益。对**视口中心**在 minimap 上的位置，建立 **`(tx, ty)`** 的线性近似：用 **`tx`/`ty` 的微小扰动**数值估计雅可比 **`J`**，再 **`[dtx,dty]^T = J^{-1}[dmx,dmy]^T`**，使指针位移 **`(dmx,dmy)`**（与未单独缩放的 minimap 下即 client 增量一致）与视口中心在 minimap 上的运动一致。中心点映射到 natural 时**不做边界裁剪**，避免在贴边时导数突变。
 
-实现见 **`minimapMath.ts`** 中的 **`panDeltaFromMinimapPointerDelta`**。
+实现见 **`transform/minimapMath.ts`** 中的 **`panDeltaFromMinimapPointerDelta`**。
 
 ## 若再次出现比例不对
 
@@ -61,5 +61,5 @@
 
 ## 相关文件
 
-- `src/components/ImagePreview/Minimap.tsx` — 视图与指针会话生命周期。
-- `src/components/ImagePreview/minimapMath.ts` — 坐标变换与基于雅可比的平移增量。
+- `src/components/ImagePreview/controls/Minimap.tsx` — 视图与指针会话生命周期。
+- `src/components/ImagePreview/transform/minimapMath.ts` — 坐标变换与基于雅可比的平移增量。

@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { useZoomState } from '../src/components/ImagePreview/useZoomState';
+import { useZoomState } from '../src/components/ImagePreview/transform/useZoomState';
 
 const DEFAULT_OPTS = {
   stops: [25, 50, 100, 200, 400],
@@ -250,13 +250,26 @@ describe('zoom boundary regressions', () => {
     expect(result.current.nativePercent).toBe(100);
     expect(result.current.mode).toBe('native');
   });
-  it('keeps an above-maximum native value finite and permits stepping down', () => {
+  it('clamps an above-maximum native request and permits stepping down', () => {
     const { result } = renderHook(() => useZoomState(DEFAULT_OPTS));
     act(() => { result.current.setNative(1000); result.current.zoomIn(); });
-    expect(result.current.nativePercent).toBe(1000);
+    expect(result.current.nativePercent).toBe(400);
     expect(result.current.peekZoomIn()).toBeNull();
     act(() => result.current.zoomOut());
-    expect(result.current.nativePercent).toBe(400);
+    expect(result.current.nativePercent).toBe(200);
+  });
+  it('clamps when the ceiling falls and retained actions use the current ceiling', () => {
+    const { result, rerender } = renderHook(({ stops }) => useZoomState({ ...DEFAULT_OPTS, stops }),
+      { initialProps: { stops: [100, 800, 1600] } });
+    const retainedSetNative = result.current.setNative;
+    act(() => retainedSetNative(1600));
+    rerender({ stops: [100, 800] });
+    expect(result.current.nativePercent).toBe(800);
+    expect(result.current.getState().nativePercent).toBe(800);
+    act(() => retainedSetNative(1600));
+    expect(result.current.nativePercent).toBe(800);
+    rerender({ stops: [100, 800, 1600] });
+    expect(result.current.nativePercent).toBe(800);
   });
   it('composes sequential actions and ignores invalid values', () => {
     const { result } = renderHook(() => useZoomState(DEFAULT_OPTS));

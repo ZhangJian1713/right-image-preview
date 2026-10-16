@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeStrings, resolveStrings } from '../src/components/ImagePreview/locale';
+import { mergeStrings, resolveStrings } from '../src/components/ImagePreview/i18n/locale';
 
 describe('resolveStrings', () => {
   it('returns English strings by default (no language)', () => {

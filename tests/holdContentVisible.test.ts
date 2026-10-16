@@ -5,8 +5,8 @@ import {
   isHoldContentVisible,
   pickHoldPresentImg,
   type HoldBitmapCandidateInput,
-} from '../src/components/ImagePreview/lib/holdContentVisible';
-import { useHoldStagePresented } from '../src/components/ImagePreview/useHoldStagePresented';
+} from '../src/components/ImagePreview/stage/holdContentVisible';
+import { useHoldStagePresented } from '../src/components/ImagePreview/stage/useHoldStagePresented';
 
 const base: HoldBitmapCandidateInput = {
   imageLoadError: false,

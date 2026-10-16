@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextAdaptiveZoom } from '../src/components/ImagePreview/adaptiveZoom';
+import { nextAdaptiveZoom } from '../src/components/ImagePreview/transform/adaptiveZoom';
 
 describe('adaptive observation targets', () => {
   it.each([[25, 50], [14, 35], [40, 65]])('Fit %s uses Detail %s before actual size', (fit, detail) => {

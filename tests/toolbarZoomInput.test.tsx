@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { ZoomInput } from '../src/components/ImagePreview/toolbar/ZoomInput';
-import { resolveStrings } from '../src/components/ImagePreview/locale';
+import { ZoomInput } from '../src/components/ImagePreview/controls/toolbar/ZoomInput';
+import { resolveStrings } from '../src/components/ImagePreview/i18n/locale';
 
 beforeEach(() => vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] }));
 afterEach(() => { cleanup(); vi.useRealTimers(); });

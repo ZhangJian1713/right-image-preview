@@ -26,7 +26,7 @@ geometric-middle Detail scale → 100% → Fit. Small images capped at 100% use
 Fit/100% → 200% → Fit. Mouse zoom preserves the pointer anchor; Space preserves
 the viewport center. Dragging and double-click sequences do not add extra zoom
 steps. Fit limiting is an independent option; omitted or invalid caps retain
-the existing uncapped behavior. Wheel and toolbar presets remain independent.
+the effective highest-stop ceiling. Wheel and toolbar presets remain independent.
 
 English, Simplified Chinese and Traditional Chinese are built in. Updating
 `language` or `strings` preserves the active image and view state. Short zoom
@@ -56,7 +56,7 @@ Open the interactive demo in your browser (toggle **EN / 中文** in the top-rig
 |---------|-------------|
 | **Fit / Native zoom modes** | `fit` displays the image fully within the viewport (contain); `native` uses the image's original pixel dimensions as 100% baseline |
 | **Discrete zoom stops** | Zoom in/out only jumps between configured stops (default: 10 %–200 %); override with **`stops`** |
-| **Zoom field input** | Type a positive %; values are **clamped to the max configured stop** (toolbar only; ref API unchanged) |
+| **Zoom field input** | Type a positive %; values are **clamped to the max configured stop** (shared by native ref actions and pinch) |
 | **Multi-image / multi-group** | Supports a flat image list or images organized into folder-like groups |
 | **Flip & Rotate** | Horizontal/vertical flip and 90° CW/CCW rotation with CSS animation |
 | **Zoom lock** | Optionally preserve zoom state when switching images |
@@ -177,6 +177,7 @@ import { ImagePreview } from 'right-image-preview';
 | `defaultGroupedSelection` | `{ defaultGroupIndex, defaultIndexInGroup }` | — | Initial image in `groupedImages` mode (group index counts only non-empty groups); overrides `defaultIndex` |
 | `defaultIndex` | `number` | `0` | Initial index in the flattened list; ignored when `defaultGroupedSelection` is set with groups |
 | `stops` | `number[]` | `[10,25,50,75,100,125,150,175,200]` | Discrete zoom stops in % (ascending); raise the cap by passing a longer list |
+| `smallImageZoom` | `SmallImageZoomOptions` | disabled | Append only `maxNativePercent` when the loaded original longest edge is ≤ `maxEdge`; e.g. `{ maxEdge: 64, maxNativePercent: 1600 }` |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | Initial zoom mode |
 | `initialNativePercent` | `number` | first stop | Initial native percent when `initialMode='native'` |
 | `firstZoomInStrategy` | `'above-fit' \| 'first-stop' \| 'hundred'` | `'above-fit'` | Which stop to land on when zooming in from Fit for the first time |
@@ -257,7 +258,7 @@ interface ImagePreviewRef {
   zoomIn(): void;
   zoomOut(): void;
   fit(): void;
-  setNative(percent: number): void; // any positive number (not clamped; toolbar field clamps to max stop)
+  setNative(percent: number): void; // positive finite percent, clamped to the effective highest stop
 
   // transform
   rotateCW(): void;
@@ -290,27 +291,22 @@ Hosts can use `getPreviewShortcutHelp` for a read-only table; no shortcut custom
 
 ## Project Structure
 
+[Internal architecture and state ownership (Chinese)](docs/component-architecture.zh-CN.md).
+
 ```
 src/
   components/ImagePreview/
-    types.ts                   # TypeScript type definitions
-    flattenGroupedImages.ts    # resolvePreviewImages / flattenGroupedImages helpers
-    useZoomState.ts            # Zoom state machine hook (pure logic, no DOM)
-    useImageTransform.ts       # Size measurement + CSS transform + drag-to-pan
-    useWheelZoom.ts            # Mouse-wheel zoom hook
-    usePinchZoom.ts            # Touch pinch-to-zoom hook
-    injectGlobalStyle.ts       # One-shot CSS injection utility (SSR-safe)
-    locale.ts / localeTypes.ts / locales/  # i18n strings
-    Toolbar.tsx                # Bottom toolbar (zoom / rotate / flip / nav / filename)
-    Minimap.tsx                # Navigation minimap overlay
-    shell/
-      ImagePreview.tsx         # Outer shell (trigger-mode dispatch)
-      ImagePreviewInner.tsx    # Dialog implementation
-      ImagePreviewTriggerShell.tsx
-    parts/
-      ImagePreviewCloseButton.tsx
-      ImagePreviewNavArrow.tsx
-    index.ts                   # Public exports
+    index.ts / types.ts        # Public exports and props/ref contract
+    model/                     # Geometry and stage model types
+    shell/                     # Entry, composition, fullscreen and chrome timing
+    stage/                     # Main decode, progressive display and frame handoff
+    preload/                   # Neighbor bytes, slots and memory budget
+    interaction/               # Keyboard, pointer, wheel, pinch and hold navigation
+    transform/                 # Zoom, pan, orientation and coordinate math
+    controls/                  # Toolbar, filmstrip, minimap, EXIF and buttons
+    i18n/                      # Locale contracts and built-in strings
+    lib/                       # Data helpers and small shared utilities
+    imagePreviewTuning.ts      # Existing timing and layout constants
   App.tsx                      # Demo shell
   demos/                       # Demo sections + demo-only copy (not published to npm)
 docs/
@@ -345,6 +341,12 @@ fitEquivalentNativePercent   = fitScale × 100  (used to display "Fit ≈ xx%")
 ```
 
 ---
+
+## Finite zoom ceiling
+
+The effective highest stop now caps wheel, keyboard, toolbar, input, pinch and `setNative`; pinch no longer multiplies it by four. Fit shares this ceiling; `fitMaxNativePercent` can set a lower Fit cap. Pinch remains continuous and manual input accepts intermediate finite percentages; presets only control discrete steps and menu choices.
+
+`smallImageZoom` is opt-in and uses the current loaded original intrinsic size, never unknown dimensions, EXIF, thumbnails or a previous image. Lower ceilings clamp immediately, including with zoom lock; raising the ceiling does not restore a previously clamped value. This changes previously above-stop `setNative` requests to clamping; consumers requiring a higher range must configure higher stops or the small-image exception.
 
 ## Roadmap
 

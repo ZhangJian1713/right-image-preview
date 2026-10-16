@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { useNeighborPreload } from '../src/components/ImagePreview/useNeighborPreload';
+import { useNeighborPreload } from '../src/components/ImagePreview/preload/useNeighborPreload';
 
 describe('useNeighborPreload', () => {
   const images = [

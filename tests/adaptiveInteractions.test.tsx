@@ -3,7 +3,7 @@ import { createRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ImagePreview } from '../src/components/ImagePreview';
 import type { ImagePreviewProps, ImagePreviewRef } from '../src/components/ImagePreview/types';
-import { resolveStrings } from '../src/components/ImagePreview/locale';
+import { resolveStrings } from '../src/components/ImagePreview/i18n/locale';
 
 const rect = { x: 0, y: 0, left: 0, top: 0, right: 800, bottom: 600,
   width: 800, height: 600, toJSON() {} } as DOMRect;
@@ -85,6 +85,17 @@ describe('DOM adaptive interactions', () => {
     await act(async () => { fireEvent.load(incoming); await vi.advanceTimersByTimeAsync(100); });
     expect(container.querySelector('[data-rip-stage-layer="outgoing"]')).toBeNull();
     expect(incoming.closest('[data-rip-stage-layer]')!.getAttribute('data-rip-stage-layer')).toBe('current');
+  });
+  it('preserves the pre-reset pose while a controlled host delays accepting navigation', async () => {
+    const { ref, image, rerender, base } = await open(3200, 2400, { index: 0 });
+    act(() => { ref.current!.setNative(100); ref.current!.rotateCW(); });
+    const pose = image.parentElement!.style.transform;
+    act(() => ref.current!.goTo(1));
+    await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+    // The host has not accepted index=1 yet; cached A must not clear its navigation snapshot.
+    rerender(<ImagePreview {...base} ref={ref} index={1} />);
+    expect(image.closest('[data-rip-stage-layer]')!.getAttribute('data-rip-stage-layer')).toBe('outgoing');
+    expect(image.parentElement!.style.transform).toBe(pose);
   });
   it('caps small-image Fit independently and cycles to 200 percent', async () => {
     const { ref } = await open(100, 100);

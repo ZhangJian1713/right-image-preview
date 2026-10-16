@@ -1,8 +1,8 @@
 import { useLayoutEffect } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useProgressiveMainImage } from '../src/components/ImagePreview/useProgressiveMainImage';
-import type { UseProgressiveMainImageResult } from '../src/components/ImagePreview/useProgressiveMainImage';
+import { useProgressiveMainImage } from '../src/components/ImagePreview/stage/useProgressiveMainImage';
+import type { UseProgressiveMainImageResult } from '../src/components/ImagePreview/stage/useProgressiveMainImage';
 
 class MockImage {
   static instances: MockImage[] = [];
@@ -44,6 +44,37 @@ describe('useProgressiveMainImage', () => {
   afterEach(() => {
     globalThis.Image = OriginalImage;
     vi.useRealTimers();
+  });
+
+  it('ignores a decode callback from an earlier selection with the same URL', () => {
+    const onStageChange = vi.fn();
+    const onImageLayout = vi.fn();
+    const { result, rerender } = renderHook(({ selection }) => useProgressiveMainImage({
+      mainSrc: 'test:a', minimapSrc: undefined, minimapCustom: false, enabled: false,
+      placeholderMinVisibleMs: 0, selection, onImageLayout, onStageChange,
+    }), { initialProps: { selection: {} } });
+    const oldDecoded = result.current.onMainImgDecoded;
+    rerender({ selection: {} });
+    act(() => oldDecoded());
+    expect(result.current.fullDecoded).toBe(false);
+    expect(onStageChange).not.toHaveBeenCalled();
+    act(() => result.current.onMainImgDecoded());
+    expect(result.current.fullDecoded).toBe(true);
+    expect(onStageChange).toHaveBeenCalledOnce();
+  });
+
+  it('enters thumb-only together with fullDecoded after the original probe fails', () => {
+    const { result } = renderHook(() => useProgressiveMainImage({
+      mainSrc: 'test:full', minimapSrc: 'test:thumb', minimapCustom: false,
+      enabled: true, placeholderMinVisibleMs: 0, onImageLayout: vi.fn(),
+    }));
+    const full = MockImage.instances.find((image) => image.src === 'test:full')!;
+    act(() => { full.onerror?.call(full as unknown as GlobalEventHandlers, new Event('error')); });
+    const fallback = MockImage.instances.filter((image) => image.src === 'test:thumb').at(-1)!;
+    act(() => fallback.completeLoad(200, 150));
+    expect(result.current.preloadStage).toBe('thumb-only');
+    expect(result.current.fullDecoded).toBe(true);
+    expect(result.current.showMinimapUnderlay).toBe(true);
   });
 
   it('fast-reveal with known dims skips main Image probe and reveals without waiting on it', async () => {

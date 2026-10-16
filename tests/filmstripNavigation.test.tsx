@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ImagePreview } from '../src/components/ImagePreview';
 
 // Presentation timing is tested separately; every visited frame is ready in these input-lifecycle tests.
-vi.mock('../src/components/ImagePreview/useHoldStagePresented', () => ({ useHoldStagePresented: () => true }));
+vi.mock('../src/components/ImagePreview/stage/useHoldStagePresented', () => ({ useHoldStagePresented: () => true }));
 
 const images = Array.from({ length: 5 }, (_, index) => ({ id: String(index), src: `test:nav-${index}`, thumbnailSrc: null }));
 beforeEach(() => {

@@ -25,6 +25,7 @@
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `stops` | `NativePercent[]` | `[10,25,50,75,100,125,150,175,200]` | Discrete zoom stop list (ascending, at least 1 item); pass a custom list for a higher max |
+| `smallImageZoom` | `SmallImageZoomOptions` | disabled | Append only `maxNativePercent` when the loaded original longest edge is ≤ `maxEdge`; e.g. `{ maxEdge: 64, maxNativePercent: 1600 }` |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | Initial zoom mode |
 | `initialNativePercent` | `number` | first stop | Initial percentage when `initialMode='native'` |
 | `firstZoomInStrategy` | `'above-fit' \| 'first-stop' \| 'hundred'` | `'above-fit'` | Which stop to land on when zooming in from Fit for the first time |
@@ -172,7 +173,7 @@ interface ImagePreviewRef {
   zoomIn(): void;
   zoomOut(): void;
   fit(): void;
-  setNative(percent: number): void; // any positive number (not clamped); toolbar zoom field clamps to max stop on commit
+  setNative(percent: number): void; // positive finite percent, clamped to the effective highest stop
 
   // rotation & flip
   rotateCW(): void;        // rotate 90° clockwise
@@ -208,7 +209,7 @@ interface ImagePreviewRef {
 ## Adaptive observation in 0.8.0
 
 - `clickZoomEnabled?: boolean` defaults to false. Click and Space share the adaptive cycle; button/input focus and held Space repeats are ignored. Legacy double-click is bypassed while enabled.
-- `fitMaxNativePercent?: number` independently caps Fit; 100 preserves actual size for small images. Omitted/non-positive/non-finite values retain the uncapped behavior.
+- `fitMaxNativePercent?: number` independently caps Fit; 100 preserves actual size for small images. Omitted/non-positive/non-finite values use the effective highest-stop ceiling.
 - Detail = nearest 5% to `sqrt(Fit% × 100)`, retained only when both adjacent ratios are at least 1.5. Fit≈100% uses 200% as the detail target. Manual scales outside the cycle return to Fit.
 - Fit may step down through wheel/toolbar; at the maximum, zoom-in remains bounded and never jumps down. `setNative` rejects non-positive/non-finite inputs.
 - `language` supports `en`, `zh-CN`, `zh-TW`, `zh-Hans`, `zh-Hant` and regional aliases; an explicit script wins over region. Hot updates preserve view state. `strings.zoomHint` and `strings.dragToPan` localize observation hints.
@@ -248,3 +249,9 @@ Obvious actions (close, previous/next image, zoom in/out, rotate, delete, fullsc
 - Pan help has one row per direction: up/down/left/right/upLeft/upRight/downLeft/downRight. Use `direction || action` as the row key; the action remains `pan`.
 - `getPreviewShortcutHelp(capabilities)` returns `{ action, direction?, keys }[]` from fixed runtime bindings. Optional flags `navigation`, `groups`, `exif`, `delete`, `shortcuts` select available rows; pass true only for supported host features.
 - No customizable key mapping or user settings are added. See [Keyboard shortcuts](./keyboard.md).
+
+## Finite zoom ceiling
+
+The effective highest stop now caps wheel, keyboard, toolbar, input, pinch and `setNative`; pinch no longer multiplies it by four. Fit shares this ceiling; `fitMaxNativePercent` can set a lower Fit cap. Pinch remains continuous and manual input accepts intermediate finite percentages; presets only control discrete steps and menu choices.
+
+`smallImageZoom` is opt-in and uses the current loaded original intrinsic size, never unknown dimensions, EXIF, thumbnails or a previous image. Lower ceilings clamp immediately, including with zoom lock; raising the ceiling does not restore a previously clamped value. This changes previously above-stop `setNative` requests to clamping; consumers requiring a higher range must configure higher stops or the small-image exception.

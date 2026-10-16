@@ -259,6 +259,14 @@ export interface DefaultGroupedSelection {
   defaultIndexInGroup: number;
 }
 
+/** Optional extra final zoom stop for images with small intrinsic dimensions. */
+export interface SmallImageZoomOptions {
+  /** Both original edges must be positive and at most this many CSS px. */
+  maxEdge: number;
+  /** Extra maximum native percent, appended only when above the regular highest stop. */
+  maxNativePercent: NativePercent;
+}
+
 export interface ImagePreviewProps {
   // ── Data ──────────────────────────────────────────────────────────────────
   /** Single image shorthand. Ignored when `images` or non-empty `groupedImages` is provided. */
@@ -310,11 +318,18 @@ export interface ImagePreviewProps {
    * Default: [10, 25, 50, 75, 100, 125, 150, 175, 200] (max 200 % — higher ratios are usually too soft for preview).
    */
   stops?: NativePercent[];
+  /**
+   * Optionally append one higher stop for small originals. Disabled by default.
+   * Uses the loaded main image's intrinsic size, never a thumbnail or file byte size.
+   * Native actions, pinch, input and Fit share the effective highest stop as a finite ceiling.
+   * @example smallImageZoom={{ maxEdge: 64, maxNativePercent: 1600 }}
+   */
+  smallImageZoom?: SmallImageZoomOptions;
   /** Initial zoom mode. Default: 'fit'. */
   initialMode?: ZoomMode;
   /** Initial native% when initialMode === 'native'. Default: first stop. */
   initialNativePercent?: NativePercent;
-  /** Fit cap in native percent; 100 keeps small images at actual size. Omitted: no cap. */
+  /** Fit cap in native percent; 100 keeps small images at actual size. Omitted: use the effective highest stop. */
   fitMaxNativePercent?: NativePercent;
 
   // ── Behaviour options ──────────────────────────────────────────────────────
@@ -631,7 +646,7 @@ export interface ImagePreviewProps {
    * strings={{ close: 'Dismiss' }}
    * ```
    */
-  strings?: Partial<import('./localeTypes').LocaleStrings>;
+  strings?: Partial<import('./i18n/localeTypes').LocaleStrings>;
 
   /**
    * **Trigger mode (single {@link children})**: optional. When you omit `visible`, the preview is
@@ -670,7 +685,7 @@ export interface ImagePreviewRef {
   zoomOut(): void;
   /** Switch to Fit mode. */
   fit(): void;
-  /** Switch to Native mode at the given percentage. */
+  /** Switch to Native at a positive finite percentage, capped by the effective highest stop. */
   setNative(percent: NativePercent): void;
   /** Rotate image 90° clockwise. */
   rotateCW(): void;

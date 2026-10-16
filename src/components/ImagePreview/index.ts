@@ -3,10 +3,10 @@ export {
   flattenGroupedImages,
   resolveDefaultGroupedFlatIndex,
   resolvePreviewImages,
-} from './flattenGroupedImages';
-export { mergeStrings, resolveStrings } from './locale';
-export type { LocaleStrings } from './locale';
-export type { FlattenedGroupSlice } from './flattenGroupedImages';
+} from './lib/flattenGroupedImages';
+export { mergeStrings, resolveStrings } from './i18n/locale';
+export type { LocaleStrings } from './i18n/locale';
+export type { FlattenedGroupSlice } from './lib/flattenGroupedImages';
 export type {
   ArrowsConfig,
   ChromeDensity,
@@ -23,6 +23,7 @@ export type {
   ImagePreviewProps,
   ImagePreviewRef,
   NativePercent,
+  SmallImageZoomOptions,
   NeighborPreloadEntry,
   NeighborPreloadPhase,
   NeighborPreloadStatusMap,
@@ -44,9 +45,9 @@ export {
   DEFAULT_DISPLAY_SLOTS_WHEN_BUDGET_ONLY,
   PRELOAD_DISPLAY_SETTLE_MS,
   SUGGESTED_PRELOAD_BUDGET_FRACTION_OF_AVAILABLE,
-} from './lib/neighborDisplayPreload';
+} from './preload/neighborDisplayPreload';
 export { NAV_HOLD_MIN_VISIBLE_MS } from './imagePreviewTuning';
-export type { Rotation } from './useImageTransform';
+export type { Rotation } from './model/geometry';
 
-export { getPreviewShortcutHelp } from './previewShortcuts';
-export type { PreviewShortcutAction, PreviewShortcutCapabilities, PreviewPanDirection } from './previewShortcuts';
+export { getPreviewShortcutHelp } from './interaction/previewShortcuts';
+export type { PreviewShortcutAction, PreviewShortcutCapabilities, PreviewPanDirection } from './interaction/previewShortcuts';

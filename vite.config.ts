@@ -99,7 +99,7 @@ export default defineConfig({
       include: ['src/components/ImagePreview/**/*.ts', 'src/components/ImagePreview/**/*.tsx'],
       exclude: [
         'src/components/ImagePreview/index.ts',
-        'src/components/ImagePreview/locales/**',
+        'src/components/ImagePreview/i18n/locales/**',
         'src/components/ImagePreview/imagePreviewTuning.ts',
       ],
       reporter: ['text', 'lcov', 'html'],

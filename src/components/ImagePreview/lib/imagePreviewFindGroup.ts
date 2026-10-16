@@ -1,4 +1,4 @@
-import type { FlattenedGroupSlice } from '../flattenGroupedImages';
+import type { FlattenedGroupSlice } from './flattenGroupedImages';
 
 /** Find which slice the flat index falls into. Returns null if not grouped. */
 export function findGroup(
