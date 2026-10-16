@@ -1,11 +1,9 @@
 # right-image-preview
 
-
 ## DOM 渲染与自适应观察
 
-0.8.0 延续 DOM `<img>` 主分支，保留 URL 形式的 `src` / `minimapSrc` API。
-WebGL 与 0.7 图源模型保留在独立分支。使用 0.7 `MediaSource` API 的消费者，
-升级到本 DOM 版本前需要调整输入模型。
+使用 DOM `<img>` 渲染图片，通过 URL 形式的 `src` 接收主图资源，
+通过可选的 `minimapSrc` 接收预览图或小地图资源。
 
 ```tsx
 <ImagePreview
@@ -33,7 +31,6 @@ Fit 上限是独立配置，省略或传入非法值时，使用当前有效最�
 display-ready 记录不能保证浏览器仍保留解码位图。宿主未验证保活效果前，建议从关闭
 预加载的基线接入。失败邻图不会在同一窗口内无限立即重试。
 
-
 [English](./README.md) · **中文**
 
 ## 在线演示
@@ -52,7 +49,7 @@ display-ready 记录不能保证浏览器仍保留解码位图。宿主未验证
 |------|------|
 | **Fit / Native 双模式** | `fit` 以 contain 语义完整显示图片；`native` 以原始像素为 100% 基准 |
 | **固定档位缩放** | 放大/缩小只在离散档位间跳转（默认 10 %–200 %）；可用 **`stops`** 自定义 |
-| **缩放输入** | 可输入正整数 %；**工具栏提交值会限制在最大档位**（`ref` 调用不限制） |
+| **缩放输入** | 输入正整数 %；输入框、`ref` 和双指缩放统一受有效最高档位限制 |
 | **多图 / 多组导航** | 支持单组图片列表，也支持按文件夹/分组组织的多组图片 |
 | **翻转 & 旋转** | 水平/垂直翻转，90° 顺/逆时针旋转，带 CSS 动画 |
 | **缩放锁定** | 切换图片时可选择保留或重置缩放状态 |
@@ -63,16 +60,16 @@ display-ready 记录不能保证浏览器仍保留解码位图。宿主未验证
 | **嵌入式模式** | `presentation="contained"` 填满宿主容器；仅聚焦时响应键盘 |
 | **相邻预加载** | `preloadRadius` 字节预热；`preloadDisplaySlots` 保持离屏 decode 就绪（槽位数由宿主按内存决定）。`display-ready` 切图快开（占位保留到视口可绘制）；仅字节就绪不会快开 |
 | **控件密度** | `chrome="minimal"` 空闲时控件完全隐藏 |
-| **浏览器全屏** | 工具栏切换 + ref `requestFullscreen` / `exitFullscreen`；Esc 先退出全屏 |
+| **全屏适配** | 默认使用浏览器全屏，也可通过 `fullscreen` 交给宿主；只有 toggle 的宿主不会伪造全屏状态 |
 | **受控下标** | `index` + `onIndexChange`；ref `goTo(index)` |
 | **小地图独立图源** | 每条 **`ImageItem`**（及单图 **`src`** 模式）可设 **`minimapSrc`** / **`minimap`**，用小缩略图或自定义节点；默认仍用主图 **`src`** |
 | **触控双指捏合缩放** | 双指捏合/展开实现连续缩放；缩放锚点跟随双指中点；可用 **`pinchEnabled`** 关闭 |
-| **界面语言** | **`language`** 内置 **英文**与**简体中文**（`en`、`zh`、`zh-CN` 等）；可用 **`strings`** 覆盖任意文案 |
+| **界面语言** | `language` 内置英文、简体中文和繁体中文；`strings` 可覆盖文案，切换语言保留当前浏览状态 |
 | **丰富的键盘快捷键** | Esc / ±方向键 / Space / PageUp-Down / R、Shift+R / WASD、小键盘 |
 | **可访问性** | Overlay：`role="dialog"` + `aria-modal` 与焦点管理；`presentation="contained"`：`role="region"`（非整页模态），仅预览聚焦时响应键盘。控件带 `aria-label` |
 | **TypeScript 一等类型** | 完整类型导出，`forwardRef` 支持命令式 ref API |
-| **零生产依赖** | 仅依赖 React，无任何第三方 UI 库 |
-| **兼容性：React 17+** | 兼容 `react` / `react-dom` ≥ 17，推荐 18+（滚轮多档时原生 `flushSync` 体验最佳） |
+| **零生产依赖** | React 与 ReactDOM 作为 peer dependencies；不内置第三方 UI 库或图片文件解析器 |
+| **兼容性：React 17+** | 兼容 `react` / `react-dom` ≥ 17；库构建不内置 React，由宿主提供同一份运行时 |
 
 ---
 
@@ -201,6 +198,14 @@ import { ImagePreview } from 'right-image-preview';
 | `pinchEnabled` | `boolean` | `true` | 是否启用双指捏合缩放（触屏 / 多点触控板） |
 | `strings` | `Partial<LocaleStrings>` | — | 覆盖任意 UI 文案字段；叠加在 `language` 所选语言之上；只需提供要改的字段 |
 
+### 宿主接入
+
+原生全屏执行、缩略图生成和快捷键帮助弹窗由宿主负责。仅提供切换命令的宿主可传入 `fullscreen={{ toggle: toggleHostFullscreen }}`；能够可靠读取状态的宿主可传 `{ isFullscreen, enter, exit }`。失败通过 `onFullscreenError` 通知；未配置适配器时使用浏览器全屏 API。
+
+通过 `showThumbnailToggle` 显示独立底片条按钮，并用 `showThumbnails` / `onThumbnailsVisibleChange` 控制开关。根据 `onThumbnailVisibleIndexesChange` 上报的挂载窗口（含少量预留项）按需请求缩略图，再通过每张图片的 `thumbnailSrc` 回填。等待或不可用时设为 `null`，可阻止组件回退到原图；`thumbnailError` 表示失败占位。组件不负责生成 200px 文件，也不决定生成并发数，这些属于宿主策略。`thumbnailsScope="group"` 仅显示当前组，`"flat"` 显示整个扁平序列。
+
+用 `onShowShortcuts` 打开宿主弹窗，通过 `getPreviewShortcutHelp` 生成只读键位说明；弹窗接管键盘时设置 `keyboardEnabled={false}`，也可同时暂停 `wheelEnabled` 和 `pinchEnabled`。翻转按钮的 `showFlip` 和逆时针旋转按钮的 `showRotateCCW` 仍由宿主独立配置。回调和默认值见[完整 API](./docs/api.zh-CN.md)。
+
 #### `arrows` 取值说明
 
 | 值 | 效果 |
@@ -222,6 +227,8 @@ interface ImageItem {
   name?: string; // 工具栏信息栏显示的文件名
   minimapSrc?: string;
   minimap?: React.ReactNode;
+  thumbnailSrc?: string | null; // 仅底片图源；null 禁止回退原图
+  thumbnailError?: boolean;    // 失败占位仍可点击切图
 }
 
 interface ImageGroup {
@@ -277,10 +284,9 @@ interface ImagePreviewRef {
 
 ## 键盘快捷键
 
-新增 Q/E 切图、Home/End、R/Shift+R 旋转、F 全屏、WASD/数字小键盘平移以及 ? 打开宿主帮助，
-保留现有缩放与导航绑定，取消 Ctrl/⌘/Shift + 方向键组合。平移按八个方向分别说明。完整键位与生效条件见[键盘快捷键说明](./docs/keyboard.zh-CN.md)。
+支持 Q/E 切图、Home/End、R/Shift+R 旋转、F 全屏、WASD/数字小键盘平移以及 ? 打开宿主帮助。
+Ctrl/⌘/Shift + 方向键组合由宿主处理。平移按八个方向分别说明。完整键位与生效条件见[键盘快捷键说明](./docs/keyboard.zh-CN.md)。
 宿主可用 `getPreviewShortcutHelp` 生成只读说明；不提供自定义快捷键设置。
-
 
 ---
 
@@ -339,27 +345,23 @@ fitEquivalentNativePercent    = fitScale × 100（供 UI 显示"适应 ≈ xx%"�
 
 ## 有限缩放边界
 
-最高有效档位现在统一约束滚轮、键盘、工具栏、输入框、双指和 `setNative`，不再对双指额外乘以 4。Fit 也不会超过该上限；`fitMaxNativePercent` 可继续设置更低的 Fit 上限。双指仍连续变化，手动输入仍接受档位间的有限倍率；“档位”指步进和菜单预设。
+滚轮、键盘、工具栏、输入框、双指和 `setNative` 共用最高有效档位作为上限。Fit 也受该上限约束；`fitMaxNativePercent` 可设置更低的 Fit 上限。双指连续变化，手动输入接受档位间的有限倍率；“档位”指步进和菜单预设。
 
-`smallImageZoom` 默认关闭。启用后只信任当前主图的实际固有尺寸，尺寸未知、EXIF、缩略占位或上一张图片均不触发例外。切图或参数变化导致上限降低时立即夹紧倍率，缩放锁不能绕过上限；回到较高上限时不自动恢复被夹紧的旧倍率。这也将此前允许超过最高档位的 `setNative` 调用改为夹紧，其他宿主需要更高倍率时应显式配置档位或小图例外。
+`smallImageZoom` 默认关闭。启用后只信任当前主图的实际固有尺寸，尺寸未知、EXIF、缩略占位或上一张图片均不触发例外。切图或参数变化导致上限降低时立即夹紧倍率，缩放锁不能绕过上限；回到较高上限时不自动恢复被夹紧的旧倍率。`setNative` 请求超过上限时会限制到该上限；需要更高倍率时，应显式配置档位或小图例外。
 
-## 后续迭代方向
+组件默认档位最高为 **200%**。通过 `stops` 和 `smallImageZoom`，可配置为普通图片最高 **800%**、小图额外提供 **1600%** 一档：
 
-- 旋转 90°/270° 时的严格 1:1 约束（宽高调换）
-- 弹簧物理动画（缩放/平移更自然的惯性）
+```tsx
+<ImagePreview
+  src="/icon.svg"
+  visible
+  stops={[10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 600, 800]}
+  smallImageZoom={{ maxEdge: 64, maxNativePercent: 1600 }}
+  fitMaxNativePercent={100}
+/>
+```
 
----
-
-## 版本号约定（1.0 之前）
-
-当前为 **0.x** 阶段，版本大致按下面划分：
-
-- **Patch（修订号）** — 仅影响**内置文案**或类型上的扩展（例如在 **`LocaleStrings`** / **`locales/*.ts`** 中新增字段、改 tooltip 措辞）、未导出组件的内部 props 调整、缺陷修复，以及**不改变** **`ImagePreview`** **已文档化的对外契约**（props、ref、按文档使用的导出函数与类型）的改动。
-- **Minor（次版本）** — 新增或变更**已文档化**的 props、ref 能力、导出 API，或集成方需要跟进的可见行为变化。
-
-若你在 TypeScript 里**手写整份** **`LocaleStrings`**，升级后可能需要补全新增字段；本项目把这种情形仍算作 **patch**，因为常见用法是 **`language`** + 内置 **`resolveStrings`**。
-
----
+小图的额外预设为 1600%；连续双指缩放和手动输入可使用上限内的中间倍率。只有原图加载后的实际尺寸能够启用小图例外，缩略图或未知尺寸不能启用。
 
 ## License
 

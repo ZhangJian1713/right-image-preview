@@ -1,12 +1,9 @@
 # right-image-preview
 
-
 ## DOM rendering and adaptive observation
 
-Version 0.8.0 continues the DOM `<img>` main branch. It keeps the URL-based
-`src` / `minimapSrc` API; WebGL and the 0.7 source-aware renderer branch are
-maintained separately. Consumers of the 0.7 `MediaSource` API must adapt their
-inputs before moving to this DOM release.
+Images are rendered with DOM `<img>` elements. Pass image URLs through
+`src` and optional preview/minimap URLs through `minimapSrc`.
 
 ```tsx
 <ImagePreview
@@ -37,7 +34,6 @@ neighbor work; DOM display-ready records cannot guarantee that the browser still
 retains a decoded bitmap. Use the disabled setting as a baseline in hosts where
 retention has not been verified. Failed neighbors are not retried in a tight loop.
 
-
 **English** · [中文](./README.zh-CN.md)
 
 ## Live Demo
@@ -67,7 +63,7 @@ Open the interactive demo in your browser (toggle **EN / 中文** in the top-rig
 | **Contained / embedded mode** | `presentation="contained"` fills a host pane; keyboard only while focused |
 | **Neighbor preload** | `preloadRadius` byte-prefetches neighbors; `preloadDisplaySlots` keeps decode-ready offscreen layers (host-sized from memory). `display-ready` uses fast reveal (underlay until viewport drawable); byte-ready alone does not |
 | **Chrome density** | `chrome="minimal"` fades idle controls to fully hidden |
-| **Browser fullscreen** | Toolbar toggle + ref `requestFullscreen` / `exitFullscreen`; Esc exits FS first |
+| **Fullscreen** | Browser fullscreen by default, or a host-owned `fullscreen` adapter; a toggle-only host does not claim confirmed fullscreen state |
 | **Controlled index** | `index` + `onIndexChange`; ref `goTo(index)` |
 | **Minimap source per item** | Each **`ImageItem`** (and single-**`src`** mode) can set **`minimapSrc`** / **`minimap`** so the map uses a lighter tile or custom node; defaults to the main **`src`** |
 | **Touch pinch-to-zoom** | Two-finger pinch/spread for continuous zoom; anchor follows the midpoint between fingers; disable with **`pinchEnabled`** |
@@ -75,8 +71,8 @@ Open the interactive demo in your browser (toggle **EN / 中文** in the top-rig
 | **Rich keyboard shortcuts** | Esc · +/- · arrow keys · Space · PageUp/Down · R/Shift+R · WASD/numpad |
 | **Accessibility** | Overlay: `role="dialog"` + `aria-modal` with focus management; `presentation="contained"`: `role="region"` (not page-modal), keyboard only while the preview is focused. Controls use `aria-label` |
 | **TypeScript first** | Full type exports, `forwardRef` imperative ref API |
-| **Zero production dependencies** | Only requires React |
-| **React 17+** | Peer `react` / `react-dom` ≥ 17; React 18+ still recommended (native `flushSync` for fastest multi-step wheel zoom) |
+| **Zero production dependencies** | React and ReactDOM are peer dependencies; no runtime UI library or image-file parser is included |
+| **React 17+** | Peer `react` / `react-dom` ≥ 17; the library build leaves React external so the host provides one runtime |
 
 ---
 
@@ -205,6 +201,14 @@ import { ImagePreview } from 'right-image-preview';
 | `pinchEnabled` | `boolean` | `true` | Enable two-finger pinch-to-zoom on touch screens and multi-touch trackpads |
 | `strings` | `Partial<LocaleStrings>` | — | Override individual UI strings; merged on top of the locale selected by `language`; supply only the keys you want to change |
 
+### Host integration
+
+The host owns native fullscreen actions, thumbnail generation and the shortcut-help dialog. Pass `fullscreen={{ toggle: toggleHostFullscreen }}` for a host that only exposes a toggle command. A host with reliable state can instead pass `{ isFullscreen, enter, exit }`. Errors reach `onFullscreenError`; without an adapter the component uses the browser fullscreen API.
+
+Enable `showThumbnailToggle` and control the strip with `showThumbnails` / `onThumbnailsVisibleChange`. Use `onThumbnailVisibleIndexesChange` to request thumbnails only for mounted entries, including overscan. Supply each result through `ImageItem.thumbnailSrc`; set it to `null` while pending or unavailable to prevent original-image fallback, and use `thumbnailError` for a failure placeholder. The component does not generate 200px files or choose a generation concurrency limit; those are host policies. `thumbnailsScope="group"` limits the strip to the active group; `"flat"` spans the flattened list.
+
+Connect `onShowShortcuts` to a host dialog built from `getPreviewShortcutHelp`. Set `keyboardEnabled={false}` while the dialog owns keyboard input; hosts can also suspend `wheelEnabled` and `pinchEnabled` while their dialog is open. Flip visibility (`showFlip`) and counter-clockwise rotation visibility (`showRotateCCW`) remain independent host options. See the [complete API](./docs/api.md) for callbacks and defaults.
+
 #### `arrows` values
 
 | Value | Effect |
@@ -226,6 +230,8 @@ interface ImageItem {
   name?: string; // filename shown in the info badge
   minimapSrc?: string;
   minimap?: React.ReactNode;
+  thumbnailSrc?: string | null; // strip-only URL; null forbids original fallback
+  thumbnailError?: boolean;    // retain a navigable failure placeholder
 }
 
 interface ImageGroup {
@@ -286,7 +292,6 @@ and ? for host-provided help, alongside existing zoom and navigation keys.
 See the [complete keyboard reference](./docs/keyboard.md) for conditions and the eight pan directions. Ctrl/⌘/Shift + arrow combinations are left to the host.
 Hosts can use `getPreviewShortcutHelp` for a read-only table; no shortcut customization is provided.
 
-
 ---
 
 ## Project Structure
@@ -344,27 +349,23 @@ fitEquivalentNativePercent   = fitScale × 100  (used to display "Fit ≈ xx%")
 
 ## Finite zoom ceiling
 
-The effective highest stop now caps wheel, keyboard, toolbar, input, pinch and `setNative`; pinch no longer multiplies it by four. Fit shares this ceiling; `fitMaxNativePercent` can set a lower Fit cap. Pinch remains continuous and manual input accepts intermediate finite percentages; presets only control discrete steps and menu choices.
+The effective highest stop caps wheel, keyboard, toolbar, input, pinch and `setNative`. Fit shares this ceiling; `fitMaxNativePercent` can set a lower Fit cap. Pinch is continuous and manual input accepts intermediate finite percentages; presets control discrete steps and menu choices.
 
-`smallImageZoom` is opt-in and uses the current loaded original intrinsic size, never unknown dimensions, EXIF, thumbnails or a previous image. Lower ceilings clamp immediately, including with zoom lock; raising the ceiling does not restore a previously clamped value. This changes previously above-stop `setNative` requests to clamping; consumers requiring a higher range must configure higher stops or the small-image exception.
+`smallImageZoom` is opt-in and uses the current loaded original intrinsic size, never unknown dimensions, EXIF, thumbnails or a previous image. Lower ceilings clamp immediately, including with zoom lock; raising the ceiling does not restore a previously clamped value. `setNative` requests above the ceiling are clamped; configure higher stops or the small-image exception for a larger zoom range.
 
-## Roadmap
+The component's default stops end at **200%**. Configure `stops` and `smallImageZoom` for an **800%** normal ceiling and an additional **1600%** preset for tiny originals:
 
-- Strict 1:1 constraint when rotated 90°/270° (swap width/height)
-- Spring-physics animation for zoom and pan
+```tsx
+<ImagePreview
+  src="/icon.svg"
+  visible
+  stops={[10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 600, 800]}
+  smallImageZoom={{ maxEdge: 64, maxNativePercent: 1600 }}
+  fitMaxNativePercent={100}
+/>
+```
 
----
-
-## Versioning (pre-1.0)
-
-While the package is **0.x**, releases follow this convention:
-
-- **Patch** — New or updated **built-in** copy (e.g. extra keys on **`LocaleStrings`**, tooltip text, `locales/*.ts` tweaks), internal-only prop changes on non-exported components, bug fixes, and other changes that do **not** alter the **documented public API** of **`ImagePreview`** (props, ref, and exported helpers/types used as documented).
-- **Minor** — New **documented** props, ref methods, exported APIs, or behavior changes that integrators are expected to react to.
-
-Custom implementations that satisfy **`LocaleStrings`** in TypeScript may need to add fields when new strings are introduced; that is treated as a **patch** bump, not a minor, because typical usage is **`language`** + built-in **`resolveStrings`**.
-
----
+The extra preset is 1600%; continuous pinch and manually entered intermediate percentages are available within the ceiling. The small-image exception is decided after the original loads; a thumbnail or unknown size cannot enable it.
 
 ## License
 

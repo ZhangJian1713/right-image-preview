@@ -3,20 +3,39 @@
 All notable changes to this project are documented here.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Versioning follows [Semantic Versioning](https://semver.org/) (see `README.md` for pre-1.0 conventions).
+Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-10-16
+
 ### Added
 
-- Fixed image shortcuts matching shared desktop-viewer behavior, a read-only exported help reference, and host keyboard suspension. Preserve existing aliases while guarding modifiers, IME, input fields, numpad identity and held-key cleanup.
+- Add opt-in `smallImageZoom` / `SmallImageZoomOptions`: append one extra maximum stop only when the loaded original's longest edge is within the configured limit. Hosts can use 800% normal stops and `{ maxEdge: 64, maxNativePercent: 1600 }`; the library's default stops still end at 200% and the exception is off by default.
+- Add fixed preview shortcuts, exported `getPreviewShortcutHelp`, `onShowShortcuts`, and `keyboardEnabled` for host-owned help dialogs. Preserve editing, IME and numpad behavior, report pan directions separately, and leave Ctrl/⌘/Shift + arrow combinations to the host. No custom shortcut settings are added.
+- Add controlled filmstrip switches, mounted-window index reporting, separate `thumbnailSrc` / `thumbnailError` fields and explicit no-original placeholders. Thumbnail file generation and concurrency remain host responsibilities.
+- Add host-owned fullscreen adapters with controlled state or toggle-only actions, plus `onFullscreenError`. Host mode bypasses browser fullscreen; toggle-only hosts do not fabricate a confirmed fullscreen state.
+- Add `showRotateCCW` to independently hide the counter-clockwise toolbar button while preserving Shift+R; keep `showFlip` configurable.
 
-- Controlled filmstrip toolbar switches, bounded visible-index reporting, dedicated thumbnail URLs with explicit no-original placeholders, and failure states. Reserve main viewport space while retaining Native zoom and orientation.
+### Changed
 
-- Host-owned fullscreen adapters: controlled `isFullscreen/enter/exit`, or toggle-only hosts with truthful fixed button labels. DOM fullscreen is bypassed in host mode.
-- Fullscreen failure callbacks, request deduplication, browser API/event confirmation with a bounded timeout, and unmount cleanup.
+- Apply the effective highest stop to wheel, keyboard, toolbar, percentage input, adaptive observation zoom, native ref actions, pinch and Fit. Remove the extra ×4 pinch allowance. Fit may retain a lower `fitMaxNativePercent` cap. Discrete stops do not make pinch discontinuous or forbid intermediate manual percentages.
+- Organize preview internals by responsibility: model, shell, stage, preload, interaction, transform, controls, i18n and shared utilities. Keep the public root import and React 17+ peer compatibility; do not introduce WebGL or new runtime dependencies.
+- Separate active-image decode, presentation readiness and frame handoff. Keep image dimensions and readiness scoped to the current resource visit, with bounded metadata retention and cancellation on navigation.
+- Reserve viewport space for the filmstrip without changing Native zoom or orientation. Keep unselected thumbnails at their original brightness.
+
+### Fixed
+
+- Stop held navigation when it is released or superseded by a direct selection, and prevent late readiness or timer callbacks from restarting image stepping.
+- Preserve the last painted frame while an unloaded image is skipped; ignore stale decode events during rapid A→B→C or A→B→A navigation. Clean up canceled decode subscriptions, reveal timers and animation frames, including StrictMode replay.
+- Clamp zoom when the current image or configuration lowers the ceiling, even with zoom lock. Ignore non-finite values and use actual original dimensions rather than EXIF, placeholders or the preceding image for the small-image exception.
+- Deduplicate fullscreen requests, confirm browser state through events with a bounded timeout, and clean up pending work on unmount.
+
+### Compatibility notes
+
+- `setNative()` now clamps values above the effective highest stop; pinch no longer extends that maximum. Consumers relying on the previous behavior must configure higher stops or explicitly enable the small-image exception.
 
 ---
 
