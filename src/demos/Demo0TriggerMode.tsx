@@ -41,7 +41,6 @@ export function Demo0TriggerMode({
           arrows="both"
           closeOnMaskClick
           wheelEnabled
-          doubleClickEnabled
           switchImageResetTransform
           language={previewLanguage}
         >
@@ -72,7 +71,6 @@ export function Demo0TriggerMode({
           arrows="both"
           closeOnMaskClick
           wheelEnabled
-          doubleClickEnabled
           switchImageResetTransform
           language={previewLanguage}
         >

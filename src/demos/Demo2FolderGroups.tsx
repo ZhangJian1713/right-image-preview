@@ -113,7 +113,6 @@ export function Demo2FolderGroups({ t, locale, previewLanguage }: { t: DemoStrin
         zoomOutBelowMinBehaviour="noop"
         arrows="side"
         wheelEnabled
-        doubleClickEnabled
         switchImageResetTransform
         showFlip
         showThumbnails

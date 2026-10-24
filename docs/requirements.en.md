@@ -275,7 +275,7 @@
 
 ## DOM 0.8.0 — Return host adaptations upstream (2026-10-16)
 
-- [x] Opt-in adaptive click/Space Fit/Detail/100% cycle, with 200% observation for small images when Fit is capped at 100%.
+- [x] Adaptive click/Space Fit/Detail/100% cycle is now the default; Fit defaults to a 100% cap, with 200% observation for small images (subject to the zoom ceiling). Explicit `doubleClickEnabled={true}` retains legacy mode; explicit `clickZoomEnabled` takes priority.
 - [x] Cursor/viewport-center anchoring, 4 CSS px click/pan arbitration, double-click coalescing and session/timer cleanup.
 - [x] Independent `fitMaxNativePercent` without changing manual zoom stops.
 - [x] Complete Traditional Chinese and live locale updates; zoom out from Fit and finite maximum-stop behavior.

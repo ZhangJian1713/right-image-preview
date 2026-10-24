@@ -10,24 +10,23 @@ Images are rendered with DOM `<img>` elements. Pass image URLs through
   src="/photo.jpg"
   visible={open}
   onClose={() => setOpen(false)}
-  clickZoomEnabled
-  fitMaxNativePercent={100}
-  doubleClickEnabled={false}
   preloadRadius={0}
   language="zh-TW"
 />
 ```
 
-`clickZoomEnabled` opts into a shared click/Space cycle: Fit → a meaningful
-geometric-middle Detail scale → 100% → Fit. Small images capped at 100% use
+By default, click and Space share an observation cycle: Fit → a meaningful
+geometric-middle Detail scale → 100% → Fit. Small images default to
 Fit/100% → 200% → Fit. Mouse zoom preserves the pointer anchor; Space preserves
 the viewport center. Dragging and double-click sequences do not add extra zoom
-steps. Fit limiting is an independent option; omitted or invalid caps retain
-the effective highest-stop ceiling. Wheel and toolbar presets remain independent.
+steps. Fit defaults to a 100% cap, bounded by the effective highest stop; omitted
+or invalid caps use this default. Set `fitMaxNativePercent` for a different cap.
+Wheel and toolbar presets remain independent.
+
+Existing callers that explicitly pass `doubleClickEnabled` (or `{true}`) retain legacy double-click and Space Fit ↔ 100% behavior. Setting `clickZoomEnabled={false}` also selects legacy mode. Set both props to false to disable mouse click/double-click zoom. Explicit `clickZoomEnabled={true}` takes priority over double-click configuration.
 
 English, Simplified Chinese and Traditional Chinese are built in. Updating
-`language` or `strings` preserves the active image and view state. Short zoom
-hints use the same locale overrides.
+`language` or `strings` preserves the active image and view state.
 
 Neighbor loading remains optional and best effort. `preloadRadius={0}` disables
 neighbor work; DOM display-ready records cannot guarantee that the browser still
@@ -123,7 +122,6 @@ import { ImagePreview } from 'right-image-preview';
   visible={open}
   onClose={() => setOpen(false)}
   wheelEnabled
-  doubleClickEnabled
   closeOnMaskClick
 />
 
@@ -174,13 +172,15 @@ import { ImagePreview } from 'right-image-preview';
 | `defaultIndex` | `number` | `0` | Initial index in the flattened list; ignored when `defaultGroupedSelection` is set with groups |
 | `stops` | `number[]` | `[10,25,50,75,100,125,150,175,200]` | Discrete zoom stops in % (ascending); raise the cap by passing a longer list |
 | `smallImageZoom` | `SmallImageZoomOptions` | disabled | Append only `maxNativePercent` when the loaded original longest edge is ≤ `maxEdge`; e.g. `{ maxEdge: 64, maxNativePercent: 1600 }` |
+| `fitMaxNativePercent` | `number` | `100` | Fit cap, bounded by the effective highest stop; small images start at actual size and can click to 200% (subject to the zoom ceiling) |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | Initial zoom mode |
 | `initialNativePercent` | `number` | first stop | Initial native percent when `initialMode='native'` |
 | `firstZoomInStrategy` | `'above-fit' \| 'first-stop' \| 'hundred'` | `'above-fit'` | Which stop to land on when zooming in from Fit for the first time |
 | `zoomOutBelowMinBehaviour` | `'fit' \| 'noop'` | `'noop'` | Behaviour when zooming out below the minimum stop |
 | `zoomInAtMaxBehaviour` | `'noop' \| 'notify'` | `'noop'` | Behaviour when zooming in at the maximum stop |
 | `wheelEnabled` | `boolean` | `true` | Enable mouse-wheel zoom |
-| `doubleClickEnabled` | `boolean` | `true` | Double-click to toggle Fit ↔ 100 % |
+| `clickZoomEnabled` | `boolean` | automatic | Shared click/Space cycle; explicit values take priority. When omitted, only explicit `doubleClickEnabled={true}` selects legacy mode |
+| `doubleClickEnabled` | `boolean` | `true` in legacy mode | Explicit true preserves double-click Fit ↔ 100%; ignored while single-click mode is enabled |
 | `switchImageResetZoom` | `boolean` | `true` | Reset zoom when switching images (overridden by zoom lock) |
 | `switchImageResetTransform` | `boolean` | `true` | Reset flip/rotation when switching images |
 | `fitResetPan` | `boolean` | `true` | Reset pan offset when switching to Fit mode |

@@ -57,7 +57,6 @@ import { useZoomState } from '../transform/useZoomState';
 import { resolveZoomStops } from '../transform/zoomStops';
 import type { ImageDimensions } from '../model/geometry';
 import { useAdaptiveZoom } from '../transform/useAdaptiveZoom';
-import { nextAdaptiveZoom } from '../transform/adaptiveZoom';
 import { useClickZoomGesture } from '../interaction/useClickZoomGesture';
 import { usePreviewFullscreen } from './usePreviewFullscreen';
 import { usePreviewControls } from './usePreviewControls';
@@ -81,7 +80,8 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       zoomInAtMaxBehaviour = 'noop',
       wheelEnabled = true,
       doubleClickEnabled = true,
-      clickZoomEnabled = false,
+      // 显式的旧双击配置保留原交互；未配置时默认单击，显式单击设置优先。
+      clickZoomEnabled = props.doubleClickEnabled !== true,
       pinchEnabled = true,
       switchImageResetZoom = true,
       switchImageResetTransform = true,
@@ -223,7 +223,7 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       panJumpToNatural,
     } = useImageTransform({ mode, nativePercent, fitResetPan,
       fitMaxNativePercent: fitMaxNativePercent !== undefined && Number.isFinite(fitMaxNativePercent) && fitMaxNativePercent > 0
-        ? Math.min(fitMaxNativePercent, maxNativePercent) : maxNativePercent });
+        ? Math.min(fitMaxNativePercent, maxNativePercent) : Math.min(100, maxNativePercent) });
     const onOriginalImageLoad = useCallback((dims: ImageDimensions) => {
       setOriginalSize((previous) => previous?.src === currentImage.src &&
         previous.dims.naturalWidth === dims.naturalWidth && previous.dims.naturalHeight === dims.naturalHeight
@@ -240,7 +240,6 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     }, [setContainerEl]);
     const adaptive = useAdaptiveZoom({
       enabled: clickZoomEnabled && imageDims !== null && containerSize !== null,
-      resourceKey: currentImage.src,
       viewportRef: mediaViewportRef,
       fitEquivalentNativePercent,
       zoomState,
@@ -344,7 +343,7 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     const hideMainUntilDecoded = progressive.pipelineActive && !progressive.fullDecoded &&
       progressive.preloadStage !== 'thumb-only';
     const { imageShowReady, suppressTransformForSrcSwitch } = useStageReveal({
-      visit, ready, holding: outgoingHolding, dims: imageDims, hideMainUntilDecoded,
+      visit, ready, holding: outgoingHolding, mainLoaded: paceMainPainted, dims: imageDims, hideMainUntilDecoded,
       preferFastReveal, getMainEl, onDecoded: onMainImgDecoded, reveal });
 
     // ── Group info ──────────────────────────────────────────────────────────
@@ -716,13 +715,6 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
           }
         : {};
 
-    const hintTarget = adaptive.hintTarget;
-    const hintNext = hintTarget ? nextAdaptiveZoom({ mode: hintTarget.mode,
-      nativePercent: hintTarget.mode === 'native' ? hintTarget.percent : nativePercent,
-      fitEquivalentNativePercent }) : null;
-    const zoomTargetLabel = (target: { mode: 'fit' } | { mode: 'native'; percent: number }) =>
-      target.mode === 'fit' ? t.fit : `${target.percent}%`;
-
     const showStrip = showThumbnails;
     const stripStart =
       thumbnailsScope === 'flat' ? 0 : (currentGroup?.start ?? 0);
@@ -879,16 +871,6 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
           />
 
           </div>
-
-          {hintTarget && hintNext && (
-            <div role="status" style={{ position: 'absolute', bottom: 100, left: '50%',
-              transform: 'translateX(-50%)', padding: '8px 12px', borderRadius: 6,
-              background: 'rgba(0,0,0,.7)', color: '#fff', fontSize: 12,
-              pointerEvents: 'none', zIndex: 4 }}>
-              {t.zoomHint(zoomTargetLabel(hintTarget), zoomTargetLabel(hintNext))}
-              {hintTarget.mode === 'native' ? ` · ${t.dragToPan}` : ''}
-            </div>
-          )}
 
           {/* L3 — chrome: close, ←/→, toolbar/filename, minimap, filmstrip, EXIF */}
           <div

@@ -140,7 +140,6 @@ export function Demo5ContainedWorkspace({
               arrows="side"
               closeOnMaskClick={false}
               wheelEnabled
-              doubleClickEnabled
               language={previewLanguage}
               overlayStyle={{ borderRadius: 0, zIndex: 1 }}
               onClose={() => setOpen(false)}

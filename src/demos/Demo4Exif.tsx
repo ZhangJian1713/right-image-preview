@@ -137,7 +137,6 @@ export function Demo4Exif({
         arrows="both"
         closeOnMaskClick
         wheelEnabled
-        doubleClickEnabled
         showThumbnails
         language={previewLanguage}
         onClose={() => setVisible(false)}

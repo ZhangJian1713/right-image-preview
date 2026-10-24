@@ -26,6 +26,7 @@
 |------|------|--------|------|
 | `stops` | `NativePercent[]` | `[10,25,50,75,100,125,150,175,200]` | 离散档位列表（升序，至少 1 项）；需要更高上限请传入自定义列表 |
 | `smallImageZoom` | `SmallImageZoomOptions` | 不启用 | 主图实际长边 ≤ `maxEdge` 时，仅增加 `maxNativePercent` 这一档；例如 `{ maxEdge: 64, maxNativePercent: 1600 }` |
+| `fitMaxNativePercent` | `number` | `100` | 独立 Fit 上限；省略或非法值回退到 100%，同时不超过当前有效最高档位 |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | 初始缩放模式 |
 | `initialNativePercent` | `number` | 第一档 | `initialMode='native'` 时的初始百分比 |
 | `firstZoomInStrategy` | `'above-fit' \| 'first-stop' \| 'hundred'` | `'above-fit'` | 从 Fit 首次放大时的落档策略 |
@@ -38,7 +39,8 @@
 | Prop | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `wheelEnabled` | `boolean` | `false` | 滚轮缩放 |
-| `doubleClickEnabled` | `boolean` | `false` | 双击鼠标在适应与 100% 间切换 |
+| `clickZoomEnabled` | `boolean` | 自动开启 | 单击与 Space 共用自适应循环；显式值优先，省略时仅显式 `doubleClickEnabled={true}` 选择旧模式 |
+| `doubleClickEnabled` | `boolean` | 旧模式下 `true` | 显式开启可保留双击 Fit ↔ 100%；单击模式开启时忽略 |
 | `switchImageResetZoom` | `boolean` | `true` | 切图时重置缩放（锁定状态下此项被覆盖） |
 | `switchImageResetTransform` | `boolean` | `false` | 切图时重置旋转和翻转 |
 | `fitResetPan` | `boolean` | `true` | 调用适应时重置平移 |
@@ -206,13 +208,13 @@ interface ImagePreviewRef {
 - [小地图视口拖动](./minimap.zh-CN.md) — WebView 指针行为与基于雅可比的 1:1 平移。
 - [Media Lens 接入清单](./media-lens-integration.zh-CN.md) — Tauri 内存预算与推荐 props。
 
-## 0.8.0 自适应观察
+## 自适应观察（0.8.0 引入，以下为当前行为）
 
-- `clickZoomEnabled?: boolean` 默认 false。单击与 Space 共用自适应循环；忽略控件输入、Space repeat 和修饰键；开启时不再执行旧的双击切档。
-- `fitMaxNativePercent?: number` 独立限制 Fit，100 让小图保持实际尺寸；省略、非正数或非有限值使用当前有效最高档位。
+- `clickZoomEnabled?: boolean` 当前默认开启；显式值优先，省略时仅显式 `doubleClickEnabled={true}` 选择旧模式。单击与 Space 共用自适应循环；忽略控件输入、Space repeat 和修饰键；开启时不再执行旧的双击切档。`clickZoomEnabled={false}` 保留旧双击与 Space Fit ↔ 100%；同时将 `doubleClickEnabled` 设为 false 可关闭鼠标换档。
+- `fitMaxNativePercent?: number` 当前默认 100，让小图保持实际尺寸并使用 `Fit/100% → 200% → Fit`；省略、非正数或非有限值回退到 100%，同时不超过当前有效最高档位。200% 观察档也受最高档位限制。需要初始放大小图可显式传更高 Fit 上限。
 - Detail 为 `sqrt(Fit% × 100)` 取最近 5%，只有与两端均至少相差 1.5 倍才保留。Fit≈100% 时使用 200%；循环外手动倍率下一次回 Fit。
 - Fit 可用滚轮和工具栏直接缩小；最高档放大保持有界且不反向跳变。`setNative` 忽略非正数与非有限值。
-- `language` 支持英文、简中、繁中及 script/region 别名，显式 script 优先；热切换保留浏览状态。`strings.zoomHint` 与 `strings.dragToPan` 可覆盖提示。
+- `language` 支持英文、简中、繁中及 script/region 别名，显式 script 优先；热切换保留浏览状态。观察缩放不显示悬浮提示；`strings.zoomHint` 与 `strings.dragToPan` 保留兼容，但不再渲染。
 - 邻图完成过解码不代表位图持续驻留；`preloadRadius={0}` 可关闭邻图工作。
 
 ## 本地未发布：宿主全屏适配

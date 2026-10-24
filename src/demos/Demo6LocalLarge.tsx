@@ -599,7 +599,6 @@ export function Demo6LocalLarge({
                   arrows="side"
                   closeOnMaskClick={false}
                   wheelEnabled
-                  doubleClickEnabled
                   language={previewLanguage}
                   overlayStyle={{
                     borderRadius: 0,

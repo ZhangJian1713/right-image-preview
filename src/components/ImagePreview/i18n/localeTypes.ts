@@ -62,7 +62,9 @@ export interface LocaleStrings {
   tipZoomRowFit: string;
   tipZoomRowFitApprox(pct: number): string;
   tipMinimap: string;
+  /** @deprecated Retained for compatibility; observation zoom no longer renders a hint overlay. */
   zoomHint(current: string, next: string): string;
+  /** @deprecated Retained for compatibility; observation zoom no longer renders a hint overlay. */
   dragToPan: string;
 
   // EXIF panel

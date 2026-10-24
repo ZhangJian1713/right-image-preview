@@ -329,7 +329,7 @@ export interface ImagePreviewProps {
   initialMode?: ZoomMode;
   /** Initial native% when initialMode === 'native'. Default: first stop. */
   initialNativePercent?: NativePercent;
-  /** Fit cap in native percent; 100 keeps small images at actual size. Omitted: use the effective highest stop. */
+  /** Fit cap in native percent. Default: 100, clamped to the effective highest stop. Invalid values use this default. */
   fitMaxNativePercent?: NativePercent;
 
   // ── Behaviour options ──────────────────────────────────────────────────────
@@ -341,9 +341,16 @@ export interface ImagePreviewProps {
   wheelEnabled?: boolean;
   wheelStrategy?: WheelStrategy;
 
-  /** Enable double-click to toggle fit ↔ 100%. Default: true. */
+  /**
+   * Legacy double-click toggle between Fit and 100%. Explicit true selects legacy mode
+   * when clickZoomEnabled is omitted. Remains enabled when clickZoomEnabled is false,
+   * unless explicitly disabled. Ignored while clickZoomEnabled is true.
+   */
   doubleClickEnabled?: boolean;
-  /** Opt in to the shared primary-click / Space observation cycle. Default false. */
+  /**
+   * Shared primary-click / Space observation cycle. Defaults to true unless
+   * doubleClickEnabled is explicitly true. An explicit value takes precedence.
+   */
   clickZoomEnabled?: boolean;
 
   /**

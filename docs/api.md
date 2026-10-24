@@ -26,6 +26,7 @@
 |------|------|---------|-------------|
 | `stops` | `NativePercent[]` | `[10,25,50,75,100,125,150,175,200]` | Discrete zoom stop list (ascending, at least 1 item); pass a custom list for a higher max |
 | `smallImageZoom` | `SmallImageZoomOptions` | disabled | Append only `maxNativePercent` when the loaded original longest edge is ≤ `maxEdge`; e.g. `{ maxEdge: 64, maxNativePercent: 1600 }` |
+| `fitMaxNativePercent` | `number` | `100` | Independent Fit cap; omitted/invalid values use 100%, bounded by the effective highest stop |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | Initial zoom mode |
 | `initialNativePercent` | `number` | first stop | Initial percentage when `initialMode='native'` |
 | `firstZoomInStrategy` | `'above-fit' \| 'first-stop' \| 'hundred'` | `'above-fit'` | Which stop to land on when zooming in from Fit for the first time |
@@ -38,7 +39,8 @@
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `wheelEnabled` | `boolean` | `false` | Enable mouse-wheel zoom |
-| `doubleClickEnabled` | `boolean` | `false` | Double-click to toggle Fit ↔ 100 % |
+| `clickZoomEnabled` | `boolean` | automatic | Shared click/Space cycle; explicit values take priority. When omitted, only explicit `doubleClickEnabled={true}` selects legacy mode |
+| `doubleClickEnabled` | `boolean` | `true` in legacy mode | Explicit true preserves double-click Fit ↔ 100%; ignored while single-click mode is enabled |
 | `switchImageResetZoom` | `boolean` | `true` | Reset zoom when switching images (overridden by zoom lock) |
 | `switchImageResetTransform` | `boolean` | `false` | Reset flip/rotation when switching images |
 | `fitResetPan` | `boolean` | `true` | Reset pan offset when switching to Fit mode |
@@ -206,13 +208,13 @@ interface ImagePreviewRef {
 - [Minimap viewport drag](./minimap.md) — WebView pointer quirks and Jacobian-based 1:1 panning.
 - [Media Lens integration](./media-lens-integration.md) — Tauri memory budget and recommended props.
 
-## Adaptive observation in 0.8.0
+## Adaptive observation (introduced in 0.8.0; current behavior)
 
-- `clickZoomEnabled?: boolean` defaults to false. Click and Space share the adaptive cycle; button/input focus and held Space repeats are ignored. Legacy double-click is bypassed while enabled.
-- `fitMaxNativePercent?: number` independently caps Fit; 100 preserves actual size for small images. Omitted/non-positive/non-finite values use the effective highest-stop ceiling.
+- `clickZoomEnabled?: boolean` is now enabled by default. Explicit values take priority; when omitted, only explicit `doubleClickEnabled={true}` selects legacy mode. Click and Space share the adaptive cycle; button/input focus and held Space repeats are ignored. Legacy double-click is bypassed while enabled. `clickZoomEnabled={false}` retains legacy double-click and Space Fit ↔ 100%; set `doubleClickEnabled={false}` too to disable mouse zoom.
+- `fitMaxNativePercent?: number` now defaults to 100, preserving actual size for small images with a `Fit/100% → 200% → Fit` cycle. Omitted/non-positive/non-finite values use 100%, bounded by the effective highest stop. The 200% observation step also respects that ceiling. Explicitly raise the Fit cap to initially enlarge small images.
 - Detail = nearest 5% to `sqrt(Fit% × 100)`, retained only when both adjacent ratios are at least 1.5. Fit≈100% uses 200% as the detail target. Manual scales outside the cycle return to Fit.
 - Fit may step down through wheel/toolbar; at the maximum, zoom-in remains bounded and never jumps down. `setNative` rejects non-positive/non-finite inputs.
-- `language` supports `en`, `zh-CN`, `zh-TW`, `zh-Hans`, `zh-Hant` and regional aliases; an explicit script wins over region. Hot updates preserve view state. `strings.zoomHint` and `strings.dragToPan` localize observation hints.
+- `language` supports `en`, `zh-CN`, `zh-TW`, `zh-Hans`, `zh-Hant` and regional aliases; an explicit script wins over region. Hot updates preserve view state. Observation zoom does not show a floating hint; `strings.zoomHint` and `strings.dragToPan` remain accepted for compatibility but are not rendered.
 - A recorded neighbor decode is best effort, not a live residency guarantee. Set `preloadRadius={0}` to disable neighbor work.
 
 ## Local / unreleased: host fullscreen adapters

@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback } from 'react';
 import type { RefObject } from 'react';
-import { nextAdaptiveZoom, type AdaptiveZoomTarget } from './adaptiveZoom';
+import { nextAdaptiveZoom } from './adaptiveZoom';
 import { runFlushSync } from '../lib/flushSyncCompat';
 import type { ZoomStateActions } from './useZoomState';
 
 interface AdaptiveZoomOptions {
   enabled: boolean;
-  resourceKey: string;
   viewportRef: RefObject<HTMLDivElement | null>;
   fitEquivalentNativePercent?: number;
   zoomState: ZoomStateActions;
@@ -14,13 +13,8 @@ interface AdaptiveZoomOptions {
 }
 
 export function useAdaptiveZoom(options: AdaptiveZoomOptions) {
-  const { enabled, resourceKey, viewportRef, fitEquivalentNativePercent, zoomState,
+  const { enabled, viewportRef, fitEquivalentNativePercent, zoomState,
     zoomAnchorTranslate } = options;
-  const scope = useMemo(() => ({ resourceKey, enabled }), [resourceKey, enabled]);
-  const [hint, setHint] = useState<{ scope: object; target: AdaptiveZoomTarget } | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), [resourceKey, enabled]);
-
   const cycle = useCallback((point?: { x: number; y: number }) => {
     if (!enabled || !fitEquivalentNativePercent || !viewportRef.current) return;
     const current = zoomState.getState(fitEquivalentNativePercent);
@@ -39,11 +33,8 @@ export function useAdaptiveZoom(options: AdaptiveZoomOptions) {
           point ? point.y - rect.top - rect.height / 2 : 0);
         zoomState.setNative(target.percent);
       }
-      setHint({ scope, target });
     });
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => setHint(null), 900);
-  }, [enabled, scope, viewportRef, fitEquivalentNativePercent, zoomState, zoomAnchorTranslate]);
+  }, [enabled, viewportRef, fitEquivalentNativePercent, zoomState, zoomAnchorTranslate]);
 
   const state = { mode: zoomState.mode, nativePercent: zoomState.nativePercent, fitEquivalentNativePercent };
   const nextTarget = nextAdaptiveZoom(state);
@@ -54,6 +45,5 @@ export function useAdaptiveZoom(options: AdaptiveZoomOptions) {
     cycle,
     nextTarget,
     nextScale,
-    hintTarget: enabled && hint?.scope === scope ? hint.target : null,
   };
 }

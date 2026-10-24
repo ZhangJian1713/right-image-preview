@@ -106,7 +106,7 @@ export const STRINGS: Record<DemoLocale, DemoStrings> = {
     title: 'right-image-preview',
     heroTagline: 'Big full-screen photos for the web — zoom, browse, easy keys.',
     heroLead:
-      'Photos open over the page. Zoom with the wheel or a double-click. Drag to move when zoomed. Step through many photos or jump between folders. A small corner map when the picture is huge. Lots of keyboard shortcuts. You only need React — no extra UI kits.',
+      'Photos open over the page. Zoom with the wheel or a single click. Drag to move when zoomed. Step through many photos or jump between folders. A small corner map when the picture is huge. Lots of keyboard shortcuts. You only need React — no extra UI kits.',
     heroCtaTry: 'Open sample image',
     heroCtaGitHub: 'GitHub',
     heroCtaScroll: 'More to try below',
@@ -118,7 +118,7 @@ export const STRINGS: Record<DemoLocale, DemoStrings> = {
       },
       {
         title: 'Zoom and drag',
-        body: 'Show the whole picture on screen, or real size. Zoom in steps with the mouse wheel. Double-click to zoom; double-click again to go back. Drag the photo when it is zoomed in.',
+        body: 'Show the whole picture on screen, or real size. Zoom in steps with the mouse wheel. Click or press Space to cycle through Fit, a detail view when useful, and real size. Small photos start at real size and can zoom to 200%. Drag the photo when it is zoomed in.',
       },
       {
         title: 'Browse photos',
@@ -157,7 +157,7 @@ export const STRINGS: Record<DemoLocale, DemoStrings> = {
       ['Esc', 'Closes the viewer'],
       ['← / →', 'Previous photo / next photo'],
       ['Mouse wheel', 'Zoom in or out (if wheel zoom is on)'],
-      ['Double-click', 'Zoom in; double-click again to undo (if on)'],
+      ['Click photo / Space', 'Cycle Fit → Detail (when useful) → 100% → Fit; small photos: 100% → 200% → Fit'],
       ['Drag', 'Move the photo when you are zoomed in'],
       ['Click the dark area', 'Closes (if click-outside-to-close is on)'],
     ],
@@ -230,7 +230,7 @@ export const STRINGS: Record<DemoLocale, DemoStrings> = {
     title: 'right-image-preview',
     heroTagline: '轻量、功能齐全的全屏网页图片查看器。',
     heroLead:
-      '全屏对话框、固定档位缩放、拖动平移、滚轮与双击缩放、多图与分组相册、角落小地图与完整快捷键支持 — 除 React 外无运行时依赖。',
+      '全屏对话框、固定档位缩放、拖动平移、滚轮与单击缩放、多图与分组相册、角落小地图与完整快捷键支持 — 除 React 外无运行时依赖。',
     heroCtaTry: '打开示例图',
     heroCtaGitHub: 'GitHub',
     heroCtaScroll: '更多演示在下方',
@@ -242,7 +242,7 @@ export const STRINGS: Record<DemoLocale, DemoStrings> = {
       },
       {
         title: '顺手的缩放与平移',
-        body: '适应视口 / 原始比例（100%）、档位缩放、滚轮缩放、双击放大与还原（可开）、放大后可拖动平移。',
+        body: '单击或 Space 共用适应 / 细节档（按需）/ 100% 循环；小图默认原始大小，单击可放大到 200%，放大后可拖动平移。',
       },
       {
         title: '相册与分组导航',
@@ -275,7 +275,7 @@ export const STRINGS: Record<DemoLocale, DemoStrings> = {
       ['Esc', '关闭查看器'],
       ['← / →', '上一张 / 下一张'],
       ['滚轮', '缩放（开启滚轮缩放时）'],
-      ['双击', '放大；再次双击还原（开启双击缩放时）'],
+      ['主图单击 / Space', '适应 → 细节档（按需）→ 100% → 适应；小图为 100% → 200% → 适应'],
       ['拖动', '放大后可拖动平移画面'],
       ['点击遮罩外', '关闭（开启点击遮罩关闭时）'],
     ],

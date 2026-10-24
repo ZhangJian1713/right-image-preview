@@ -12,7 +12,7 @@ with `keyboardEnabled={false}` while displaying a dialog.
 | `Home` / `End` | First / last image |
 | `↑` / `+` / `=` / Numpad `+` | Zoom in one stop |
 | `↓` / `-` / Numpad `-` | Zoom out one stop |
-| `Space` / Numpad `0` | Adaptive cycle with clickZoomEnabled; otherwise Fit ↔ 100% |
+| `Space` / Numpad `0` | Adaptive cycle by default; Fit ↔ 100% in legacy double-click mode |
 | Main keyboard `0` / `1` | Fit / native 100% |
 | `R` / `Shift+R` | Rotate 90° clockwise / counter-clockwise |
 | `W` / Numpad `8` | Reveal up |

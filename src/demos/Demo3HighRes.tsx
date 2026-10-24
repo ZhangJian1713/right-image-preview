@@ -64,7 +64,6 @@ export function Demo3HighRes({ t, locale, previewLanguage }: { t: DemoStrings; l
         arrows="both"
         closeOnMaskClick
         wheelEnabled
-        doubleClickEnabled
         switchImageResetTransform
         progressivePlaceholderMinMs={2800}
         progressiveFadeMs={600}

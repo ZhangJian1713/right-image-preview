@@ -275,8 +275,8 @@
 
 ## DOM 0.8.0 — 扩展定制回归上游（2026-10-16）
 
-- [x] `clickZoomEnabled` 默认关闭；启用后单击/Space 自适应 Fit/Detail/100% 循环，配合 100% Fit 上限支持小图 200%。
-- [x] Space 使用视口中心锚点，鼠标使用光标锚点；4 CSS px 区分 click 与 pan；合并双击，取消会话及清理提示计时器。
+- [x] 单击/Space 默认共用自适应 Fit/Detail/100% 循环；Fit 默认不超过 100%，小图使用 Fit/100% → 200% → Fit（受最高档位限制）。显式 `doubleClickEnabled={true}` 保留旧模式，显式 `clickZoomEnabled` 优先。
+- [x] Space 使用视口中心锚点，鼠标使用光标锚点；4 CSS px 区分 click 与 pan；合并双击并取消过期会话；缩放不显示悬浮提示。
 - [x] `fitMaxNativePercent` 独立限制 Fit 上限，不改变手动缩放档位。
 - [x] 繁体中文完整文案与语言热切换；Fit 可直接缩小，最大档位不产生无效倍率。
 - [x] 保留 DOM `<img>`、`src`/`minimapSrc` API，不合入 WebGL/OpenGL 渲染。

@@ -10,22 +10,20 @@
   src="/photo.jpg"
   visible={open}
   onClose={() => setOpen(false)}
-  clickZoomEnabled
-  fitMaxNativePercent={100}
-  doubleClickEnabled={false}
   preloadRadius={0}
   language="zh-TW"
 />
 ```
 
-`clickZoomEnabled` 默认关闭；开启后单击和 Space 共用 Fit → 有意义的 Detail
-中间档 → 100% → Fit 循环。Fit 上限为 100% 的小图使用 Fit/100% → 200% → Fit。
+默认单击和 Space 共用 Fit → 有意义的 Detail
+中间档 → 100% → Fit 循环。小图默认使用 Fit/100% → 200% → Fit。
 鼠标缩放保持光标锚点，Space 保持视口中心。拖动与双击序列不会额外推进倍率。
-Fit 上限是独立配置，省略或传入非法值时，使用当前有效最高档位作为上限。
+Fit 上限默认 100%，非法值回退到 100%，同时不超过当前有效最高档位；可用 `fitMaxNativePercent` 显式设置其他上限。
 滚轮及工具栏继续使用各自的固定档位。
 
-内置英文、简体中文和繁体中文。更新 `language` 或 `strings` 保留当前图片及浏览状态，
-短时缩放提示也支持文案覆盖。
+旧调用方显式传入 `doubleClickEnabled`（或 `{true}`）时，仍保留双击及 Space 的 Fit ↔ 100% 行为。也可显式设置 `clickZoomEnabled={false}` 使用旧模式；若要关闭鼠标单击和双击换档，同时设置两项为 false。显式 `clickZoomEnabled={true}` 优先于双击配置。
+
+内置英文、简体中文和繁体中文。更新 `language` 或 `strings` 保留当前图片及浏览状态。
 
 邻图预加载保留为可选的尽力优化。`preloadRadius={0}` 关闭邻图工作；DOM 的
 display-ready 记录不能保证浏览器仍保留解码位图。宿主未验证保活效果前，建议从关闭
@@ -120,7 +118,6 @@ import { ImagePreview } from 'right-image-preview';
   visible={open}
   onClose={() => setOpen(false)}
   wheelEnabled
-  doubleClickEnabled
   closeOnMaskClick
 />
 
@@ -171,13 +168,15 @@ import { ImagePreview } from 'right-image-preview';
 | `defaultIndex` | `number` | `0` | 扁平列表中的初始下标；与分组同时传入 `defaultGroupedSelection` 时忽略 |
 | `stops` | `number[]` | `[10,25,50,75,100,125,150,175,200]` | Native zoom 档位（%，升序）；需要更高上限请传入更长列表 |
 | `smallImageZoom` | `SmallImageZoomOptions` | 不启用 | 主图实际长边 ≤ `maxEdge` 时，仅增加 `maxNativePercent` 这一档；例如 `{ maxEdge: 64, maxNativePercent: 1600 }` |
+| `fitMaxNativePercent` | `number` | `100` | Fit 上限，不超过当前有效最高档位；小图默认按实际尺寸显示，单击可进入 200%（受最高档位限制） |
 | `initialMode` | `'fit' \| 'native'` | `'fit'` | 初始缩放模式 |
 | `initialNativePercent` | `number` | 第一档 | `initialMode='native'` 时的初始比例 |
 | `firstZoomInStrategy` | `'above-fit' \| 'first-stop' \| 'hundred'` | `'above-fit'` | 从 Fit 首次放大时的入档策略 |
 | `zoomOutBelowMinBehaviour` | `'fit' \| 'noop'` | `'noop'` | 缩小到最小档以下的行为 |
 | `zoomInAtMaxBehaviour` | `'noop' \| 'notify'` | `'noop'` | 放大到最大档时的行为 |
 | `wheelEnabled` | `boolean` | `true` | 是否启用滚轮缩放 |
-| `doubleClickEnabled` | `boolean` | `true` | 双击切换 Fit ↔ 100% |
+| `clickZoomEnabled` | `boolean` | 自动开启 | 单击 / Space 共用自适应循环；显式值优先，未传时仅显式 `doubleClickEnabled={true}` 选择旧模式 |
+| `doubleClickEnabled` | `boolean` | 旧模式下 `true` | 显式开启可保留双击 Fit ↔ 100%；单击模式开启时忽略 |
 | `switchImageResetZoom` | `boolean` | `true` | 切图时是否重置缩放（锁定时被覆盖） |
 | `switchImageResetTransform` | `boolean` | `true` | 切图时是否重置翻转/旋转 |
 | `fitResetPan` | `boolean` | `true` | 切回 Fit 时是否归零平移 |

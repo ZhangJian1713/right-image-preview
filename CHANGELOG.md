@@ -9,6 +9,19 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-10-24
+
+### Changed
+
+- Remove the transient observation-zoom hint overlay and its timer; keep click/Space zoom cycling and pointer anchoring.
+- Default to a shared single-click / Space cycle: Fit → Detail (when useful) → 100% → Fit. Update demos and documentation accordingly.
+- Default Fit to a 100% cap, so small images start at actual size and cycle to 200% on click. Custom Fit caps and zoom limits remain supported.
+- Keep legacy double-click mode through explicit `doubleClickEnabled={true}` or `clickZoomEnabled={false}`; an explicit `clickZoomEnabled` value takes priority.
+
+### Fixed
+
+- Fix loaded images occasionally remaining covered by the previous image when switching photos.
+
 ## [0.9.0] — 2026-10-16
 
 ### Added

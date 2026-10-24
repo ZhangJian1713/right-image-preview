@@ -73,7 +73,6 @@ export function Demo1SingleGallery({
         arrows="both"
         closeOnMaskClick
         wheelEnabled
-        doubleClickEnabled
         switchImageResetTransform
         showThumbnails
         language={previewLanguage}
