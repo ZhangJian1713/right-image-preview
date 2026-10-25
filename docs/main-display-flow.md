@@ -44,10 +44,12 @@ Notes:
 
 1. **Thumb first, then original** is the default path; “no thumb → hard-load original” is a fallback, not the recommended setup.
 2. The switch frame does **not** wait for the original before giving visual feedback; **outgoing hold** runs in parallel with placeholder / original prep.
-3. Reveal requires a **fully drawable** bitmap (e.g. `createImageBitmap` / settled `decode` + double `rAF`) so a progressive JPEG cannot flash a left/top strip.
+3. Reveal keeps `createImageBitmap` / `decode` confirmation and the normal double-`rAF` handoff. A separate 100ms frame fallback starts only after decode settles, preventing paused frame callbacks from extending this wait to the 60s decode deadline. It neither bypasses decode nor proves that pixels reached the screen. A loaded, layout-ready current image can exit whole-layer hiding without rAF; progressive underlay gating remains independent.
 4. If the neighbor was already **display-ready**, use **fast reveal**: skip artificial dwell / center spinner; outgoing hold still covers the gap until the viewport main is drawable — never blank solely to look “instant.”
 5. Brief overlap with mismatched aspect (a sliver of the previous image) is acceptable; hold-scrubbing especially depends on this contract so half the time is not black.
 6. **Hold pacing “presented” tracks the incoming image only** (thumb underlay or new main), not the held previous frame — otherwise steps would advance too fast.
+
+If the original or its auxiliary probe fails, keep the available main-area thumbnail. Its DOM load permits a `thumb-only` handoff without marking the original ready or display-ready. A late successful viewport original can recover; late probes cannot downgrade a completed original. Valid one-pixel dimensions use the same load/decode and visit checks as other images.
 
 Code entry points: `useProgressiveMainImage`, `DisplayStageLayers` (`isOutgoing`), `stage/stageHandoff.ts` / `stage/useStageHandoff.ts`, `stage/imagePreviewDecode.ts`.
 

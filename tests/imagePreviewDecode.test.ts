@@ -17,6 +17,59 @@ function image(src = 'test:a') {
 }
 
 describe('decode subscriptions', () => {
+  it.each([0, 1])('reveals a decoded image when frames pause after %s callbacks', async (allowed) => {
+    let remaining = allowed;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      if (remaining-- > 0) queueMicrotask(() => callback(0));
+      return 1;
+    });
+    const { img, deferred } = image();
+    const reveal = vi.fn();
+    scheduleRevealAfterDecode(img, reveal, 60_000);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(reveal).not.toHaveBeenCalled();
+    deferred.resolve();
+    await vi.advanceTimersByTimeAsync(200);
+    expect(reveal).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('cleans up a paused presentation wait when its last subscriber leaves', async () => {
+    vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1);
+    const { img, deferred } = image();
+    const reveal = vi.fn();
+    const cancel = scheduleRevealAfterDecode(img, reveal, 1000);
+    deferred.resolve();
+    await vi.advanceTimersByTimeAsync(0);
+    cancel();
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(reveal).not.toHaveBeenCalled();
+    const cached = vi.fn();
+    scheduleRevealAfterDecode(img, cached, 1000);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(cached).toHaveBeenCalledOnce();
+    expect(img.decode).toHaveBeenCalledOnce();
+  });
+  it('ignores old-source frame fallbacks after the element changes URL', async () => {
+    vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1);
+    const { img, deferred } = image();
+    const old = vi.fn();
+    scheduleRevealAfterDecode(img, old, 1000);
+    deferred.resolve();
+    await vi.advanceTimersByTimeAsync(0);
+    img.src = 'test:b';
+    const nextDecode = pending();
+    img.decode = vi.fn(() => nextDecode.promise);
+    const current = vi.fn();
+    scheduleRevealAfterDecode(img, current, 1000);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(old).not.toHaveBeenCalled();
+    expect(current).not.toHaveBeenCalled();
+    nextDecode.resolve();
+    await vi.advanceTimersByTimeAsync(200);
+    expect(current).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
   it('cancels one subscriber while preserving another consumer of the same decode', async () => {
     const { img, deferred } = image();
     const oldVisit = vi.fn();

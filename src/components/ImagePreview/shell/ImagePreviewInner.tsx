@@ -225,6 +225,7 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
       fitMaxNativePercent: fitMaxNativePercent !== undefined && Number.isFinite(fitMaxNativePercent) && fitMaxNativePercent > 0
         ? Math.min(fitMaxNativePercent, maxNativePercent) : Math.min(100, maxNativePercent) });
     const onOriginalImageLoad = useCallback((dims: ImageDimensions) => {
+      setFailedSrc((previous) => previous === currentImage.src ? null : previous);
       setOriginalSize((previous) => previous?.src === currentImage.src &&
         previous.dims.naturalWidth === dims.naturalWidth && previous.dims.naturalHeight === dims.naturalHeight
         ? previous : { src: currentImage.src, dims });
@@ -303,7 +304,7 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     useLayoutEffect(() => {
       const w = Number(currentImage.exif?.width);
       const h = Number(currentImage.exif?.height);
-      if (Number.isFinite(w) && Number.isFinite(h) && w > 1 && h > 1) {
+      if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
         onImageLoad({ naturalWidth: w, naturalHeight: h });
       }
     }, [currentImage.src, currentImage.exif?.width, currentImage.exif?.height, onImageLoad]);
@@ -334,17 +335,19 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     });
 
     const { onMainImgDecoded } = progressive;
+    const thumbOnly = progressive.preloadStage === 'thumb-only';
+    const getRevealEl = useCallback(() => thumbOnly ? underlayElRef.current : getMainEl(), [thumbOnly, getMainEl]);
 
     const onCurrentLayerLoad = useMainImageDecode({ visit, getMainEl, preferFastReveal,
       onImageLoad: onOriginalImageLoad, onDecoded: onMainImgDecoded, onPainted: markMainPainted });
 
     const ready = imageDims !== null && containerSize !== null &&
       containerSize.width > 1 && containerSize.height > 1;
-    const hideMainUntilDecoded = progressive.pipelineActive && !progressive.fullDecoded &&
-      progressive.preloadStage !== 'thumb-only';
+    const hideMainUntilDecoded = progressive.pipelineActive && !progressive.fullDecoded;
     const { imageShowReady, suppressTransformForSrcSwitch } = useStageReveal({
-      visit, ready, holding: outgoingHolding, mainLoaded: paceMainPainted, dims: imageDims, hideMainUntilDecoded,
-      preferFastReveal, getMainEl, onDecoded: onMainImgDecoded, reveal });
+      visit, ready, holding: outgoingHolding, contentLoaded: thumbOnly ? paceUnderlayPainted : paceMainPainted,
+      dims: imageDims, hideUntilReady: thumbOnly ? !paceUnderlayPainted : hideMainUntilDecoded,
+      preferFastReveal: preferFastReveal && !thumbOnly, getRevealEl, onDecoded: onMainImgDecoded, reveal });
 
     // ── Group info ──────────────────────────────────────────────────────────
     const groupInfo = useMemo(() => findGroup(groupSlices, currentIndex), [groupSlices, currentIndex]);
@@ -519,14 +522,14 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
     const thumbReadyForPace = useHoldStagePresented({
       visitKey: `${currentIndex}:${currentImage.src}`,
       imageLoadError:
-        imageLoadError || progressive.preloadStage === 'error',
+        !thumbOnly && (imageLoadError || progressive.preloadStage === 'error'),
       imageShowReady,
       // Outgoing hold covers the stage — do not treat incoming underlay as "presented".
       showMinimapUnderlay: progressive.showMinimapUnderlay && !holdSrc,
       underlayPainted: paceUnderlayPainted,
       pipelineActive: progressive.pipelineActive,
       fullDecoded: progressive.fullDecoded,
-      thumbOnly: progressive.preloadStage === 'thumb-only',
+      thumbOnly,
       mainPainted: paceMainPainted,
       getUnderlayEl: getHoldUnderlayEl,
       getMainEl,
@@ -683,11 +686,11 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
      * must not hide the L4 spinner during that gap (users otherwise see a stuck previous
      * frame with no feedback).
      */
-    const awaitingMainReveal = outgoingHolding || hideMainUntilDecoded;
+    const awaitingMainReveal = outgoingHolding || (thumbOnly ? !paceUnderlayPainted : hideMainUntilDecoded);
 
     // While progressive loading is incomplete, hideMainUntilDecoded already covers
-    // both preloading and the visible underlay. thumb-only is entered together with
-    // fullDecoded=true, so it cannot introduce another incomplete-underlay branch.
+    // both preloading and the visible underlay. Thumbnail fallback has its own DOM
+    // load signal and never claims fullDecoded or warms the original's ready cache.
     const showCenterLoader =
       showSwitchLoader && !imageLoadError &&
       (awaitingMainReveal ||
@@ -789,56 +792,56 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
             data-rip-floor="content"
             style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0 }}
           >
-            {progressive.preloadStage !== 'thumb-only' && (
-              <DisplayStageLayers
-                layers={displayLayers}
-                currentIndex={currentIndex}
-                currentAlt={currentImage.alt ?? ''}
-                liveDims={imageDims}
-                liveTransform={transform.cssTransform}
-                frozenBySrc={frozenBySrc}
-                hideCurrentUntilDecoded={hideMainUntilDecoded}
-                suppressTransformTransition={clickZoomEnabled || suppressTransformTransition}
-                isPanning={isPanning || minimapDragging}
-                imageShowReady={imageShowReady}
-                bindLayerRef={bindLayerRef}
-                onCurrentLoad={onCurrentLayerLoad}
-                onCurrentError={() => {
-                  setFailedSrc(currentImage.src);
-                  onImageError?.(currentIndex, currentImage.src);
-                }}
-                onNeighborLoad={onSlotImgLoad}
-                underlay={
-                  progressive.showMinimapUnderlay && currentImage.minimapSrc ? (
-                    <img
-                      key={`${currentImage.minimapSrc}-${currentIndex}`}
-                      ref={underlayElRef}
-                      src={currentImage.minimapSrc}
-                      alt=""
-                      aria-hidden
-                      draggable={false}
-                      onLoad={() => markUnderlayPainted()}
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain',
-                        pointerEvents: 'none',
-                        display: 'block',
-                        opacity: holdSrc
+            <DisplayStageLayers
+              layers={displayLayers}
+              currentIndex={currentIndex}
+              currentAlt={currentImage.alt ?? ''}
+              liveDims={imageDims}
+              liveTransform={transform.cssTransform}
+              frozenBySrc={frozenBySrc}
+              hideCurrentUntilDecoded={hideMainUntilDecoded}
+              suppressTransformTransition={clickZoomEnabled || suppressTransformTransition}
+              isPanning={isPanning || minimapDragging}
+              imageShowReady={imageShowReady}
+              bindLayerRef={bindLayerRef}
+              onCurrentLoad={onCurrentLayerLoad}
+              onCurrentError={() => {
+                progressive.onMainImgError();
+                setFailedSrc(currentImage.src);
+                onImageError?.(currentIndex, currentImage.src);
+              }}
+              onNeighborLoad={onSlotImgLoad}
+              underlay={
+                progressive.showMinimapUnderlay && currentImage.minimapSrc ? (
+                  <img
+                    key={`${currentImage.minimapSrc}-${currentIndex}`}
+                    ref={underlayElRef}
+                    src={currentImage.minimapSrc}
+                    alt=""
+                    aria-hidden
+                    draggable={false}
+                    onLoad={() => markUnderlayPainted()}
+                    onError={progressive.onMinimapError}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      pointerEvents: 'none',
+                      display: 'block',
+                      opacity: holdSrc
+                        ? 0
+                        : progressive.fullDecoded
                           ? 0
-                          : progressive.fullDecoded
-                            ? 0
-                            : 1,
-                        transition: opacityTransition,
-                        zIndex: progressive.fullDecoded ? 0 : 2,
-                      }}
-                    />
-                  ) : null
-                }
-              />
-            )}
+                          : 1,
+                      transition: opacityTransition,
+                      zIndex: progressive.fullDecoded ? 0 : 2,
+                    }}
+                  />
+                ) : null
+              }
+            />
           </div>
 
           {/* L2 — pan / zoom hit target (live transform lives on the current layer only) */}
@@ -1054,7 +1057,7 @@ export const ImagePreviewInner = forwardRef<ImagePreviewRef, ImagePreviewProps>(
               />
             </div>
 
-            {imageLoadError && errorFallback && (
+            {imageLoadError && !thumbOnly && errorFallback && (
               <div
                 style={{
                   position: 'absolute',

@@ -1,0 +1,885 @@
+{
+  "browser": "156.0.8078.47",
+  "viewport": {
+    "width": 1280,
+    "height": 900
+  },
+  "repeats": 3,
+  "fixtures": [
+    {
+      "label": "progressive-jpeg",
+      "width": 7008,
+      "height": 4672,
+      "bytes": 1791510,
+      "progressive": true,
+      "generated": true,
+      "animated": false
+    },
+    {
+      "label": "baseline-jpeg",
+      "bytes": 1547795,
+      "progressive": false,
+      "width": 7008,
+      "height": 4672,
+      "animated": false
+    },
+    {
+      "label": "png",
+      "bytes": 303103,
+      "width": 1460,
+      "height": 1186,
+      "animated": false
+    },
+    {
+      "label": "webp",
+      "bytes": 118202,
+      "width": 1033,
+      "height": 1552,
+      "animated": false
+    }
+  ],
+  "runs": [
+    {
+      "fixture": "progressive-jpeg",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "baseline",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 135.19999980926514,
+          "decodeCalls": 1,
+          "decodeMs": 0,
+          "blockedRafRequests": 0,
+          "totalMs": 205.09999990463257
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 0,
+      "variant": "baseline",
+      "bitmapCalls": 1,
+      "decodeCalls": 0,
+      "bitmapMs": 135.19999980926514,
+      "decodeMs": 0,
+      "loadToReadyMs": 144.09999990463257,
+      "totalMs": 178.89999985694885,
+      "settledPixelsMatch": true,
+      "errors": []
+    },
+    {
+      "fixture": "progressive-jpeg",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "candidate",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 160,
+          "decodeCalls": 2,
+          "decodeMs": 0,
+          "blockedRafRequests": 0,
+          "totalMs": 227.79999995231628
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 0,
+      "variant": "candidate",
+      "bitmapCalls": 1,
+      "decodeCalls": 0,
+      "bitmapMs": 160,
+      "decodeMs": 0,
+      "loadToReadyMs": 170.5,
+      "totalMs": 202.90000009536743,
+      "settledPixelsMatch": true,
+      "errors": []
+    },
+    {
+      "fixture": "baseline-jpeg",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "baseline",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 84.20000004768372,
+          "decodeCalls": 2,
+          "decodeMs": 2.3999998569488525,
+          "blockedRafRequests": 0,
+          "totalMs": 158.20000004768372
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 0,
+      "variant": "baseline",
+      "bitmapCalls": 1,
+      "decodeCalls": 0,
+      "bitmapMs": 84.20000004768372,
+      "decodeMs": 0,
+      "loadToReadyMs": 92.89999985694885,
+      "totalMs": 133.20000004768372,
+      "settledPixelsMatch": true,
+      "errors": []
+    },
+    {
+      "fixture": "baseline-jpeg",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "candidate",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 77,
+          "decodeCalls": 2,
+          "decodeMs": 2.200000047683716,
+          "blockedRafRequests": 0,
+          "totalMs": 151.39999985694885
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 0,
+      "variant": "candidate",
+      "bitmapCalls": 1,
+      "decodeCalls": 0,
+      "bitmapMs": 77,
+      "decodeMs": 0,
+      "loadToReadyMs": 87.10000014305115,
+      "totalMs": 126.5,
+      "settledPixelsMatch": true,
+      "errors": []
+    },
+    {
+      "fixture": "png",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "baseline",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 7.099999904632568,
+          "decodeCalls": 2,
+          "decodeMs": 0.7999999523162842,
+          "blockedRafRequests": 0,
+          "totalMs": 78.69999980926514
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 0,
+      "variant": "baseline",
+      "bitmapCalls": 1,
+      "decodeCalls": 1,
+      "bitmapMs": 7.099999904632568,
+      "decodeMs": 0.7999999523162842,
+      "loadToReadyMs": 32.700000047683716,
+      "totalMs": 66.29999995231628,
+      "settledPixelsMatch": true,
+      "errors": []
+    },
+    {
+      "fixture": "png",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "candidate",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 6.599999904632568,
+          "decodeCalls": 2,
+          "decodeMs": 8.899999856948853,
+          "blockedRafRequests": 0,
+          "totalMs": 73.09999990463257
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 0,
+      "variant": "candidate",
+      "bitmapCalls": 1,
+      "decodeCalls": 1,
+      "bitmapMs": 6.599999904632568,
+      "decodeMs": 3.5999999046325684,
+      "loadToReadyMs": 27.200000047683716,
+      "totalMs": 59.5,
+      "settledPixelsMatch": true,
+      "errors": []
+    },
+    {
+      "fixture": "webp",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "baseline",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 10.799999952316284,
+          "decodeCalls": 2,
+          "decodeMs": 2.4000000953674316,
+          "blockedRafRequests": 0,
+          "totalMs": 63
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 0,
+      "variant": "baseline",
+      "bitmapCalls": 1,
+      "decodeCalls": 0,
+      "bitmapMs": 10.799999952316284,
+      "decodeMs": 0,
+      "loadToReadyMs": 21.200000047683716,
+      "totalMs": 52.89999985694885,
+      "settledPixelsMatch": true,
+      "errors": []
+    },
+    {
+      "fixture": "webp",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "candidate",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 11.099999904632568,
+          "decodeCalls": 2,
+          "decodeMs": 4,
+          "blockedRafRequests": 0,
+          "totalMs": 72.5
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 0,
+      "variant": "candidate",
+      "bitmapCalls": 1,
+      "decodeCalls": 1,
+      "bitmapMs": 11.099999904632568,
+      "decodeMs": 0,
+      "loadToReadyMs": 19.299999952316284,
+      "totalMs": 55.299999952316284,
+      "settledPixelsMatch": true,
+      "errors": []
+    },
+    {
+      "fixture": "progressive-jpeg",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "candidate",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 145.70000004768372,
+          "decodeCalls": 2,
+          "decodeMs": 0,
+          "blockedRafRequests": 0,
+          "totalMs": 211.5
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 1,
+      "variant": "candidate",
+      "bitmapCalls": 1,
+      "decodeCalls": 0,
+      "bitmapMs": 145.70000004768372,
+      "decodeMs": 0,
+      "loadToReadyMs": 155.20000004768372,
+      "totalMs": 187.39999985694885,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "progressive-jpeg",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "baseline",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 143.59999990463257,
+          "decodeCalls": 2,
+          "decodeMs": 0,
+          "blockedRafRequests": 0,
+          "totalMs": 213.89999985694885
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 1,
+      "variant": "baseline",
+      "bitmapCalls": 1,
+      "decodeCalls": 0,
+      "bitmapMs": 143.59999990463257,
+      "decodeMs": 0,
+      "loadToReadyMs": 153.60000014305115,
+      "totalMs": 188.70000004768372,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "baseline-jpeg",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "candidate",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 77.29999995231628,
+          "decodeCalls": 1,
+          "decodeMs": 0,
+          "blockedRafRequests": 0,
+          "totalMs": 150.79999995231628
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 1,
+      "variant": "candidate",
+      "bitmapCalls": 1,
+      "decodeCalls": 0,
+      "bitmapMs": 77.29999995231628,
+      "decodeMs": 0,
+      "loadToReadyMs": 88.19999980926514,
+      "totalMs": 128.29999995231628,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "baseline-jpeg",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "baseline",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 74.90000009536743,
+          "decodeCalls": 1,
+          "decodeMs": 0,
+          "blockedRafRequests": 0,
+          "totalMs": 142.59999990463257
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 1,
+      "variant": "baseline",
+      "bitmapCalls": 1,
+      "decodeCalls": 0,
+      "bitmapMs": 74.90000009536743,
+      "decodeMs": 0,
+      "loadToReadyMs": 85.10000014305115,
+      "totalMs": 118.40000009536743,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "png",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "candidate",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 6.699999809265137,
+          "decodeCalls": 2,
+          "decodeMs": 8.900000095367432,
+          "blockedRafRequests": 0,
+          "totalMs": 73.60000014305115
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 1,
+      "variant": "candidate",
+      "bitmapCalls": 1,
+      "decodeCalls": 1,
+      "bitmapMs": 6.699999809265137,
+      "decodeMs": 3.6000001430511475,
+      "loadToReadyMs": 26.700000047683716,
+      "totalMs": 58.700000047683716,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "png",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "baseline",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 6.6000001430511475,
+          "decodeCalls": 2,
+          "decodeMs": 11.999999761581421,
+          "blockedRafRequests": 0,
+          "totalMs": 81.20000004768372
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 1,
+      "variant": "baseline",
+      "bitmapCalls": 1,
+      "decodeCalls": 1,
+      "bitmapMs": 6.6000001430511475,
+      "decodeMs": 0.5999999046325684,
+      "loadToReadyMs": 25,
+      "totalMs": 61.90000009536743,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "webp",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "candidate",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 11.200000047683716,
+          "decodeCalls": 2,
+          "decodeMs": 8.700000047683716,
+          "blockedRafRequests": 0,
+          "totalMs": 80.60000014305115
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 1,
+      "variant": "candidate",
+      "bitmapCalls": 1,
+      "decodeCalls": 1,
+      "bitmapMs": 11.200000047683716,
+      "decodeMs": 3.5,
+      "loadToReadyMs": 27.799999952316284,
+      "totalMs": 59.90000009536743,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "webp",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "baseline",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 10.799999952316284,
+          "decodeCalls": 2,
+          "decodeMs": 0.9000000953674316,
+          "blockedRafRequests": 0,
+          "totalMs": 77.09999990463257
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 1,
+      "variant": "baseline",
+      "bitmapCalls": 1,
+      "decodeCalls": 1,
+      "bitmapMs": 10.799999952316284,
+      "decodeMs": 0.9000000953674316,
+      "loadToReadyMs": 32,
+      "totalMs": 63.700000047683716,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "progressive-jpeg",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "baseline",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 149.5,
+          "decodeCalls": 1,
+          "decodeMs": 0,
+          "blockedRafRequests": 0,
+          "totalMs": 218.69999980926514
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 2,
+      "variant": "baseline",
+      "bitmapCalls": 1,
+      "decodeCalls": 0,
+      "bitmapMs": 149.5,
+      "decodeMs": 0,
+      "loadToReadyMs": 159.60000014305115,
+      "totalMs": 192.79999995231628,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "progressive-jpeg",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "candidate",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 141.90000009536743,
+          "decodeCalls": 2,
+          "decodeMs": 2.5,
+          "blockedRafRequests": 0,
+          "totalMs": 213.90000009536743
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 2,
+      "variant": "candidate",
+      "bitmapCalls": 1,
+      "decodeCalls": 0,
+      "bitmapMs": 141.90000009536743,
+      "decodeMs": 0,
+      "loadToReadyMs": 150.69999980926514,
+      "totalMs": 189.79999995231628,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "baseline-jpeg",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "baseline",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 92.90000009536743,
+          "decodeCalls": 1,
+          "decodeMs": 0,
+          "blockedRafRequests": 0,
+          "totalMs": 166.79999995231628
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 2,
+      "variant": "baseline",
+      "bitmapCalls": 1,
+      "decodeCalls": 0,
+      "bitmapMs": 92.90000009536743,
+      "decodeMs": 0,
+      "loadToReadyMs": 106.69999980926514,
+      "totalMs": 143.39999985694885,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "baseline-jpeg",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "candidate",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 82.70000004768372,
+          "decodeCalls": 2,
+          "decodeMs": 0,
+          "blockedRafRequests": 0,
+          "totalMs": 155.69999980926514
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 2,
+      "variant": "candidate",
+      "bitmapCalls": 1,
+      "decodeCalls": 0,
+      "bitmapMs": 82.70000004768372,
+      "decodeMs": 0,
+      "loadToReadyMs": 92.5,
+      "totalMs": 131.39999985694885,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "png",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "baseline",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 6.800000190734863,
+          "decodeCalls": 2,
+          "decodeMs": 0.7999999523162842,
+          "blockedRafRequests": 0,
+          "totalMs": 78.39999985694885
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 2,
+      "variant": "baseline",
+      "bitmapCalls": 1,
+      "decodeCalls": 1,
+      "bitmapMs": 6.800000190734863,
+      "decodeMs": 0.7999999523162842,
+      "loadToReadyMs": 31.5,
+      "totalMs": 65.59999990463257,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "png",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "candidate",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 6.599999904632568,
+          "decodeCalls": 2,
+          "decodeMs": 9,
+          "blockedRafRequests": 0,
+          "totalMs": 77.29999995231628
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 2,
+      "variant": "candidate",
+      "bitmapCalls": 1,
+      "decodeCalls": 1,
+      "bitmapMs": 6.599999904632568,
+      "decodeMs": 3.700000047683716,
+      "loadToReadyMs": 31.09999990463257,
+      "totalMs": 63.89999985694885,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "webp",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "baseline",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 11,
+          "decodeCalls": 2,
+          "decodeMs": 19.100000143051147,
+          "blockedRafRequests": 0,
+          "totalMs": 80.19999980926514
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 2,
+      "variant": "baseline",
+      "bitmapCalls": 1,
+      "decodeCalls": 1,
+      "bitmapMs": 11,
+      "decodeMs": 0,
+      "loadToReadyMs": 23,
+      "totalMs": 57.09999990463257,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "webp",
+      "frameMode": "normal",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "candidate",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 11.099999904632568,
+          "decodeCalls": 2,
+          "decodeMs": 8.800000190734863,
+          "blockedRafRequests": 0,
+          "totalMs": 78.20000004768372
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 2,
+      "variant": "candidate",
+      "bitmapCalls": 1,
+      "decodeCalls": 1,
+      "bitmapMs": 11.099999904632568,
+      "decodeMs": 3.5,
+      "loadToReadyMs": 29.700000047683716,
+      "totalMs": 62.700000047683716,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "progressive-jpeg",
+      "frameMode": "paused",
+      "ready": false,
+      "state": {
+        "stats": {
+          "variant": "baseline",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 169.29999995231628,
+          "decodeCalls": 0,
+          "decodeMs": 0,
+          "blockedRafRequests": 2,
+          "totalMs": 1493.5
+        },
+        "mainComplete": true,
+        "layerOpacity": "0",
+        "loader": "on"
+      },
+      "repeat": 0,
+      "variant": "baseline",
+      "bitmapCalls": 1,
+      "bitmapFinished": 1,
+      "bitmapMs": 169.29999995231628,
+      "decodeCalls": 0,
+      "decodeMs": 0,
+      "blockedRafRequests": 2,
+      "totalMs": 1492.7999999523163,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "progressive-jpeg",
+      "frameMode": "paused",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "candidate",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 135.79999995231628,
+          "decodeCalls": 2,
+          "decodeMs": 0.5,
+          "blockedRafRequests": 3,
+          "totalMs": 334.59999990463257
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 0,
+      "variant": "candidate",
+      "bitmapCalls": 1,
+      "decodeCalls": 1,
+      "bitmapMs": 135.79999995231628,
+      "decodeMs": 0.5,
+      "loadToReadyMs": 277.2999999523163,
+      "totalMs": 310.2999999523163,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "baseline-jpeg",
+      "frameMode": "paused",
+      "ready": false,
+      "state": {
+        "stats": {
+          "variant": "baseline",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 77.5,
+          "decodeCalls": 0,
+          "decodeMs": 0,
+          "blockedRafRequests": 2,
+          "totalMs": 1488.5
+        },
+        "mainComplete": true,
+        "layerOpacity": "0",
+        "loader": "on"
+      },
+      "repeat": 0,
+      "variant": "baseline",
+      "bitmapCalls": 1,
+      "bitmapFinished": 1,
+      "bitmapMs": 77.5,
+      "decodeCalls": 0,
+      "decodeMs": 0,
+      "blockedRafRequests": 2,
+      "totalMs": 1487.4000000953674,
+      "settledPixelsMatch": null,
+      "errors": []
+    },
+    {
+      "fixture": "baseline-jpeg",
+      "frameMode": "paused",
+      "ready": true,
+      "state": {
+        "stats": {
+          "variant": "candidate",
+          "bitmapCalls": 1,
+          "bitmapFinished": 1,
+          "bitmapMs": 77.09999990463257,
+          "decodeCalls": 2,
+          "decodeMs": 0.5,
+          "blockedRafRequests": 3,
+          "totalMs": 236.5
+        },
+        "mainComplete": true,
+        "layerOpacity": "1",
+        "loader": "off"
+      },
+      "repeat": 0,
+      "variant": "candidate",
+      "bitmapCalls": 1,
+      "decodeCalls": 1,
+      "bitmapMs": 77.09999990463257,
+      "decodeMs": 0.5,
+      "loadToReadyMs": 180.59999990463257,
+      "totalMs": 214.20000004768372,
+      "settledPixelsMatch": null,
+      "errors": []
+    }
+  ]
+}

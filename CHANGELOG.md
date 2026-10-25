@@ -9,6 +9,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.1] — 2026-10-25
+
+### Fixed
+
+- Prevent decoded images from remaining hidden or stuck loading when animation-frame callbacks pause. Preserve decode safeguards and normal frame handoff timing.
+- Keep available thumbnails visible when originals fail, without marking the original as ready. Prevent late image probes from replacing an already-ready original, and release obsolete probes.
+- Fix image handoff for valid 1×1, 1×N and N×1 originals.
+
 ## [0.10.0] — 2026-10-24
 
 ### Changed

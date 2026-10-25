@@ -9,7 +9,7 @@ interface Options {
   getMainEl(): HTMLImageElement | null;
   preferFastReveal: boolean;
   onImageLoad(dims: ImageDimensions): void;
-  onDecoded(): void;
+  onDecoded(dimensions: ImageDimensions): void;
   onPainted(): void;
 }
 
@@ -25,9 +25,10 @@ export function useMainImageDecode({ visit, getMainEl, preferFastReveal,
     if (session.image === image) return;
     session.cancel();
     session.image = image;
-    if (preferFastReveal) onDecoded();
+    const dimensions = { naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight };
+    if (preferFastReveal) onDecoded(dimensions);
     else session.cancel = scheduleRevealAfterDecode(image, () => {
-      if (session.active) onDecoded();
+      if (session.active) onDecoded(dimensions);
     }, IMAGE_DECODE_TIMEOUT_MS);
   }, [visit, onPainted, onImageLoad, onDecoded, preferFastReveal]);
 

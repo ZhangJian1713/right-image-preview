@@ -1,3 +1,5 @@
+import { IMAGE_REVEAL_FRAME_FALLBACK_MS } from '../imagePreviewTuning';
+
 interface DecodeTask {
   src: string;
   subscribe(callback: () => void, timeoutMs: number): () => void;
@@ -55,9 +57,19 @@ export function scheduleRevealAfterDecode(
   const callbacks = new Set<() => void>();
   let finished = false;
   let timer: number | null = null;
+  let frameTimer: number | null = null;
+  let firstFrame: number | null = null;
+  let secondFrame: number | null = null;
+  let decodedResult: boolean | null = null;
   const clearDeadline = () => {
     if (timer !== null) window.clearTimeout(timer);
     timer = null;
+  };
+  const clearPresentationWait = () => {
+    if (frameTimer !== null) window.clearTimeout(frameTimer);
+    if (firstFrame !== null) cancelAnimationFrame(firstFrame);
+    if (secondFrame !== null) cancelAnimationFrame(secondFrame);
+    frameTimer = firstFrame = secondFrame = null;
   };
   const task: DecodeTask = {
     src,
@@ -66,15 +78,20 @@ export function scheduleRevealAfterDecode(
       if (timer === null) timer = window.setTimeout(() => finish(false), timeout);
       return () => {
         callbacks.delete(callback);
-        if (callbacks.size === 0) clearDeadline();
+        if (callbacks.size === 0) {
+          clearDeadline();
+          clearPresentationWait();
+          if (decodedResult !== null) finish(decodedResult);
+        }
       };
     },
-    cancel() { finished = true; clearDeadline(); callbacks.clear(); },
+    cancel() { finished = true; clearDeadline(); clearPresentationWait(); callbacks.clear(); },
   };
   const finish = (decoded: boolean) => {
     if (finished) return;
     finished = true;
     clearDeadline();
+    clearPresentationWait();
     if (decodeInflight.get(img) !== task) { callbacks.clear(); return; }
     decodeInflight.delete(img);
     // A timeout permits a best-effort reveal, but is not proof of a decoded bitmap.
@@ -88,8 +105,15 @@ export function scheduleRevealAfterDecode(
   void (async () => {
     const decoded = await waitUntilFullyDecoded(img);
     if (finished) return;
-    await afterDoubleAnimationFrame();
-    finish(decoded);
+    decodedResult = decoded;
+    if (callbacks.size === 0) { finish(decoded); return; }
+    // 解码已经结束，帧回调仅提供合成机会，不能因宿主暂停调帧再阻塞到解码超时。
+    // 保留正常情况下的两帧交接；计时兜底只从此处开始，绝不提前绕过真实解码。
+    frameTimer = window.setTimeout(() => finish(decoded), IMAGE_REVEAL_FRAME_FALLBACK_MS);
+    firstFrame = requestAnimationFrame(() => {
+      firstFrame = null;
+      secondFrame = requestAnimationFrame(() => { secondFrame = null; finish(decoded); });
+    });
   })();
   return cancel;
 }

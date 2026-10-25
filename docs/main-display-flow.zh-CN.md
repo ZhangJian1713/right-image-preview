@@ -44,11 +44,13 @@
 
 1. **先缩略、后原图**是默认主路径；「没有缩略才硬上原图」是降级，不是推荐配置。
 2. 切图那一帧**不会**等原图就绪才给用户反馈；**上一帧托底**与占位 / 原图准备并行。
-3. 原图揭开要求「整图可绘制」（例如 `createImageBitmap` / `decode` 落稳 + 双 `rAF`），避免渐进 JPEG 只露出左上一条就闪一下。
+3. 原图揭开保留 `createImageBitmap` / `decode` 确认与正常双 `rAF` 交接；解码结束后另设 100ms 的帧等待兜底，避免 rAF 暂停时错误等待 60 秒。计时兜底不提前绕过解码，也不等于已上屏的证明。当前原图 load 且布局就绪后不再依赖 rAF 解除整层隐藏，渐进占位仍受解码条件控制。
 4. 若邻居已是 **display-ready**，走**快开**：跳过人为占位停留 / 中央转圈；outgoing hold 仍盖住空隙直到视口主图真正可画——**不以去掉占位或整台透明换黑屏**。
 5. 比例不同时短时间叠两张、露出一点上一张是可接受的；按住 ←/→ 时尤其依赖本契约，避免「一半时间黑屏」。
 6. **Hold 节流「已呈现」只认 incoming**（缩略 underlay 或新主图），不认仍在托底的上一张，以免切太快。
 7. **图层隔离**：上一张与下一张是视口内互不干扰的绝对定位层；离开时**冻结**该层的尺寸与 transform，切图不得改动上一层的位置/缩放。就绪后上一层降为保活（仍挂载、肉眼不可见），← 可瞬间拉回。
+
+原图 / 辅助 probe 失败时，保留主区可用缩略；缩略 DOM load 后可交接为 `thumb-only`，不登记原图 ready / display-ready。视口原图若迟到成功仍恢复正常，已完成的原图不被迟到 probe 降级。1 像素边长也是合法图片，交接依据 load / 解码与访问身份。
 
 相关实现入口：`useProgressiveMainImage`、`DisplayStageLayers`（独立层 + `frozenBySrc`）、`stage/stageHandoff.ts` 与 `stage/useStageHandoff.ts`、`stage/imagePreviewDecode.ts`。
 

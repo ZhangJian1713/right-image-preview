@@ -34,7 +34,9 @@ export interface UseProgressiveMainImageResult {
    */
   showMinimapUnderlay: boolean;
   /** Call from the visible &lt;img&gt; `onLoad` after optional `decode()`. */
-  onMainImgDecoded: () => void;
+  onMainImgDecoded: (dimensions?: ImageDimensions) => void;
+  onMainImgError: () => void;
+  onMinimapError: () => void;
 }
 
 interface ProgressiveVisit {
@@ -42,7 +44,13 @@ interface ProgressiveVisit {
   stage: MainImageLoadStage;
   fullDecoded: boolean;
   minimapReady: boolean;
-  pendingReveal: boolean;
+  /** The viewport decoded; fullDecoded additionally waits for the configured placeholder dwell. */
+  mainDecoded: boolean;
+  mainError: boolean;
+  minimapError: boolean;
+  failMain: (() => void) | null;
+  failMinimap: (() => void) | null;
+  stopProbes: (() => void) | null;
   placeholderAt: number | null;
   timer: number | null;
   completed: boolean;
@@ -92,7 +100,8 @@ export function useProgressiveMainImage({
     let session = sessions.current.get(visit);
     if (!session) {
       session = { active: true, stage: pipelineActive ? 'preloading' : 'inactive',
-        fullDecoded: false, minimapReady: false, pendingReveal: false,
+        fullDecoded: false, minimapReady: false, mainDecoded: false, mainError: false,
+        minimapError: false, failMain: null, failMinimap: null, stopProbes: null,
         placeholderAt: null, timer: null, completed: false };
       sessions.current.set(visit, session);
     }
@@ -127,7 +136,7 @@ export function useProgressiveMainImage({
   }, [getVisit]);
   useLayoutEffect(() => {
     getVisit().active = true;
-    return () => { getVisit().active = false; clearRevealTimeout(); };
+    return () => { getVisit().active = false; getVisit().stopProbes?.(); clearRevealTimeout(); };
   }, [getVisit, clearRevealTimeout]);
 
   const armRevealAfterDwell = useCallback(() => {
@@ -141,7 +150,7 @@ export function useProgressiveMainImage({
       if (!getVisit().active) return;
       getVisit().timer = null;
       getVisit().completed = true;
-      markFullDecoded();
+      update({ fullDecoded: true, stage: 'full-ready' });
       onStageChangeRef.current?.('full-ready');
     };
     // Fast-reveal (dwell=0): finish sync so outgoing can drop in the same layout pass.
@@ -150,178 +159,170 @@ export function useProgressiveMainImage({
       return;
     }
     getVisit().timer = window.setTimeout(finish, wait);
-  }, [clearRevealTimeout, getVisit, markFullDecoded, onStageChangeRef, effectiveDwellMsRef]);
+  }, [clearRevealTimeout, getVisit, update, onStageChangeRef, effectiveDwellMsRef]);
 
   const enterPlaceholder = useCallback(() => {
     getVisit().placeholderAt = performance.now();
     setPreloadStage('thumbnail-placeholder');
     onStageChangeRef.current?.('thumbnail-placeholder');
-    if (getVisit().pendingReveal) {
-      getVisit().pendingReveal = false;
-      armRevealAfterDwell();
-    }
+    if (getVisit().mainDecoded) armRevealAfterDwell();
   }, [getVisit, setPreloadStage, onStageChangeRef, armRevealAfterDwell]);
 
   useEffect(() => {
-    if (!pipelineActive) {
-      return undefined;
+    const session = getVisit();
+    if (!pipelineActive) return;
+    // Cached DOM load/decode can beat this passive effect. Never reopen its probes.
+    if (session.mainDecoded) {
+      if (!session.completed) armRevealAfterDwell();
+      return;
     }
     onStageChangeRef.current?.('preloading');
+    if (session.mainDecoded || !session.active) return;
 
     let cancelled = false;
-    /** Main `Image()` probe finished (success or error) — do not apply late minimap dimensions after that. */
-    let mainProbeFinished = false;
+    let deadline: number | null = null;
+    const probes = new Set<HTMLImageElement>();
+    const release = (image: HTMLImageElement) => {
+      image.onload = image.onerror = null;
+      image.removeAttribute('src');
+      probes.delete(image);
+    };
+    const clearDeadline = () => {
+      if (deadline !== null) window.clearTimeout(deadline);
+      deadline = null;
+    };
+    const dispose = () => {
+      cancelled = true;
+      clearDeadline();
+      for (const image of probes) release(image);
+      if (session.stopProbes === dispose) {
+        session.stopProbes = session.failMain = session.failMinimap = null;
+      }
+    };
+    session.stopProbes = dispose;
+    const stale = () => cancelled || !session.active || session.mainDecoded;
+    const probe = () => { const image = new Image(); probes.add(image); return image; };
 
     const known = knownDimensionsRef.current;
     const knownOk = !!(known && known.naturalWidth > 0 && known.naturalHeight > 0);
-    /**
-     * Display-ready navigate: layout meta already known and the viewport layer is (or will be)
-     * the retained decoded DOM node. A second `new Image(); img.src = mainSrc` probe re-decodes
-     * ~20–30MB and commonly costs ~1s — skip it on the fast path.
-     */
+    // Retained, display-ready DOM already owns the full bitmap and layout.
     const skipMainProbe = preferFastRevealRef.current && knownOk;
+    let mainProbeFinished = false;
+    let mainFailed = session.mainError;
+    let mainProbe: HTMLImageElement | null = null;
+    let thumbnailProbe: HTMLImageElement | null = null;
+    let thumbDims: ImageDimensions | null = null;
+    let thumbFailed = session.minimapError;
+    let thumbnailFinished = thumbFailed;
+    const applyFallback = () => {
+      if (stale() || !mainFailed) return;
+      if (thumbDims) {
+        onImageLayoutRef.current(thumbDims);
+        update({ minimapReady: true, stage: 'thumb-only' });
+        onStageChangeRef.current?.('thumb-only');
+      } else if (thumbFailed) {
+        setPreloadStage('error');
+        onStageChangeRef.current?.('error');
+      }
+    };
+    session.failMain = () => {
+      if (stale()) return;
+      clearDeadline();
+      mainProbeFinished = mainFailed = true;
+      if (mainProbe) release(mainProbe);
+      applyFallback();
+    };
+    session.failMinimap = () => {
+      if (stale()) return;
+      thumbDims = null;
+      thumbnailFinished = thumbFailed = true;
+      if (thumbnailProbe) release(thumbnailProbe);
+      applyFallback();
+    };
 
     if (knownOk) {
       onImageLayoutRef.current(known!);
-      // Enter once dimensions exist; drain a decode notification that arrived first.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       enterPlaceholder();
     }
+    if (stale()) return dispose;
 
-    // Parallel minimap preload: small file → layout + underlay immediately while main may take seconds.
-    if (minimapSrc && minimapSrc !== mainSrc) {
-      const tEarly = new Image();
-      tEarly.onload = () => {
-        if (!getVisit().active || cancelled || mainProbeFinished) return;
-        // Prefer known full-image dims for layout when available; still mark underlay ready.
-        if (!knownOk) {
-          onImageLayoutRef.current({
-            naturalWidth: tEarly.naturalWidth,
-            naturalHeight: tEarly.naturalHeight,
-          });
-        }
+    // Reuse this single thumbnail probe for both early layout and failure fallback.
+    const thumb = thumbnailProbe = probe();
+    thumb.onload = () => {
+      if (stale() || thumbnailFinished) return;
+      thumbnailFinished = true;
+      thumbDims = { naturalWidth: thumb.naturalWidth, naturalHeight: thumb.naturalHeight };
+      release(thumb);
+      if (mainFailed) { applyFallback(); return; }
+      if (!mainProbeFinished) {
+        if (!knownOk) onImageLayoutRef.current(thumbDims);
         update({ minimapReady: true });
-        if (getVisit().stage === 'preloading') {
-          enterPlaceholder();
-        }
-      };
-      tEarly.onerror = () => {
-        /* main or tryMinimapFallback will still attempt layout */
-      };
-      tEarly.src = minimapSrc;
-    }
-
-    if (skipMainProbe) {
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    const img = new Image();
-    /** Timeout id assigned after `img.src` (sync cache `onload` must not read before assign). */
-    const preloadTimeoutHolder: { id?: number } = {};
-    /** After we fall back to minimap (or give up on main), ignore a very late main `onload`. */
-    let ignoreMainPreloadResult = false;
-    let minimapFallbackStarted = false;
-
-    const tryMinimapFallback = () => {
-      if (!getVisit().active || cancelled || minimapFallbackStarted) return;
-      minimapFallbackStarted = true;
-      ignoreMainPreloadResult = true;
-      mainProbeFinished = true;
-      if (!minimapSrc || minimapSrc === mainSrc) {
-        setPreloadStage('error');
-        onStageChangeRef.current?.('error');
-        return;
+        if (session.stage === 'preloading') enterPlaceholder();
       }
-      const thumb = new Image();
-      thumb.onload = () => {
-        if (!getVisit().active || cancelled) return;
-        onImageLayoutRef.current({
-          naturalWidth: thumb.naturalWidth,
-          naturalHeight: thumb.naturalHeight,
-        });
-        markFullDecoded();
-        setPreloadStage('thumb-only');
-        onStageChangeRef.current?.('thumb-only');
+    };
+    thumb.onerror = () => {
+      if (stale() || thumbnailFinished) return;
+      thumbnailFinished = thumbFailed = true;
+      release(thumb);
+      applyFallback();
+    };
+    if (!thumbFailed) thumb.src = minimapSrc!;
+    else { release(thumb); applyFallback(); }
+
+    if (!skipMainProbe && !mainFailed && !stale()) {
+      const image = mainProbe = probe();
+      image.onload = () => {
+        if (stale() || mainProbeFinished) return;
+        clearDeadline();
+        mainProbeFinished = true;
+        const dimensions = { naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight };
+        release(image);
+        onImageLayoutRef.current(dimensions);
+        enterPlaceholder();
       };
-      thumb.onerror = () => {
-        if (!getVisit().active || cancelled) return;
-        setPreloadStage('error');
-        onStageChangeRef.current?.('error');
+      const fail = () => {
+        if (stale() || mainProbeFinished) return;
+        session.failMain?.();
       };
-      thumb.src = minimapSrc;
-    };
+      image.onerror = fail;
+      // Arm before src: synchronous cache events must be able to clear the deadline.
+      deadline = window.setTimeout(fail, PROGRESSIVE_PRELOAD_TIMEOUT_MS);
+      image.src = mainSrc;
+    }
+    return dispose;
+  }, [mainSrc, minimapSrc, pipelineActive, armRevealAfterDwell, getVisit, setPreloadStage,
+    update, onStageChangeRef, onImageLayoutRef, knownDimensionsRef, preferFastRevealRef, enterPlaceholder]);
 
-    img.onload = () => {
-      if (!getVisit().active || cancelled || ignoreMainPreloadResult) return;
-      if (preloadTimeoutHolder.id !== undefined) window.clearTimeout(preloadTimeoutHolder.id);
-      mainProbeFinished = true;
-      onImageLayoutRef.current({
-        naturalWidth: img.naturalWidth,
-        naturalHeight: img.naturalHeight,
-      });
-      enterPlaceholder();
-    };
-    img.onerror = () => {
-      if (!getVisit().active || cancelled) return;
-      mainProbeFinished = true;
-      if (preloadTimeoutHolder.id !== undefined) window.clearTimeout(preloadTimeoutHolder.id);
-      tryMinimapFallback();
-    };
-    img.src = mainSrc;
-
-    preloadTimeoutHolder.id = window.setTimeout(() => {
-      if (!getVisit().active || cancelled) return;
-      tryMinimapFallback();
-    }, PROGRESSIVE_PRELOAD_TIMEOUT_MS);
-
-    return () => {
-      cancelled = true;
-      if (preloadTimeoutHolder.id !== undefined) window.clearTimeout(preloadTimeoutHolder.id);
-    };
-  },
-  [mainSrc, minimapSrc, pipelineActive, armRevealAfterDwell, getVisit, setPreloadStage, markFullDecoded, update, onStageChangeRef, onImageLayoutRef, knownDimensionsRef, preferFastRevealRef, enterPlaceholder],
-  );
-
-  const onMainImgDecoded = useCallback(() => {
-    if (!getVisit().active || getVisit().completed) return;
+  const onMainImgDecoded = useCallback((dimensions?: ImageDimensions) => {
+    const session = getVisit();
+    if (!session.active || session.completed || session.mainDecoded) return;
+    session.mainDecoded = true;
+    session.stopProbes?.();
+    // The actual viewport image wins even if a probe supplied thumbnail layout meanwhile.
+    if (dimensions) onImageLayoutRef.current(dimensions);
     if (!pipelineActive) {
-      getVisit().completed = true;
+      session.completed = true;
       markFullDecoded();
       onStageChangeRef.current?.('full-ready');
       return;
     }
-
-    const stage = getVisit().stage;
-    if (stage === 'preloading') {
-      getVisit().pendingReveal = true;
-      // Display-ready: known dims mean we can enter placeholder + reveal without waiting for the
-      // progressive effect (layout microtask often races ahead of that effect).
-      const known = knownDimensionsRef.current;
-      if (
-        preferFastRevealRef.current &&
-        known &&
-        known.naturalWidth > 0 &&
-        known.naturalHeight > 0
-      ) {
-        getVisit().placeholderAt = performance.now();
-        setPreloadStage('thumbnail-placeholder');
-        getVisit().pendingReveal = false;
-        armRevealAfterDwell();
-      }
-      return;
-    }
-    if (stage === 'thumbnail-placeholder') {
-      armRevealAfterDwell();
-      return;
-    }
-
-    markFullDecoded();
-    if (stage === 'error') {
-      onStageChangeRef.current?.('full-ready');
-    }
-  }, [pipelineActive, armRevealAfterDwell, getVisit, markFullDecoded, setPreloadStage, onStageChangeRef, knownDimensionsRef, preferFastRevealRef]);
+    if (session.stage !== 'thumbnail-placeholder') enterPlaceholder();
+    else armRevealAfterDwell();
+  }, [pipelineActive, armRevealAfterDwell, getVisit, markFullDecoded, enterPlaceholder,
+    onStageChangeRef, onImageLayoutRef]);
+  const onMainImgError = useCallback(() => {
+    const session = getVisit();
+    if (!session.active || session.mainDecoded) return;
+    session.mainError = true;
+    session.failMain?.();
+  }, [getVisit]);
+  const onMinimapError = useCallback(() => {
+    const session = getVisit();
+    if (!session.active || session.mainDecoded) return;
+    session.minimapError = true;
+    session.failMinimap?.();
+  }, [getVisit]);
 
   const showMinimapUnderlay =
     pipelineActive &&
@@ -329,5 +330,6 @@ export function useProgressiveMainImage({
       preloadStage === 'thumbnail-placeholder' ||
       preloadStage === 'thumb-only');
 
-  return { pipelineActive, preloadStage, fullDecoded, showMinimapUnderlay, onMainImgDecoded };
+  return { pipelineActive, preloadStage, fullDecoded, showMinimapUnderlay,
+    onMainImgDecoded, onMainImgError, onMinimapError };
 }

@@ -34,8 +34,8 @@ export interface DisplayStageLayersProps {
 function hasBothDims(dims: ImageDimensions | null | undefined): dims is ImageDimensions {
   return !!(
     dims &&
-    dims.naturalWidth > 1 &&
-    dims.naturalHeight > 1
+    dims.naturalWidth > 0 &&
+    dims.naturalHeight > 0
   );
 }
 

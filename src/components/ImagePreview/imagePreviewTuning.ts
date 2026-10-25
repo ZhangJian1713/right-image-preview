@@ -14,6 +14,9 @@ export const PROGRESSIVE_MAIN_DEFAULT_FADE_MS = 0;
  */
 export const IMAGE_DECODE_TIMEOUT_MS = 60_000;
 
+/** After decode, prefer two frames but do not let paused frame callbacks block reveal. */
+export const IMAGE_REVEAL_FRAME_FALLBACK_MS = 100;
+
 /**
  * `new Image()` preload for dimensions — if neither `load` nor `error` fires (e.g. extreme
  * payloads), fall back so the visible &lt;img&gt; can still drive layout.

@@ -244,7 +244,7 @@ export type MainImageLoadStage =
   | 'inactive'
   | 'preloading'
   | 'thumbnail-placeholder'
-  /** Full `src` failed to load/decode, but `minimapSrc` succeeded — main area shows thumbnail only. */
+  /** Original/probe failed or timed out, but the thumbnail is available; does not mark `src` ready. */
   | 'thumb-only'
   | 'full-ready'
   | 'error';

@@ -6,23 +6,25 @@ interface Options {
   visit: StageVisit;
   ready: boolean;
   holding: boolean;
-  /** Current visit received a main load; recheck even when layout dimensions stay unchanged. */
-  mainLoaded: boolean;
+  /** Current visit's reveal image loaded; recheck even when layout dimensions stay unchanged. */
+  contentLoaded: boolean;
   dims: ImageDimensions | null;
-  hideMainUntilDecoded: boolean;
+  hideUntilReady: boolean;
   preferFastReveal: boolean;
-  getMainEl(): HTMLImageElement | null;
-  onDecoded(): void;
+  getRevealEl(): HTMLImageElement | null;
+  onDecoded(dimensions: ImageDimensions): void;
   reveal(): void;
 }
 
 /** Owns paint/transition timing; clearing a hold must never blank the incoming stage. */
-export function useStageReveal({ visit, ready, holding, mainLoaded, dims, hideMainUntilDecoded,
-  preferFastReveal, getMainEl, onDecoded, reveal }: Options) {
+export function useStageReveal({ visit, ready, holding, contentLoaded, dims, hideUntilReady,
+  preferFastReveal, getRevealEl, onDecoded, reveal }: Options) {
   type Phase = 'hidden' | 'settling' | 'ready';
   const [snapshot, setSnapshot] = useState<{ visit: StageVisit; phase: Phase }>({ visit, phase: 'hidden' });
   const phase = snapshot.visit === visit ? snapshot.phase : 'hidden';
-  const imageShowReady = ready && (holding || phase !== 'hidden');
+  // 当前访问的内容已 load 且布局就绪时，帧回调暂停不能继续把整个图层隐藏。
+  // 原图的解码／缩略降级条件仍由 hideUntilReady 单独控制。
+  const imageShowReady = ready && (holding || contentLoaded || phase !== 'hidden');
 
   useEffect(() => {
     let first = 0;
@@ -45,13 +47,13 @@ export function useStageReveal({ visit, ready, holding, mainLoaded, dims, hideMa
   }, [visit, ready, holding]);
 
   useLayoutEffect(() => {
-    if (!holding || !imageShowReady || !dims || dims.naturalWidth <= 1 || dims.naturalHeight <= 1) return;
-    const image = getMainEl();
-    if (!image?.complete || image.naturalWidth <= 1) return;
-    if (preferFastReveal) onDecoded();
-    else if (hideMainUntilDecoded) return;
+    if (!holding || !imageShowReady || !contentLoaded || !dims || dims.naturalWidth <= 0 || dims.naturalHeight <= 0) return;
+    const image = getRevealEl();
+    if (!image?.complete || image.naturalWidth <= 0) return;
+    if (preferFastReveal) onDecoded({ naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight });
+    else if (hideUntilReady) return;
     reveal();
-  }, [visit, mainLoaded, holding, imageShowReady, dims, getMainEl, preferFastReveal, onDecoded, hideMainUntilDecoded, reveal]);
+  }, [visit, contentLoaded, holding, imageShowReady, dims, getRevealEl, preferFastReveal, onDecoded, hideUntilReady, reveal]);
 
   return { imageShowReady, suppressTransformForSrcSwitch: holding || phase !== 'ready' };
 }
