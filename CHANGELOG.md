@@ -9,6 +9,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.10.2] — 2026-10-28
+
 ### Fixed
 
 - Reveal originals as soon as decode confirmation completes, removing the extra two-frame wait and its timer while preserving decode safeguards and outgoing-image handoff.
