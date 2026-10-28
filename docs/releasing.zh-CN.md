@@ -153,6 +153,10 @@ Demo 应用与库的构建需求不同：
 
 ## 常见问题排查
 
+### GitHub Actions 的 Node.js 运行时警告
+
+Workflow 使用 `actions/checkout@v6`、`actions/setup-node@v6` 和 `softprops/action-gh-release@v3`，这些 Action 自身使用 Node.js 24 运行。`setup-node` 的 `node-version: 20` 独立指定项目构建和测试命令使用的 Node.js 版本；仅修改该输入无法消除 Action 运行时弃用警告。参见 [GitHub 迁移公告](https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/)。
+
 | 现象 | 可能原因 | 解决方法 |
 |---|---|---|
 | `npm error code E403` | 未登录或 Token 无效 | 重新粘贴 Token 到 `~/.npmrc` |

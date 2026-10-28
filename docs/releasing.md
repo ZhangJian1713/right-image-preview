@@ -153,6 +153,10 @@ The demo app and the library have different needs:
 
 ## Troubleshooting
 
+### GitHub Actions Node.js runtime warnings
+
+The workflows use `actions/checkout@v6`, `actions/setup-node@v6`, and `softprops/action-gh-release@v3`, whose Action runtimes use Node.js 24. The `node-version: 20` input to `setup-node` independently selects Node.js for project build and test commands; changing that input alone does not fix an Action runtime deprecation warning. See [GitHub's migration notice](https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/).
+
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `npm error code E403` | Not logged in or wrong token | Re-paste token in `~/.npmrc` |
