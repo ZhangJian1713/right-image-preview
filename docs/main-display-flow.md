@@ -44,7 +44,7 @@ Notes:
 
 1. **Thumb first, then original** is the default path; “no thumb → hard-load original” is a fallback, not the recommended setup.
 2. The switch frame does **not** wait for the original before giving visual feedback; **outgoing hold** runs in parallel with placeholder / original prep.
-3. Reveal keeps `createImageBitmap` / `decode` confirmation and the normal double-`rAF` handoff. A separate 100ms frame fallback starts only after decode settles, preventing paused frame callbacks from extending this wait to the 60s decode deadline. It neither bypasses decode nor proves that pixels reached the screen. A loaded, layout-ready current image can exit whole-layer hiding without rAF; progressive underlay gating remains independent.
+3. Reveal keeps `createImageBitmap` / `decode` confirmation and the real 60s decode deadline. Decode completion notifies consumers immediately, with no extra frame wait or post-decode timer. A loaded, layout-ready current image can exit whole-layer hiding without rAF; progressive underlay gating remains independent. DOM readiness is not proof of physical presentation.
 4. If the neighbor was already **display-ready**, use **fast reveal**: skip artificial dwell / center spinner; outgoing hold still covers the gap until the viewport main is drawable — never blank solely to look “instant.”
 5. Brief overlap with mismatched aspect (a sliver of the previous image) is acceptable; hold-scrubbing especially depends on this contract so half the time is not black.
 6. **Hold pacing “presented” tracks the incoming image only** (thumb underlay or new main), not the held previous frame — otherwise steps would advance too fast.
@@ -70,7 +70,7 @@ Outgoing hold and neighbor keep-alive order only inside **L1**; do not paper ove
 
 1. **Immediately:** `currentIndex` advances → filmstrip active border (and strip position) move to the new index; L1 may still show the previous frame via **outgoing hold**.
 2. **While waiting:** as long as outgoing covers the stage and `showSwitchLoader` is true (default), **L4 loading** shows the center spinner. Previous frame stays **full-size opacity 1**; incoming may lay out full-size underneath. **Never** shrink previous to 1×1 before that (black stage + one pixel).
-3. **On reveal:** after incoming is `imageShowReady`, has dims, and its `<img>` is paintable — then **double rAF** (overlap: full-size next under outgoing) — clear `isOutgoing` and demote previous to neighbor **1×1 + opacity 1**. Spinner clears in lockstep (no fade).
+3. **On reveal:** incoming must be `imageShowReady`, have valid dims and a loaded `<img>`, and pass its progressive decode gate. The layout effect then clears `isOutgoing` and demotes previous to neighbor **1×1 + opacity 1**. Keep incoming full-size underneath outgoing while preparing it; there is no fixed two-frame overlap requirement. Spinner clears with the handoff (no fade).
 
 ---
 
@@ -102,7 +102,7 @@ Within memory budget, library + host should:
 3. **Pass a stable `preloadMemoryBudgetBytes`** (Tauri available RAM + `suggestPreloadMemoryBudgetBytes`) and width/height estimates so the budget can pick neighbors correctly.
 4. **Keep `preloadDisplayMode="slot"` (default)** for same-DOM promotion; `"decode"` is a memory fallback, not equal “instant.”
 5. **Sensible `preloadRadius` (often 1–2) + slots/budget** so after settle the next image is already display-ready.
-6. **Layer retention + compositor keep-alive**: `DisplayStageLayers` keeps current + neighbor full-`src` imgs under `key={src}`. Non-sharp neighbors paint as **1×1 + opacity 1** (not full-frame translucent); current `<img>` under the thumb underlay is also 1×1 while the underlay uses the full box. **Outgoing hold stays full-size** until the next full-size main has painted, then shrinks to 1×1 — avoids WKWebView bitmap discard and the “black + one pixel” navigate flash.
+6. **Layer retention + compositor keep-alive**: `DisplayStageLayers` keeps current + neighbor full-`src` imgs under `key={src}`. Non-sharp neighbors paint as **1×1 + opacity 1** (not full-frame translucent); the current `<img>` keeps full-size geometry once dims are available, even under the thumb underlay. **Outgoing hold stays full-size** until the incoming load, geometry and decode conditions pass, then shrinks to 1×1 — avoids WKWebView bitmap discard and the “black + one pixel” navigate flash.
 7. **Fast path**: on display-ready, skip dwell/spinner; underlay only until the viewport is drawable.
 
 ---
@@ -202,7 +202,7 @@ Dwell on N long enough
 
 Navigate to N+1
   → outgoing full-size cover; N+1 lays out full-size underneath (may 1×1→full)
-  → double rAF overlap, then shrink previous to 1×1 keep-alive
+  → once incoming load / geometry / decode conditions pass, demote previous to 1×1 keep-alive
   → preferFastReveal: skip secondary new Image() probe; drain layout pending race
   → scheduleRevealAfterDecode hits decodeSettled WeakMap → microtask reveal
   → underlay drops; sharp near-instant
@@ -219,11 +219,11 @@ Break any link and you fall back to **cold ≈ 1s** (typical: warm paused by mis
 | Layer | Layout | Opacity | Notes |
 |-------|--------|---------|-------|
 | Neighbor (not current / not outgoing) | **1×1 CSS px** | `1` | Compositor still paints → keep-alive; invisible; stable `key={src}` |
-| Current while under thumb | Full box (for underlay); **`<img>` 1×1** | `1` | Never `visibility:hidden` |
+| Current while under thumb | Full-size `<img>` once dims exist, underlay above it | `1` | Do not collapse current geometry for the placeholder |
 | Current revealed / **outgoing hold** | **Full size** (dims, else `'auto'` — never force 1) | `1` | Outgoing must cover the stage |
 | Thumb underlay | Cover | `1`→`0` | Covers unrevealed current |
 
-On promote, the same `<img>` changes style (1×1 → natural). **Incoming must be full-size sharp and overlap outgoing for ~two frames before previous shrinks to 1×1.** 0.3.10 demoted in the same commit as the 1×1→full expand → black + one pixel every hop.
+On promote, the same `<img>` changes style to full-size. Preserve outgoing until the incoming load, geometry and progressive decode conditions pass. Historical black + one-pixel reports motivated full-size geometry and outgoing retention together with frame delays; they do not isolate a need for two extra frames. The current gate has no fixed frame wait; see the [single-variable investigation](./reveal-frame-wait-investigation.zh-CN.md).
 
 ### 9.3 Fast path: no second probe, drain races
 

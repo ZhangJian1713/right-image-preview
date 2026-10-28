@@ -44,7 +44,7 @@
 
 1. **先缩略、后原图**是默认主路径；「没有缩略才硬上原图」是降级，不是推荐配置。
 2. 切图那一帧**不会**等原图就绪才给用户反馈；**上一帧托底**与占位 / 原图准备并行。
-3. 原图揭开保留 `createImageBitmap` / `decode` 确认与正常双 `rAF` 交接；解码结束后另设 100ms 的帧等待兜底，避免 rAF 暂停时错误等待 60 秒。计时兜底不提前绕过解码，也不等于已上屏的证明。当前原图 load 且布局就绪后不再依赖 rAF 解除整层隐藏，渐进占位仍受解码条件控制。
+3. 原图揭开保留 `createImageBitmap` / `decode` 确认与真实解码的 60 秒兜底；解码完成立即通知，不再额外等待帧回调或设置解码后的计时器。当前原图 load 且布局就绪后不依赖 rAF 解除整层隐藏，渐进占位仍受解码条件控制。DOM 就绪不等于物理上屏证明。
 4. 若邻居已是 **display-ready**，走**快开**：跳过人为占位停留 / 中央转圈；outgoing hold 仍盖住空隙直到视口主图真正可画——**不以去掉占位或整台透明换黑屏**。
 5. 比例不同时短时间叠两张、露出一点上一张是可接受的；按住 ←/→ 时尤其依赖本契约，避免「一半时间黑屏」。
 6. **Hold 节流「已呈现」只认 incoming**（缩略 underlay 或新主图），不认仍在托底的上一张，以免切太快。
@@ -70,8 +70,8 @@
 **切图时的三拍同步：**
 
 1. **立刻**：`currentIndex` 推进 → 底片条选中边框（及条带定位）切到新 index；L1 可用上一帧 **outgoing hold** 托底，主图看起来仍可暂留旧图。
-2. **等待揭开**：只要 outgoing 仍盖住舞台，且 `showSwitchLoader` 为真（默认），**L4 Loading** 显示中央 spinner。上一帧须保持**全尺寸 opacity 1** 托底；下一张可先在下层铺成全尺寸。**禁止**在下一张全尺寸主图层绘出前把上一张缩成 1×1（否则黑屏只剩一点）。
-3. **揭开瞬间**：incoming 已 `imageShowReady`、有 dims、`<img>` 可绘制，再经 **双 rAF**（两帧重叠：下层已是全尺寸新图）后才清 `isOutgoing`；上一张再降为邻居 **1×1 + opacity 1** 保活。spinner 与揭开同拍关掉（无淡出）。
+2. **等待揭开**：只要 outgoing 仍盖住舞台，且 `showSwitchLoader` 为真（默认），**L4 Loading** 显示中央 spinner。上一帧须保持**全尺寸 opacity 1** 托底；下一张可先在下层铺成全尺寸。下一张的加载、尺寸及解码条件未满足前，不能把上一张缩成 1×1。
+3. **揭开瞬间**：incoming 已 `imageShowReady`、有有效 dims、`<img>` 已 load，并通过渐进解码条件；布局 Effect 随即清 `isOutgoing`，上一张降为邻居 **1×1 + opacity 1** 保活。准备期间 incoming 保持全尺寸铺在 outgoing 下方，不要求固定重叠两帧。spinner 随交接关掉（无淡出）。
 
 ---
 
@@ -103,7 +103,7 @@
 3. **传入稳定的 `preloadMemoryBudgetBytes`**（Tauri 读可用内存 + `suggestPreloadMemoryBudgetBytes`），并尽量提供宽高估算（EXIF / 索引），让预算能正确选邻。
 4. **`preloadDisplayMode="slot"`（默认）**：保留已解码 DOM，切图晋升同一节点；`"decode"` 仅作内存降级，不能指望同等秒开。
 5. **合适的 `preloadRadius`（常见 1～2）+ slots/预算**：停稳后把下一张解进 display-ready 池。
-6. **层复用 + 合成保活**：`DisplayStageLayers` 用 `key={src}` 挂住当前 + 邻居全尺寸图；非 sharp 邻居以 **1×1 CSS 像素 + opacity 1** 保活（勿用半透明全图）；被占位盖住的当前 `<img>` 同样 1×1，underlay 仍用全尺寸盒。**outgoing 托底必须全尺寸**，直到下一张全尺寸揭开后再缩 1×1——避免 WKWebView/Chrome 丢位图，也避免切图黑屏只剩一点。
+6. **层复用 + 合成保活**：`DisplayStageLayers` 用 `key={src}` 挂住当前 + 邻居全尺寸图；非 sharp 邻居以 **1×1 CSS 像素 + opacity 1** 保活（勿用半透明全图）；有 dims 时被占位盖住的当前 `<img>` 仍保持全尺寸，underlay 铺在上方。**outgoing 托底必须全尺寸**，直到下一张全尺寸揭开后再缩 1×1——避免 WKWebView/Chrome 丢位图，也避免切图黑屏只剩一点。
 7. **快开路径**：命中 display-ready 时跳过 dwell/spinner，underlay 仅保留到视口可绘制。
 
 ---
@@ -202,7 +202,7 @@
 
 用户切到 N+1
   → outgoing 全尺寸托底；N+1 先全尺寸铺在下层（可 1×1→全尺寸）
-  → 双 rAF 重叠后再把上一张缩成 1×1 保活
+  → incoming 通过 load / 布局 / 解码条件后，把上一张降为 1×1 保活
   → preferFastReveal：跳过二次 new Image() 探针；排空 layout 竞态 pending
   → scheduleRevealAfterDecode 命中 decodeSettled WeakMap → 微任务揭开
   → underlay 撤掉，sharp 接近瞬时
@@ -219,11 +219,11 @@
 | 层 | 布局 | 透明度 | 说明 |
 |----|------|--------|------|
 | 邻居（非当前 / 非 outgoing） | **1×1 CSS 像素** | `1` | 合成器仍绘制 → 保活；肉眼不可见；`key={src}` 不变 |
-| 当前且仍被缩略盖住 | 盒全尺寸（给 underlay）；**`<img>` 1×1** | `1` | 不 `visibility:hidden` |
+| 当前且仍被缩略盖住 | 有 dims 时 `<img>` 保持全尺寸，underlay 铺在上方 | `1` | 不因缩略占位将当前图压成 1×1 |
 | 当前已揭开 / **outgoing 托底** | **全尺寸**（dims 缺则 `'auto'`，禁止强制 1） | `1` | 托底必须盖住舞台 |
 | 缩略 underlay | 铺满 | `1`→`0` | 盖住未揭开的当前全图层 |
 
-晋升：同一 `<img>` 改 style（1×1 → natural）；**必须先全尺寸揭开并与 outgoing 重叠至少约两帧，再把上一张缩 1×1**。0.3.10 曾在同一提交里撤托底+拉大下一张，导致次次黑屏一点。
+晋升：同一 `<img>` 改为全尺寸；incoming 通过 load、布局及渐进解码条件前，保留 outgoing。历史黑屏一点的修复同时涉及全尺寸布局、旧帧保留和帧延迟，不能单独证明必须多等两帧。当前门槛不含固定帧等待，见 [单变量调查](./reveal-frame-wait-investigation.zh-CN.md)。
 
 ### 9.3 快开路径：不要二次探针、排空竞态
 

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { scheduleRevealAfterDecode } from '../src/components/ImagePreview/stage/imagePreviewDecode';
 
-beforeEach(() => vi.useFakeTimers());
-afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.restoreAllMocks(); });
+beforeEach(() => { vi.useFakeTimers(); vi.stubGlobal('createImageBitmap', undefined); });
+afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const pending = () => {
   let resolve!: () => void;
   const promise = new Promise<void>((done) => { resolve = done; });
@@ -17,32 +17,72 @@ function image(src = 'test:a') {
 }
 
 describe('decode subscriptions', () => {
-  it.each([0, 1])('reveals a decoded image when frames pause after %s callbacks', async (allowed) => {
-    let remaining = allowed;
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      if (remaining-- > 0) queueMicrotask(() => callback(0));
-      return 1;
-    });
+  it.each(['decode', 'bitmap'])('reveals immediately after %s completes, without frames or another timer', async (api) => {
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1);
     const { img, deferred } = image();
+    const close = vi.fn();
+    if (api === 'bitmap') vi.stubGlobal('createImageBitmap', vi.fn(() => deferred.promise.then(() => ({ close }))));
     const reveal = vi.fn();
     scheduleRevealAfterDecode(img, reveal, 60_000);
-    await vi.advanceTimersByTimeAsync(200);
+    await Promise.resolve();
     expect(reveal).not.toHaveBeenCalled();
     deferred.resolve();
-    await vi.advanceTimersByTimeAsync(200);
+    await deferred.promise;
+    await Promise.resolve(); await Promise.resolve();
     expect(reveal).toHaveBeenCalledOnce();
+    expect(raf).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+    if (api === 'bitmap') {
+      expect(close).toHaveBeenCalledOnce();
+      expect(img.decode).not.toHaveBeenCalled();
+    } else expect(img.decode).toHaveBeenCalledOnce();
+  });
+  it('waits for decode when bitmap confirmation fails, without adding a frame wait', async () => {
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1);
+    const bitmap = vi.fn().mockRejectedValue(new Error('bitmap unavailable'));
+    vi.stubGlobal('createImageBitmap', bitmap);
+    const { img, deferred } = image();
+    const reveal = vi.fn();
+    scheduleRevealAfterDecode(img, reveal, 1000);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(bitmap).toHaveBeenCalledExactlyOnceWith(img);
+    expect(img.decode).toHaveBeenCalledOnce();
+    expect(reveal).not.toHaveBeenCalled();
+    deferred.resolve();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(reveal).toHaveBeenCalledOnce();
+    expect(raf).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
   });
-  it('cleans up a paused presentation wait when its last subscriber leaves', async () => {
-    vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1);
+  it('allows best-effort reveal after both decode APIs fail without caching success', async () => {
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1);
+    const bitmap = vi.fn().mockRejectedValue(new Error('bitmap unavailable'));
+    vi.stubGlobal('createImageBitmap', bitmap);
+    const { img } = image();
+    img.decode = vi.fn().mockRejectedValueOnce(new Error('decode failed')).mockResolvedValue(undefined);
+    const failed = vi.fn();
+    scheduleRevealAfterDecode(img, failed, 1000);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(failed).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+    const retry = vi.fn();
+    scheduleRevealAfterDecode(img, retry, 1000);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(bitmap).toHaveBeenCalledTimes(2);
+    expect(img.decode).toHaveBeenCalledTimes(2);
+    expect(retry).toHaveBeenCalledOnce();
+    expect(raf).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('does not notify a departed last subscriber and caches completed work for a later consumer', async () => {
     const { img, deferred } = image();
     const reveal = vi.fn();
     const cancel = scheduleRevealAfterDecode(img, reveal, 1000);
-    deferred.resolve();
-    await vi.advanceTimersByTimeAsync(0);
     cancel();
     expect(vi.getTimerCount()).toBe(0);
-    await vi.advanceTimersByTimeAsync(200);
+    deferred.resolve();
+    await deferred.promise;
+    await Promise.resolve(); await Promise.resolve();
     expect(reveal).not.toHaveBeenCalled();
     const cached = vi.fn();
     scheduleRevealAfterDecode(img, cached, 1000);
@@ -50,13 +90,11 @@ describe('decode subscriptions', () => {
     expect(cached).toHaveBeenCalledOnce();
     expect(img.decode).toHaveBeenCalledOnce();
   });
-  it('ignores old-source frame fallbacks after the element changes URL', async () => {
-    vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1);
+  it('ignores old-source decode completion after the element changes URL', async () => {
     const { img, deferred } = image();
     const old = vi.fn();
     scheduleRevealAfterDecode(img, old, 1000);
     deferred.resolve();
-    await vi.advanceTimersByTimeAsync(0);
     img.src = 'test:b';
     const nextDecode = pending();
     img.decode = vi.fn(() => nextDecode.promise);
@@ -66,7 +104,8 @@ describe('decode subscriptions', () => {
     expect(old).not.toHaveBeenCalled();
     expect(current).not.toHaveBeenCalled();
     nextDecode.resolve();
-    await vi.advanceTimersByTimeAsync(200);
+    await nextDecode.promise;
+    await Promise.resolve(); await Promise.resolve();
     expect(current).toHaveBeenCalledOnce();
     expect(vi.getTimerCount()).toBe(0);
   });
